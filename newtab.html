@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Neo's New Tab</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <canvas id="matrix"></canvas>
+    <canvas id="sentinel-layer"></canvas>
+    
+    <div id="scanline-overlay" class="hidden"></div>
+
+    <div id="settings-modal" class="hidden">
+        <div class="settings-scroll-area">
+            <h3 id="settings-header">System Settings</h3>
+            
+            <div class="setting-item">
+                <label>UI Scale</label>
+                <input type="range" id="size-slider" min="0.5" max="1.5" step="0.1" value="1">
+            </div>
+            
+            <div class="setting-item">
+                <label>Rain Speed</label>
+                <input type="range" id="speed-slider" min="10" max="100" step="5" value="35">
+            </div>
+            
+            <div class="setting-item">
+                <label>Rain Color</label>
+                <input type="color" id="color-picker" value="#00f2ff">
+            </div>
+
+            <div class="setting-group">
+                <h4 class="sub-menu-title">Time Configuration</h4>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="show-minutes" checked> Show Minutes</label>
+                    <label><input type="checkbox" id="show-seconds"> Show Seconds</label>
+                    <label><input type="checkbox" id="use-24hour"> 24-Hour Protocol</label>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h4 class="sub-menu-title">Intelligence</h4>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="phone-toggle" checked> Enable Rotary Link</label>
+                    <label><input type="checkbox" id="chat-toggle" checked> Secure Chat Terminal</label>
+                    <div class="setting-item" style="margin-top: 5px;">
+                        <label>Signal Frequency: <span id="phone-freq-value">3</span> Minutes</label>
+                        <input type="range" id="phone-freq-slider" min="1" max="30" step="1" value="3">
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h4 class="sub-menu-title">Visuals</h4>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="matrix-green"> Matrix Green UI</label>
+                    <label><input type="checkbox" id="binary-mode"> Binary Mode</label>
+                    <label><input type="checkbox" id="snow-toggle"> Sentinel Swarm</label>
+                    <label><input type="checkbox" id="font-toggle"> Cyberpunk Font</label>
+                    <label><input type="checkbox" id="rainbow-toggle"> Rainbow Mode</label>
+                    <label><input type="checkbox" id="glow-toggle"> Digital Glow Effect</label>
+                    <label><input type="checkbox" id="glitch-toggle"> Glitch on Hover</label>
+                    <div class="setting-item" style="margin-top: 10px;">
+                        <label>Glitch Intensity</label>
+                        <input type="range" id="glitch-slider" min="1" max="20" step="1" value="5">
+                    </div>
+                    <label><input type="checkbox" id="scanline-toggle"> Scanline CRT Overlay</label>
+                    <label><input type="checkbox" id="bg-filter-toggle"> Green Backdrop Filter</label>
+                    <label><input type="checkbox" id="bg-toggle"> Transparent UI</label>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h4 class="sub-menu-title">Backdrop Overlay</h4>
+                <div class="button-group">
+                    <button id="upload-image-btn">Upload Image</button>
+                    <button id="upload-video-btn">Upload Video</button>
+                    <div class="setting-item" style="margin: 10px 0;">
+                        <label>Scaling Mode</label>
+                        <select id="scale-mode">
+                            <option value="cover">Fill (Cover)</option>
+                            <option value="contain">Fit (Contain)</option>
+                            <option value="fill">Stretch</option>
+                        </select>
+                    </div>
+                    <button id="clear-backdrop" style="background: #333; color: #999;">Purge Backdrop</button>
+                    <input type="file" id="image-input" accept="image/*" class="hidden">
+                    <input type="file" id="video-input" accept="video/*" class="hidden">
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h4 class="sub-menu-title">Audio Transmissions</h4>
+                <div class="button-group">
+                    <button id="upload-audio-btn">Upload MP3 Message</button>
+                    <button id="clear-audios" style="background: #333; color: #999;">Purge Messages</button>
+                    <input type="file" id="audio-input" accept="audio/mpeg" class="hidden" multiple>
+                    <p style="font-size: 0.7rem; opacity: 0.6; margin-top: 5px;">Uploaded clips will play randomly when you answer the phone.</p>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h4 class="sub-menu-title">Quotes & Info</h4>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="cycle-quotes"> Cycle Matrix Quotes</label>
+                </div>
+                <div class="setting-item">
+                    <label>Manual Input</label>
+                    <input type="text" id="quote-input" placeholder="Enter mantra...">
+                </div>
+                <div class="setting-item">
+                    <label>Date & Quote Size</label>
+                    <input type="range" id="text-scale-slider" min="0.8" max="2.5" step="0.1" value="1.2">
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button id="save-settings">Save & Exit</button>
+                <button id="restore-defaults" style="background: #a00; color: white;">Hard Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div id="transmission-terminal">
+            <div class="terminal-header">Secure Link: Encrypted</div>
+            <div id="chat-log"></div>
+        </div>
+
+        <div id="settings-icon-container"><div id="settings-icon"></div></div>
+        <div id="clock" data-text="00:00:00">00:00:00</div>
+        <div class="date-container">
+            <div id="date">Calculating...</div>
+            <div id="calendar-icon"></div>
+        </div>
+        
+        <div class="search-wrapper">
+            <div class="input-cursor-container">
+                <input type="text" id="search-input" placeholder="Search the construct..." autocomplete="off">
+                <span id="terminal-cursor"></span>
+            </div>
+        </div>
+
+        <div id="display-quote" class="quote">"There is no spoon."</div>
+
+        <div id="phone-container">
+            <div id="transmission-text">INCOMING SIGNAL...</div>
+            <div id="rotary-phone"></div>
+        </div>
+    </div>
+
+    <audio id="ring-audio" src="ringing.mp3" loop></audio>
+    <audio id="hangup-audio" src="hangup.mp3"></audio>
+    <audio id="transmission-audio"></audio>
+    <audio id="signal-beep" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YTtvT18AAAAA"></audio>
+
+    <script src="script.js"></script>
+</body>
+</html>

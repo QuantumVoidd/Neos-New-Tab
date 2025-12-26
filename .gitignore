@@ -1,0 +1,19 @@
+# OS Metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / Editor folders
+.vscode/
+.idea/
+*.swp
+*.bak
+
+# Node / Build tools (In case you use them later)
+node_modules/
+dist/
+npm-debug.log*
+
+# Private files
+.env
+secret.txt
