@@ -1,6 +1,7 @@
 \# Neo's New Tab (Matrix Themed Dashboard)
 
-<img width="3834" height="1904" alt="Screenshot 2025-12-27 040527" src="https://github.com/user-attachments/assets/5467b6c8-0a1d-4976-b836-247a26be7378" />
+<img width="3825" height="1911" alt="Screenshot 2025-12-27 081652" src="https://github.com/user-attachments/assets/732770b9-b0bc-49b3-8535-aac0b9376894" />
+
 
 
 \## 🛠 Installation (Manual)
@@ -16,6 +17,7 @@ Since this is a fan-made project not on the Chrome Web Store, follow these steps
 4\. Click \*\*Load unpacked\*\* and select the folder containing the extension files.
 
 5\. Open a new tab and enjoy the construct.
+
 
 
 🔗 Neo's New Tab: The Construct
@@ -82,6 +84,7 @@ Quote Engine: Cycle through classic Matrix quotes or set your own custom text.
 \## ⚠️ Disclaimer
 
 This is a non-commercial fan project created for aesthetic purposes. It is not affiliated with, endorsed by, or sponsored by Warner Bros. or the creators of The Matrix franchise.
+
 
 
 
