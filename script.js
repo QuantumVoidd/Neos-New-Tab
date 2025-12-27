@@ -5,7 +5,7 @@ const mainContainer = document.querySelector('.main-container');
 const MATRIX_ALPHABET = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789", BINARY_ALPHABET = "01", CLASSIC_GREEN = "#00FF41", fontSize = 16;
 const MATRIX_QUOTES = ["There is no spoon.", "Free your mind.", "I know kung fu.", "Follow the white rabbit.", "The answer is out there.", "Welcome to the desert of the real.", "Ignorance is bliss.", "Choice is an illusion."];
 
-const DEFAULTS = { rainColor: "#00f2ff", rainSpeed: 35, uiScale: "1", textScale: "1.2", showMinutes: true, showSeconds: false, use24Hour: false, isMatrixGreen: false, isBinary: false, isCyberpunkFont: false, isFlashing: false, isTransparent: false, isGlow: false, isScanline: false, isBgFilter: false, isGlitch: false, glitchIntensity: 5, scaleMode: "cover", isCycling: false, customQuote: "", isSnowing: false, isPhoneEnabled: true, phoneFrequency: 3, isChatEnabled: true, isRssEnabled: false, rssSubs: "matrix+cyberpunk", isStatsEnabled: true, isRainAmbience: false, isHumEnabled: false, envVolume: 0.5 };
+const DEFAULTS = { rainColor: "#00f2ff", rainSpeed: 35, uiScale: "1", textScale: "1.2", showMinutes: true, showSeconds: false, use24Hour: false, isMatrixGreen: false, isBinary: false, isCyberpunkFont: false, isFlashing: false, isTransparent: false, isGlow: false, isScanline: false, isBgFilter: false, isGlitch: false, glitchIntensity: 5, scaleMode: "cover", isCycling: false, customQuote: "", isSnowing: false, isPhoneEnabled: true, phoneFrequency: 3, isChatEnabled: true, isRssEnabled: false, rssSubs: "matrix+cyberpunk", isStatsEnabled: true, isRainAmbience: false, isHumEnabled: false, isMatrixSfxEnabled: false, envVolume: 0.5 };
 
 let rainColor = DEFAULTS.rainColor, rainSpeed = DEFAULTS.rainSpeed, rainInterval, rainDrops = [], showMinutes = DEFAULTS.showMinutes, showSeconds = DEFAULTS.showSeconds, use24Hour = DEFAULTS.use24Hour, isMatrixGreen = DEFAULTS.isMatrixGreen, isBinary = DEFAULTS.isBinary, isFlashing = DEFAULTS.isFlashing, currentAlphabet = MATRIX_ALPHABET, quoteInterval;
 
@@ -20,11 +20,12 @@ const dbName = "MatrixBackdropDB";
 
 function openDB() {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open(dbName, 2); 
+        const request = indexedDB.open(dbName, 3); // Version bumped for SFX store
         request.onupgradeneeded = (e) => {
             const db = e.target.result;
             if (!db.objectStoreNames.contains("videos")) db.createObjectStore("videos");
             if (!db.objectStoreNames.contains("audios")) db.createObjectStore("audios", { autoIncrement: true });
+            if (!db.objectStoreNames.contains("sfx")) db.createObjectStore("sfx");
         };
         request.onsuccess = (e) => resolve(e.target.result);
         request.onerror = (e) => reject(e.target.error);
@@ -67,6 +68,25 @@ async function getAudiosFromDB() {
 async function clearAudiosFromDB() {
     const db = await openDB();
     db.transaction("audios", "readwrite").objectStore("audios").clear();
+}
+
+async function saveSfxToDB(file) {
+    const db = await openDB();
+    const tx = db.transaction("sfx", "readwrite");
+    tx.objectStore("sfx").put(file, "customSfx");
+}
+
+async function loadSfxFromDB() {
+    const db = await openDB();
+    return new Promise((resolve) => {
+        const request = db.transaction("sfx").objectStore("sfx").get("customSfx");
+        request.onsuccess = () => resolve(request.result);
+    });
+}
+
+async function clearSfxFromDB() {
+    const db = await openDB();
+    db.transaction("sfx", "readwrite").objectStore("sfx").delete("customSfx");
 }
 
 // --- VISUALS & ANIMATION ---
@@ -162,7 +182,6 @@ function updateUI() {
     clockEl.textContent = ts; clockEl.setAttribute('data-text', ts);
     document.getElementById('date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-    // --- OPERATOR CONSOLE DIAGNOSTICS ---
     const cpuFill = get('cpu-fill'), memFill = get('mem-fill'), pwrFill = get('pwr-fill');
 
     if (chrome.system && chrome.system.cpu) {
@@ -285,8 +304,9 @@ const audI = get('audio-input'), upAudB = get('upload-audio-btn'), clearAudB = g
 const rssT = get('rss-toggle'), rssI = get('rss-input');
 const statsT = get('stats-toggle');
 
-// New Audio Elements
-const rainAmbT = get('rain-ambience-toggle'), humT = get('hum-toggle'), envVolS = get('env-volume-slider');
+// New Audio UI Selectors
+const rainAmbT = get('rain-ambience-toggle'), humT = get('hum-toggle'), matrixSfxT = get('matrix-sfx-toggle'), envVolS = get('env-volume-slider');
+const upSfxB = get('upload-custom-sfx-btn'), sfxI = get('custom-sfx-input'), clearSfxB = get('clear-custom-sfx');
 
 function applyImg(s) { removeM(); const i = document.createElement('img'); i.id = 'bg-image-layer'; i.src = s; mainContainer.prepend(i); }
 function applyVid(file) { removeM(); const v = document.createElement('video'); v.id = 'bg-video'; v.src = URL.createObjectURL(file); v.autoplay = v.loop = v.muted = v.playsInline = true; mainContainer.prepend(v); }
@@ -347,18 +367,41 @@ humT.onchange = (e) => {
     const audio = get('ambience-hum');
     e.target.checked ? audio.play().catch(() => {}) : audio.pause();
 };
+matrixSfxT.onchange = (e) => {
+    const audio = get('matrix-code-sfx');
+    e.target.checked ? audio.play().catch(() => {}) : audio.pause();
+};
 envVolS.oninput = (e) => {
     const vol = parseFloat(e.target.value);
     get('ambience-rain').volume = vol;
     get('ambience-hum').volume = vol;
+    get('matrix-code-sfx').volume = vol;
+    get('custom-background-sfx').volume = vol;
+};
+
+upSfxB.onclick = () => sfxI.click();
+sfxI.onchange = async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    await saveSfxToDB(file);
+    const audio = get('custom-background-sfx');
+    audio.src = URL.createObjectURL(file);
+    audio.play().catch(() => {});
+};
+clearSfxB.onclick = () => {
+    if(confirm("Purge custom background SFX?")) {
+        clearSfxFromDB();
+        get('custom-background-sfx').pause();
+        get('custom-background-sfx').src = "";
+    }
 };
 
 saveB.onclick = () => {
-    const settings = { rainColor: colorP.value, rainSpeed, uiScale: sizeS.value, textScale: textScaleS.value, showMinutes, showSeconds, use24Hour, isMatrixGreen, isBinary, isSnowing, isCyberpunkFont: fontT.checked, isFlashing, isGlow: glowT.checked, isGlitch: glitchT.checked, glitchIntensity: glitchS.value, isScanline: scanlineT.checked, isBgFilter: bgFilterT.checked, isTransparent: bgT.checked, scaleMode: scaleS.value, isCycling: cycleT.checked, customQuote: quoteI.value, isPhoneEnabled, phoneFrequency, isChatEnabled, isRssEnabled: rssT.checked, rssSubs: rssI.value, isStatsEnabled: statsT.checked, isRainAmbience: rainAmbT.checked, isHumEnabled: humT.checked, envVolume: envVolS.value };
+    const settings = { rainColor: colorP.value, rainSpeed, uiScale: sizeS.value, textScale: textScaleS.value, showMinutes, showSeconds, use24Hour, isMatrixGreen, isBinary, isSnowing, isCyberpunkFont: fontT.checked, isFlashing, isGlow: glowT.checked, isGlitch: glitchT.checked, glitchIntensity: glitchS.value, isScanline: scanlineT.checked, isBgFilter: bgFilterT.checked, isTransparent: bgT.checked, scaleMode: scaleS.value, isCycling: cycleT.checked, customQuote: quoteI.value, isPhoneEnabled, phoneFrequency, isChatEnabled, isRssEnabled: rssT.checked, rssSubs: rssI.value, isStatsEnabled: statsT.checked, isRainAmbience: rainAmbT.checked, isHumEnabled: humT.checked, isMatrixSfxEnabled: matrixSfxT.checked, envVolume: envVolS.value };
     chrome.storage.sync.set(settings, () => modal.classList.add('hidden'));
 };
 
-resetB.onclick = () => { if(confirm("Hard Reset?")) { chrome.storage.sync.clear(); clearVideoFromDB().then(() => location.reload()); } };
+resetB.onclick = () => { if(confirm("Hard Reset?")) { chrome.storage.sync.clear(); clearVideoFromDB().then(() => clearSfxFromDB()).then(() => location.reload()); } };
 upImgB.onclick = () => imgI.click();
 imgI.onchange = (e) => { if(!e.target.files[0]) return; const r = new FileReader(); r.onload = (ev) => { applyImg(ev.target.result); chrome.storage.local.set({ customImg: ev.target.result }); clearVideoFromDB(); }; r.readAsDataURL(e.target.files[0]); };
 upVidB.onclick = () => vidI.click();
@@ -390,7 +433,7 @@ function initPhoneSystem() {
     phoneCont.onclick = async () => {
         if (phoneCont.classList.contains('ringing') && !isProcessingPhone) {
             isProcessingPhone = true; phoneCont.classList.remove('ringing'); 
-            ringAudio.pause(); ringAudio.src = ""; // Kill Ring Icon
+            ringAudio.pause(); ringAudio.src = ""; 
             phoneCont.classList.add('receiving');
             const userAudios = await getAudiosFromDB();
             if (userAudios.length > 0) {
@@ -404,7 +447,7 @@ function initPhoneSystem() {
     };
     function finishCall() { 
         const hangup = get('hangup-audio'); hangup.src = "hangup.mp3"; hangup.play(); 
-        hangup.onended = () => { hangup.src = ""; }; // Kill Hangup Icon
+        hangup.onended = () => { hangup.src = ""; }; 
         setTimeout(() => { phoneCont.classList.remove('receiving'); transText.textContent = "INCOMING SIGNAL..."; isProcessingPhone = false; }, 1200); 
     }
     setupPhoneInterval();
@@ -449,7 +492,7 @@ async function runChatTerminal() {
         if (log.children.length > 4) log.removeChild(log.firstChild);
         const div = document.createElement('div'); div.className = 'chat-msg'; div.innerHTML = `<b class="${line.c}">${line.u}:</b> ${line.t}`; log.appendChild(div); 
         beep.src = "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YTtvT18AAAAA";
-        beep.play().catch(()=>{}); beep.onended = () => beep.src = ""; // Kill Chat Beep Icon
+        beep.play().catch(()=>{}); beep.onended = () => beep.src = ""; 
     }
     setTimeout(runChatTerminal, 10000 + Math.random() * 10000);
 }
@@ -462,31 +505,22 @@ function loadNavLinks() {
     chrome.storage.sync.get({ userNavLinks: [] }, (data) => {
         navWrapper.innerHTML = '';
         const linkCount = data.userNavLinks.length;
-        
-        // --- SYMMETRY LOGIC: HIDE BUTTON IF AT CAP ---
         if (linkCount >= 10) {
             addLinkBtn.style.display = 'none';
         } else {
             addLinkBtn.style.display = 'flex';
             addLinkBtn.title = `Add Secure Node (${linkCount}/10)`;
         }
-        
         data.userNavLinks.forEach((url, index) => {
             let domain;
-            try {
-                domain = new URL(url).hostname;
-            } catch (e) { domain = 'secure-node'; }
-            
+            try { domain = new URL(url).hostname; } catch (e) { domain = 'secure-node'; }
             const node = document.createElement('div');
             node.className = 'nav-icon-circle';
             node.title = `Access: ${domain} (Right-click to purge)`;
-            
             const iconImg = document.createElement('img');
             iconImg.src = `https://www.google.com/s2/favicons?sz=64&domain=${domain}`;
             node.appendChild(iconImg);
-            
             node.onclick = () => window.location.href = url;
-            
             node.oncontextmenu = (e) => {
                 e.preventDefault();
                 if(confirm(`Purge this node from the construct? (${domain})`)) {
@@ -494,7 +528,6 @@ function loadNavLinks() {
                     chrome.storage.sync.set({ userNavLinks: data.userNavLinks }, loadNavLinks);
                 }
             };
-            
             navWrapper.appendChild(node);
         });
     });
@@ -506,19 +539,15 @@ addLinkBtn.onclick = () => {
             alert("Protocol Overload: Maximum of 10 secure nodes allowed in the construct.");
             return;
         }
-
         const url = prompt("Input target URL (e.g., https://discord.com):");
         if (url) {
             try {
                 let formattedUrl = url.trim();
                 if (!/^https?:\/\//i.test(formattedUrl)) formattedUrl = 'https://' + formattedUrl;
-                
                 new URL(formattedUrl);
                 data.userNavLinks.push(formattedUrl);
                 chrome.storage.sync.set({ userNavLinks: data.userNavLinks }, loadNavLinks);
-            } catch (e) {
-                alert("Protocol error: Invalid URL format.");
-            }
+            } catch (e) { alert("Protocol error: Invalid URL format."); }
         }
     });
 };
@@ -544,26 +573,26 @@ chrome.storage.sync.get(null, (d) => {
     if (data.customQuote) { quoteI.value = data.customQuote; get('display-quote').textContent = `"${data.customQuote}"`; } else if (data.isCycling) { cycleT.checked = true; startQuoteCycling(); }
     rssT.checked = data.isRssEnabled; rssI.value = data.rssSubs; updateZionFeed();
     
-    const rAudio = get('ambience-rain'), hAudio = get('ambience-hum');
+    const rAudio = get('ambience-rain'), hAudio = get('ambience-hum'), mAudio = get('matrix-code-sfx'), cAudio = get('custom-background-sfx');
     rainAmbT.checked = data.isRainAmbience;
     humT.checked = data.isHumEnabled;
+    matrixSfxT.checked = data.isMatrixSfxEnabled;
     envVolS.value = data.envVolume;
-    rAudio.volume = data.envVolume;
-    hAudio.volume = data.envVolume;
+    rAudio.volume = hAudio.volume = mAudio.volume = cAudio.volume = data.envVolume;
 
     if(data.isRainAmbience) rAudio.play().catch(() => {});
     if(data.isHumEnabled) hAudio.play().catch(() => {});
+    if(data.isMatrixSfxEnabled) mAudio.play().catch(() => {});
+
+    loadSfxFromDB().then(file => { if(file) { cAudio.src = URL.createObjectURL(file); cAudio.play().catch(() => {}); } });
 
     statsT.checked = data.isStatsEnabled;
     get('operator-console').classList.toggle('stats-hidden', !data.isStatsEnabled);
     
-    loadNavLinks();
-    
-    resize(); startRain(); animateSentinels(); updateUI(); initPhoneSystem(); runChatTerminal(); mainContainer.style.opacity = "1";
+    loadNavLinks(); resize(); startRain(); animateSentinels(); updateUI(); initPhoneSystem(); runChatTerminal(); mainContainer.style.opacity = "1";
 });
 
 setInterval(() => updateZionFeed(true), 120000);
-
 chrome.storage.local.get(['customImg'], (res) => { if(res.customImg) applyImg(res.customImg); else loadVideoFromDB().then(file => { if(file) applyVid(file); }); });
 window.onresize = resize;
 setInterval(updateUI, 1000);

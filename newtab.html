@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -114,10 +114,16 @@
                 <div class="checkbox-group">
                     <label><input type="checkbox" id="rain-ambience-toggle"> Rain Ambience (Window)</label>
                     <label><input type="checkbox" id="hum-toggle"> Nebuchadnezzar Hum</label>
+                    <label><input type="checkbox" id="matrix-sfx-toggle"> Matrix Stream Audio</label>
                     <div class="setting-item" style="margin-top: 5px;">
                         <label>Environment Volume</label>
                         <input type="range" id="env-volume-slider" min="0" max="1" step="0.1" value="0.5">
                     </div>
+                </div>
+                <div class="button-group" style="margin-top: 10px;">
+                    <button id="upload-custom-sfx-btn">Upload Custom SFX</button>
+                    <button id="clear-custom-sfx" style="background: #333; color: #999;">Purge Custom SFX</button>
+                    <input type="file" id="custom-sfx-input" accept="audio/mpeg" class="hidden">
                 </div>
             </div>
 
@@ -203,6 +209,8 @@
     <audio id="transmission-audio"></audio>
     <audio id="ambience-rain" loop src="rain_window.mp3"></audio>
     <audio id="ambience-hum" loop src="hum.mp3"></audio>
+    <audio id="matrix-code-sfx" loop src="matrix_code.mp3"></audio>
+    <audio id="custom-background-sfx" loop></audio>
 
     <script src="script.js"></script>
 </body>
