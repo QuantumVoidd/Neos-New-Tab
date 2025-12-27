@@ -381,10 +381,16 @@ async function runChatTerminal() {
     const script = CHAT_SCRIPTS[Math.floor(Math.random() * CHAT_SCRIPTS.length)]; const log = get('chat-log'), beep = get('signal-beep');
     for (const line of script) {
         if (!isChatEnabled) break; await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
-        if (log.children.length > 4) log.removeChild(log.firstChild);
         const div = document.createElement('div'); div.className = 'chat-msg'; div.innerHTML = `<b class="${line.c}">${line.u}:</b> ${line.t}`; log.appendChild(div); 
+        
+        // Exact pin to the bottom scroll limit
+        log.scrollTo({
+            top: log.scrollHeight,
+            behavior: 'auto'
+        });
+        
         beep.src = "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YTtvT18AAAAA";
-        beep.play().catch(()=>{}); beep.onended = () => beep.src = ""; // Kill Chat Beep Icon
+        beep.play().catch(()=>{}); beep.onended = () => beep.src = "";
     }
     setTimeout(runChatTerminal, 10000 + Math.random() * 10000);
 }
