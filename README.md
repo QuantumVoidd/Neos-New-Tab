@@ -20,6 +20,8 @@ Since this is a fan-made project not on the Chrome Web Store, follow these steps
 
 
 
+
+
 🔗 Neo's New Tab: The Construct
 A highly immersive, Matrix themed "New Tab" browser extension. This extension transforms your home page/new tab page into a functional digital terminal featuring real-time data feeds, environmental audio, and a deeply customizable visual engine.
 
@@ -84,6 +86,7 @@ Quote Engine: Cycle through classic Matrix quotes or set your own custom text.
 \## ⚠️ Disclaimer
 
 This is a non-commercial fan project created for aesthetic purposes. It is not affiliated with, endorsed by, or sponsored by Warner Bros. or the creators of The Matrix franchise.
+
 
 
 
