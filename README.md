@@ -1,7 +1,5 @@
 \# Neo's New Tab (Matrix-Inspired Dashboard)
 
-<img width="3826" height="1908" alt="Screenshot 2025-12-26 184858" src="https://github.com/user-attachments/assets/12dd1664-9b1b-42ad-802c-01e1b513e238" />
-
 
 
 A Matrix-themed Chrome extension that replaces your New Tab page with a digital rain terminal, a functional search bar, and a secure "Phone Link" system.
@@ -52,6 +50,4 @@ Since this is a fan-made project not on the Chrome Web Store, follow these steps
 \## ⚠️ Disclaimer
 
 This is a non-commercial fan project created for aesthetic purposes. It is not affiliated with, endorsed by, or sponsored by Warner Bros. or the creators of The Matrix franchise.
-
-
 

@@ -53,6 +53,17 @@
             </div>
 
             <div class="setting-group">
+                <h4 class="sub-menu-title">ZION Network</h4>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="rss-toggle"> Enable RSS Feed</label>
+                </div>
+                <div class="setting-item">
+                    <label>Favourite Subreddits (+ separated)</label>
+                    <input type="text" id="rss-input" placeholder="matrix+cyberpunk+tech">
+                </div>
+            </div>
+
+            <div class="setting-group">
                 <h4 class="sub-menu-title">Visuals</h4>
                 <div class="checkbox-group">
                     <label><input type="checkbox" id="matrix-green"> Matrix Green UI</label>
@@ -127,6 +138,11 @@
         <div id="transmission-terminal">
             <div class="terminal-header">Secure Link: Encrypted</div>
             <div id="chat-log"></div>
+        </div>
+
+        <div id="zion-rss-container" class="hidden">
+            <div id="rss-header">ZION NETWORK FEED</div>
+            <div id="rss-feed-list"></div>
         </div>
 
         <div id="settings-icon-container"><div id="settings-icon"></div></div>

@@ -5,7 +5,7 @@ const mainContainer = document.querySelector('.main-container');
 const MATRIX_ALPHABET = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789", BINARY_ALPHABET = "01", CLASSIC_GREEN = "#00FF41", fontSize = 16;
 const MATRIX_QUOTES = ["There is no spoon.", "Free your mind.", "I know kung fu.", "Follow the white rabbit.", "The answer is out there.", "Welcome to the desert of the real.", "Ignorance is bliss.", "Choice is an illusion."];
 
-const DEFAULTS = { rainColor: "#00f2ff", rainSpeed: 35, uiScale: "1", textScale: "1.2", showMinutes: true, showSeconds: false, use24Hour: false, isMatrixGreen: false, isBinary: false, isCyberpunkFont: false, isFlashing: false, isTransparent: false, isGlow: false, isScanline: false, isBgFilter: false, isGlitch: false, glitchIntensity: 5, scaleMode: "cover", isCycling: false, customQuote: "", isSnowing: false, isPhoneEnabled: true, phoneFrequency: 3, isChatEnabled: true };
+const DEFAULTS = { rainColor: "#00f2ff", rainSpeed: 35, uiScale: "1", textScale: "1.2", showMinutes: true, showSeconds: false, use24Hour: false, isMatrixGreen: false, isBinary: false, isCyberpunkFont: false, isFlashing: false, isTransparent: false, isGlow: false, isScanline: false, isBgFilter: false, isGlitch: false, glitchIntensity: 5, scaleMode: "cover", isCycling: false, customQuote: "", isSnowing: false, isPhoneEnabled: true, phoneFrequency: 3, isChatEnabled: true, isRssEnabled: false, rssSubs: "matrix+cyberpunk" };
 
 let rainColor = DEFAULTS.rainColor, rainSpeed = DEFAULTS.rainSpeed, rainInterval, rainDrops = [], showMinutes = DEFAULTS.showMinutes, showSeconds = DEFAULTS.showSeconds, use24Hour = DEFAULTS.use24Hour, isMatrixGreen = DEFAULTS.isMatrixGreen, isBinary = DEFAULTS.isBinary, isFlashing = DEFAULTS.isFlashing, currentAlphabet = MATRIX_ALPHABET, quoteInterval;
 
@@ -160,6 +160,62 @@ function updateUI() {
     document.getElementById('date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+// --- ZION NETWORK RSS LOGIC ---
+const rssIntervals = new Map();
+const rssIterations = new Map();
+
+function decryptRssText(element, targetText, isHovering) {
+    if (rssIntervals.has(element)) clearInterval(rssIntervals.get(element));
+    let iteration = rssIterations.get(element) || 0;
+    const interval = setInterval(() => {
+        element.innerText = targetText.split("").map((letter, index) => {
+            if (index < iteration) return targetText[index];
+            return MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)];
+        }).join("");
+        if (isHovering) {
+            iteration += 1/3;
+            if (iteration >= targetText.length) { iteration = targetText.length; element.innerText = targetText; clearInterval(interval); }
+        } else {
+            iteration -= 1/2;
+            if (iteration <= 0) { iteration = 0; element.innerText = targetText.replace(/./g, () => MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]); clearInterval(interval); }
+        }
+        rssIterations.set(element, iteration);
+    }, 30);
+    rssIntervals.set(element, interval);
+}
+
+async function updateZionFeed(isSilent = false) {
+    const data = await chrome.storage.sync.get(['isRssEnabled', 'rssSubs']);
+    const container = get('zion-rss-container'), list = get('rss-feed-list');
+    if (!data.isRssEnabled) { container.classList.add('hidden'); return; }
+    container.classList.remove('hidden');
+    
+    if (!isSilent) list.innerHTML = '<div class="rss-meta">Establishing Uplink...</div>';
+
+    try {
+        const subs = data.rssSubs || "matrix+cyberpunk";
+        const response = await fetch(`https://www.reddit.com/r/${subs}/new.json?limit=10`);
+        const json = await response.json();
+        
+        list.innerHTML = "";
+        json.data.children.forEach(post => {
+            const item = post.data;
+            const link = document.createElement('a');
+            link.className = 'rss-item'; link.href = `https://reddit.com${item.permalink}`; link.target = "_blank";
+            const title = document.createElement('div');
+            title.className = 'rss-title';
+            title.innerText = item.title.replace(/./g, () => MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]);
+            link.innerHTML = `<div class="rss-meta">r/${item.subreddit} • u/${item.author}</div>`;
+            link.prepend(title);
+            link.onmouseenter = () => decryptRssText(title, item.title, true);
+            link.onmouseleave = () => decryptRssText(title, item.title, false);
+            list.appendChild(link);
+        });
+    } catch (e) {
+        if(!isSilent) list.innerHTML = '<div class="rss-meta" style="color:#f00;">Signal Lost: Protocol Error</div>';
+    }
+}
+
 // --- SEARCH & CURSOR ---
 const searchInput = document.getElementById('search-input'), cursor = document.getElementById('terminal-cursor');
 const measure = document.createElement('span');
@@ -193,6 +249,7 @@ const minT = get('show-minutes'), secT = get('show-seconds'), hour24T = get('use
 const imgI = get('image-input'), vidI = get('video-input'), upImgB = get('upload-image-btn'), upVidB = get('upload-video-btn'), clearB = get('clear-backdrop');
 const phoneT = get('phone-toggle'), phoneFreqS = get('phone-freq-slider'), phoneFreqVal = get('phone-freq-value'), chatT = get('chat-toggle');
 const audI = get('audio-input'), upAudB = get('upload-audio-btn'), clearAudB = get('clear-audios');
+const rssT = get('rss-toggle'), rssI = get('rss-input');
 
 function applyImg(s) { removeM(); const i = document.createElement('img'); i.id = 'bg-image-layer'; i.src = s; mainContainer.prepend(i); }
 function applyVid(file) { removeM(); const v = document.createElement('video'); v.id = 'bg-video'; v.src = URL.createObjectURL(file); v.autoplay = v.loop = v.muted = v.playsInline = true; mainContainer.prepend(v); }
@@ -233,8 +290,16 @@ phoneT.onchange = (e) => { isPhoneEnabled = e.target.checked; get('phone-contain
 phoneFreqS.oninput = (e) => { phoneFrequency = parseInt(e.target.value); phoneFreqVal.textContent = phoneFrequency; setupPhoneInterval(); };
 chatT.onchange = (e) => { isChatEnabled = e.target.checked; get('transmission-terminal').classList.toggle('hidden', !isChatEnabled); };
 
+rssT.onchange = (e) => { chrome.storage.sync.set({ isRssEnabled: e.target.checked }); updateZionFeed(); };
+rssI.onchange = (e) => {
+    const val = e.target.value.replace(/,/g, '+').replace(/\s/g, '');
+    rssI.value = val;
+    chrome.storage.sync.set({ rssSubs: val });
+    updateZionFeed();
+};
+
 saveB.onclick = () => {
-    const settings = { rainColor: colorP.value, rainSpeed, uiScale: sizeS.value, textScale: textScaleS.value, showMinutes, showSeconds, use24Hour, isMatrixGreen, isBinary, isSnowing, isCyberpunkFont: fontT.checked, isFlashing, isGlow: glowT.checked, isGlitch: glitchT.checked, glitchIntensity: glitchS.value, isScanline: scanlineT.checked, isBgFilter: bgFilterT.checked, isTransparent: bgT.checked, scaleMode: scaleS.value, isCycling: cycleT.checked, customQuote: quoteI.value, isPhoneEnabled, phoneFrequency, isChatEnabled };
+    const settings = { rainColor: colorP.value, rainSpeed, uiScale: sizeS.value, textScale: textScaleS.value, showMinutes, showSeconds, use24Hour, isMatrixGreen, isBinary, isSnowing, isCyberpunkFont: fontT.checked, isFlashing, isGlow: glowT.checked, isGlitch: glitchT.checked, glitchIntensity: glitchS.value, isScanline: scanlineT.checked, isBgFilter: bgFilterT.checked, isTransparent: bgT.checked, scaleMode: scaleS.value, isCycling: cycleT.checked, customQuote: quoteI.value, isPhoneEnabled, phoneFrequency, isChatEnabled, isRssEnabled: rssT.checked, rssSubs: rssI.value };
     chrome.storage.sync.set(settings, () => { modal.classList.add('hidden'); });
 };
 
@@ -253,116 +318,45 @@ function startQuoteCycling() { stopQuoteCycling(); let idx = 0; quoteInterval = 
 function stopQuoteCycling() { clearInterval(quoteInterval); }
 
 function setupPhoneInterval() { clearInterval(ringCycleInterval); if (isPhoneEnabled) ringCycleInterval = setInterval(triggerRinging, phoneFrequency * 60000); }
+
 let isProcessingPhone = false;
 function triggerRinging() { if (isProcessingPhone || !isPhoneEnabled) return; get('phone-container').classList.add('ringing'); get('ring-audio').play().catch(() => {}); }
 
 function initPhoneSystem() {
-    const phoneCont = get('phone-container'), transText = get('transmission-text');
-    const transAudio = get('transmission-audio');
-    
-    const pool = [
-        ["ESTABLISHING LINK...", "CONNECTION SECURED.", "THEY'RE WATCHING YOU, NEO.", "GOODBYE."],
-        ["SYSTEM BREACH...", "KNOCK, KNOCK, NEO.", "FOLLOW THE WHITE RABBIT.", "RUN."],
-        ["SIGNAL INTERCEPTED...", "THE MATRIX HAS YOU.", "IGNORANCE IS BLISS.", "LINK TERMINATED."],
-        ["DECODING...", "CHOICE IS AN ILLUSION.", "THERE IS NO SPOON.", "WAKE UP."],
-        ["INCOMING DATA...", "FREE YOUR MIND.", "BELIEVE THE UNBELIEVABLE.", "END OF LINE."]
-    ];
-
-    const speakText = (text) => {
-        window.speechSynthesis.cancel(); 
-        const utterance = new SpeechSynthesisUtterance(text.toLowerCase().replace(/[^a-zA-Z ,.?!]/g, ""));
-        utterance.rate = 0.8; 
-        utterance.pitch = 0.1; 
-        window.speechSynthesis.speak(utterance);
-    };
-
+    const phoneCont = get('phone-container'), transText = get('transmission-text'), transAudio = get('transmission-audio');
+    const pool = [["ESTABLISHING LINK...", "CONNECTION SECURED.", "THEY'RE WATCHING YOU, NEO.", "GOODBYE."], ["SYSTEM BREACH...", "KNOCK, KNOCK, NEO.", "FOLLOW THE WHITE RABBIT.", "RUN."]];
+    const speakText = (text) => { window.speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(text.toLowerCase().replace(/[^a-zA-Z ,.?!]/g, "")); utterance.rate = 0.8; utterance.pitch = 0.1; window.speechSynthesis.speak(utterance); };
     phoneCont.onclick = async () => {
         if (phoneCont.classList.contains('ringing') && !isProcessingPhone) {
-            isProcessingPhone = true; 
-            phoneCont.classList.remove('ringing'); 
-            get('ring-audio').pause(); 
-            phoneCont.classList.add('receiving');
-            
+            isProcessingPhone = true; phoneCont.classList.remove('ringing'); get('ring-audio').pause(); get('ring-audio').currentTime = 0; phoneCont.classList.add('receiving');
             const userAudios = await getAudiosFromDB();
-            const hasCustomAudio = userAudios.length > 0;
-
-            if (hasCustomAudio) {
-                // MP3 MODE: Audio controls the timing
-                const blob = userAudios[Math.floor(Math.random() * userAudios.length)];
-                transAudio.src = URL.createObjectURL(blob);
-                
-                // Keep text static while audio plays
-                transText.textContent = "ENCRYPTED TRANSMISSION...";
-                
-                transAudio.play().catch(() => {});
-                transAudio.onended = () => { 
-                    URL.revokeObjectURL(transAudio.src); 
-                    finishCall(); 
-                };
+            if (userAudios.length > 0) {
+                const blob = userAudios[Math.floor(Math.random() * userAudios.length)]; transAudio.src = URL.createObjectURL(blob); transText.textContent = "ENCRYPTED TRANSMISSION..."; transAudio.play().catch(() => {}); transAudio.onended = () => { URL.revokeObjectURL(transAudio.src); finishCall(); };
             } else {
-                // SYSTEM VOICE MODE: Cycle through text
-                const seq = pool[Math.floor(Math.random() * pool.length)]; 
-                let step = 0;
-                const timer = setInterval(() => { 
-                    const currentLine = seq[step++];
-                    transText.textContent = currentLine; 
-                    speakText(currentLine);
-
-                    if (step >= seq.length) { 
-                        clearInterval(timer); 
-                        setTimeout(finishCall, 2500);
-                    } 
-                }, 1800);
+                const seq = pool[Math.floor(Math.random() * pool.length)]; let step = 0;
+                const timer = setInterval(() => { if (step >= seq.length) { clearInterval(timer); setTimeout(finishCall, 2500); return; } const currentLine = seq[step++]; transText.textContent = currentLine; speakText(currentLine); }, 1800);
             }
         }
     };
-
-    function finishCall() {
-        get('hangup-audio').play(); 
-        setTimeout(() => { 
-            phoneCont.classList.remove('receiving'); 
-            transText.textContent = "INCOMING SIGNAL..."; 
-            isProcessingPhone = false; 
-        }, 1200);
-    }
+    function finishCall() { get('hangup-audio').play(); setTimeout(() => { phoneCont.classList.remove('receiving'); transText.textContent = "INCOMING SIGNAL..."; isProcessingPhone = false; }, 1200); }
     setupPhoneInterval();
 }
 
-const CHAT_SCRIPTS = [
-    [{u:"MORPHEUS", t:"Neo, sooner or later you're going to realize...", c:"morpheus"}, {u:"MORPHEUS", t:"...there's a difference between knowing the path and walking the path.", c:"morpheus"}],
-    [{u:"TRINITY", t:"Please, Neo. You have to trust me.", c:"trinity"}, {u:"NEO", t:"Why?", c:"neo"}, {u:"TRINITY", t:"Because you have been down there, Neo. You know that road.", c:"trinity"}],
-    [{u:"SMITH", t:"It is the sound of inevitability.", c:"smith"}, {u:"SMITH", t:"Goodbye, Mr. Anderson.", c:"smith"}, {u:"NEO", t:"My name... is Neo!", c:"neo"}],
-    [{u:"ORACLE", t:"I can only show you the door.", c:"oracle"}, {u:"ORACLE", t:"You're the one that has to walk through it.", c:"oracle"}],
-    [{u:"NEO", t:"I know kung fu.", c:"neo"}, {u:"MORPHEUS", t:"Show me.", c:"morpheus"}],
-    [{u:"MORPHEUS", t:"This is your last chance.", c:"morpheus"}, {u:"MORPHEUS", t:"After this, there is no turning back.", c:"morpheus"}],
-    [{u:"TRINITY", t:"Neo... nobody has ever done this before.", c:"trinity"}, {u:"NEO", t:"That's why it's going to work.", c:"neo"}],
-    [{u:"SMITH", t:"Human beings are a disease.", c:"smith"}, {u:"SMITH", t:"A cancer of this planet.", c:"smith"}],
-    [{u:"ORACLE", t:"Don't worry about the vase.", c:"oracle"}, {u:"NEO", t:"What vase?", c:"neo"}, {u:"ORACLE", t:"That vase.", c:"oracle"}],
-    [{u:"SMITH", t:"Tell me, Mr. Anderson...", c:"smith"}, {u:"SMITH", t:"What good is a phone call if you are unable to speak?", c:"smith"}]
-];
-
+const CHAT_SCRIPTS = [[{u:"MORPHEUS", t:"Neo, sooner or later you're going to realize...", c:"morpheus"}, {u:"MORPHEUS", t:"...there's a difference between knowing the path and walking the path.", c:"morpheus"}]];
 async function runChatTerminal() {
     if (!isChatEnabled) return;
-    const script = CHAT_SCRIPTS[Math.floor(Math.random() * CHAT_SCRIPTS.length)];
-    const log = get('chat-log');
+    const script = CHAT_SCRIPTS[Math.floor(Math.random() * CHAT_SCRIPTS.length)]; const log = get('chat-log');
     for (const line of script) {
-        if (!isChatEnabled) break;
-        await new Promise(r => setTimeout(r, 1800 + Math.random() * 1500));
+        if (!isChatEnabled) break; await new Promise(r => setTimeout(r, 1800 + Math.random() * 1500));
         if (log.children.length > 3) log.removeChild(log.firstChild);
-        const div = document.createElement('div'); div.className = 'chat-msg';
-        div.innerHTML = `<b class="${line.c}">${line.u}:</b> ${line.t}`;
-        log.appendChild(div);
-        get('signal-beep').play().catch(()=>{});
+        const div = document.createElement('div'); div.className = 'chat-msg'; div.innerHTML = `<b class="${line.c}">${line.u}:</b> ${line.t}`; log.appendChild(div); get('signal-beep').play().catch(()=>{});
     }
     setTimeout(runChatTerminal, 15000 + Math.random() * 10000);
 }
 
 chrome.storage.sync.get(null, (d) => {
     const data = { ...DEFAULTS, ...d };
-    rainSpeed = data.rainSpeed; speedS.value = rainSpeed; 
-    isMatrixGreen = data.isMatrixGreen; greenT.checked = isMatrixGreen;
-    colorP.value = data.rainColor;
-    syncThemeColor();
+    rainSpeed = data.rainSpeed; speedS.value = rainSpeed; isMatrixGreen = data.isMatrixGreen; greenT.checked = isMatrixGreen; colorP.value = data.rainColor; syncThemeColor();
     isBinary = data.isBinary; binaryT.checked = isBinary; currentAlphabet = isBinary ? BINARY_ALPHABET : MATRIX_ALPHABET;
     isSnowing = data.isSnowing; snowT.checked = isSnowing; if(isSnowing) initSnow();
     isFlashing = data.isFlashing; rainbowT.checked = isFlashing;
@@ -379,8 +373,12 @@ chrome.storage.sync.get(null, (d) => {
     document.documentElement.style.setProperty('--bg-scale', data.scaleMode); scaleS.value = data.scaleMode;
     mainContainer.style.transform = `translate(-50%, -50%) scale(${data.uiScale})`; sizeS.value = data.uiScale;
     if (data.customQuote) { quoteI.value = data.customQuote; get('display-quote').textContent = `"${data.customQuote}"`; } else if (data.isCycling) { cycleT.checked = true; startQuoteCycling(); }
+    rssT.checked = data.isRssEnabled; rssI.value = data.rssSubs; updateZionFeed();
     resize(); startRain(); animateSentinels(); updateUI(); initPhoneSystem(); runChatTerminal(); mainContainer.style.opacity = "1";
 });
+
+// REAL-TIME RSS HEARTBEAT: Update every 2 minutes
+setInterval(() => updateZionFeed(true), 120000);
 
 chrome.storage.local.get(['customImg'], (res) => { if(res.customImg) applyImg(res.customImg); else loadVideoFromDB().then(file => { if(file) applyVid(file); }); });
 window.onresize = resize;
