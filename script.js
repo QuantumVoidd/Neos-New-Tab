@@ -454,6 +454,75 @@ async function runChatTerminal() {
     setTimeout(runChatTerminal, 10000 + Math.random() * 10000);
 }
 
+// --- DYNAMIC NAV BAR LOGIC ---
+const navWrapper = get('dynamic-links-wrapper');
+const addLinkBtn = get('add-link-btn');
+
+function loadNavLinks() {
+    chrome.storage.sync.get({ userNavLinks: [] }, (data) => {
+        navWrapper.innerHTML = '';
+        const linkCount = data.userNavLinks.length;
+        
+        // --- SYMMETRY LOGIC: HIDE BUTTON IF AT CAP ---
+        if (linkCount >= 10) {
+            addLinkBtn.style.display = 'none';
+        } else {
+            addLinkBtn.style.display = 'flex';
+            addLinkBtn.title = `Add Secure Node (${linkCount}/10)`;
+        }
+        
+        data.userNavLinks.forEach((url, index) => {
+            let domain;
+            try {
+                domain = new URL(url).hostname;
+            } catch (e) { domain = 'secure-node'; }
+            
+            const node = document.createElement('div');
+            node.className = 'nav-icon-circle';
+            node.title = `Access: ${domain} (Right-click to purge)`;
+            
+            const iconImg = document.createElement('img');
+            iconImg.src = `https://www.google.com/s2/favicons?sz=64&domain=${domain}`;
+            node.appendChild(iconImg);
+            
+            node.onclick = () => window.location.href = url;
+            
+            node.oncontextmenu = (e) => {
+                e.preventDefault();
+                if(confirm(`Purge this node from the construct? (${domain})`)) {
+                    data.userNavLinks.splice(index, 1);
+                    chrome.storage.sync.set({ userNavLinks: data.userNavLinks }, loadNavLinks);
+                }
+            };
+            
+            navWrapper.appendChild(node);
+        });
+    });
+}
+
+addLinkBtn.onclick = () => {
+    chrome.storage.sync.get({ userNavLinks: [] }, (data) => {
+        if (data.userNavLinks.length >= 10) {
+            alert("Protocol Overload: Maximum of 10 secure nodes allowed in the construct.");
+            return;
+        }
+
+        const url = prompt("Input target URL (e.g., https://discord.com):");
+        if (url) {
+            try {
+                let formattedUrl = url.trim();
+                if (!/^https?:\/\//i.test(formattedUrl)) formattedUrl = 'https://' + formattedUrl;
+                
+                new URL(formattedUrl);
+                data.userNavLinks.push(formattedUrl);
+                chrome.storage.sync.set({ userNavLinks: data.userNavLinks }, loadNavLinks);
+            } catch (e) {
+                alert("Protocol error: Invalid URL format.");
+            }
+        }
+    });
+};
+
 chrome.storage.sync.get(null, (d) => {
     const data = { ...DEFAULTS, ...d };
     rainSpeed = data.rainSpeed; speedS.value = rainSpeed; isMatrixGreen = data.isMatrixGreen; greenT.checked = isMatrixGreen; colorP.value = data.rainColor; syncThemeColor();
@@ -475,7 +544,6 @@ chrome.storage.sync.get(null, (d) => {
     if (data.customQuote) { quoteI.value = data.customQuote; get('display-quote').textContent = `"${data.customQuote}"`; } else if (data.isCycling) { cycleT.checked = true; startQuoteCycling(); }
     rssT.checked = data.isRssEnabled; rssI.value = data.rssSubs; updateZionFeed();
     
-    // Restore Audio Environment
     const rAudio = get('ambience-rain'), hAudio = get('ambience-hum');
     rainAmbT.checked = data.isRainAmbience;
     humT.checked = data.isHumEnabled;
@@ -483,19 +551,18 @@ chrome.storage.sync.get(null, (d) => {
     rAudio.volume = data.envVolume;
     hAudio.volume = data.envVolume;
 
-    // We only attempt play() after a user gesture usually, but as a New Tab,
-    // we try to start loops if they were enabled.
     if(data.isRainAmbience) rAudio.play().catch(() => {});
     if(data.isHumEnabled) hAudio.play().catch(() => {});
 
-    // Restore Stats Toggle State
     statsT.checked = data.isStatsEnabled;
     get('operator-console').classList.toggle('stats-hidden', !data.isStatsEnabled);
+    
+    loadNavLinks();
     
     resize(); startRain(); animateSentinels(); updateUI(); initPhoneSystem(); runChatTerminal(); mainContainer.style.opacity = "1";
 });
 
-setInterval(() => updateZionFeed(true), 120000); // Real-time RSS refresh every 2 mins
+setInterval(() => updateZionFeed(true), 120000);
 
 chrome.storage.local.get(['customImg'], (res) => { if(res.customImg) applyImg(res.customImg); else loadVideoFromDB().then(file => { if(file) applyVid(file); }); });
 window.onresize = resize;
