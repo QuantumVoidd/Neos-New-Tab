@@ -189,14 +189,11 @@ async function updateZionFeed(isSilent = false) {
     const container = get('zion-rss-container'), list = get('rss-feed-list');
     if (!data.isRssEnabled) { container.classList.add('hidden'); return; }
     container.classList.remove('hidden');
-    
     if (!isSilent) list.innerHTML = '<div class="rss-meta">Establishing Uplink...</div>';
-
     try {
         const subs = data.rssSubs || "matrix+cyberpunk";
         const response = await fetch(`https://www.reddit.com/r/${subs}/new.json?limit=10`);
         const json = await response.json();
-        
         list.innerHTML = "";
         json.data.children.forEach(post => {
             const item = post.data;
@@ -211,9 +208,7 @@ async function updateZionFeed(isSilent = false) {
             link.onmouseleave = () => decryptRssText(title, item.title, false);
             list.appendChild(link);
         });
-    } catch (e) {
-        if(!isSilent) list.innerHTML = '<div class="rss-meta" style="color:#f00;">Signal Lost: Protocol Error</div>';
-    }
+    } catch (e) { if(!isSilent) list.innerHTML = '<div class="rss-meta" style="color:#f00;">Signal Lost: Protocol Error</div>'; }
 }
 
 // --- SEARCH & CURSOR ---
@@ -236,11 +231,7 @@ function updateCursorVisibility() {
 searchInput.addEventListener('input', syncCursor);
 searchInput.addEventListener('focus', updateCursorVisibility);
 searchInput.addEventListener('blur', updateCursorVisibility);
-searchInput.addEventListener('keydown', (e) => { 
-    if (e.key === 'Enter' && searchInput.value.trim() !== "") {
-        chrome.search.query({ text: searchInput.value }); 
-    }
-});
+searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && searchInput.value.trim() !== "") chrome.search.query({ text: searchInput.value }); });
 
 // --- SETTINGS ---
 const get = (id) => document.getElementById(id);
@@ -262,8 +253,7 @@ function syncThemeColor() {
     startRain();
 }
 
-get('settings-icon-container').onclick = () => { modal.classList.toggle('hidden'); };
-
+get('settings-icon-container').onclick = () => modal.classList.toggle('hidden');
 greenT.onchange = (e) => { isMatrixGreen = e.target.checked; syncThemeColor(); };
 colorP.oninput = (e) => { if (!isMatrixGreen) syncThemeColor(); };
 quoteI.oninput = (e) => { const val = e.target.value; if (val.trim() !== "") { stopQuoteCycling(); cycleT.checked = false; get('display-quote').textContent = `"${val}"`; } else if (!cycleT.checked) { get('display-quote').textContent = '"There is no spoon."'; } };
@@ -272,19 +262,19 @@ secT.onchange = (e) => { showSeconds = e.target.checked; updateUI(); };
 hour24T.onchange = (e) => { use24Hour = e.target.checked; updateUI(); };
 binaryT.onchange = (e) => { isBinary = e.target.checked; currentAlphabet = isBinary ? BINARY_ALPHABET : MATRIX_ALPHABET; };
 snowT.onchange = (e) => { isSnowing = e.target.checked; if(isSnowing) initSnow(); };
-rainbowT.onchange = (e) => { isFlashing = e.target.checked; };
-fontT.onchange = (e) => { document.body.classList.toggle('cyberpunk-font', e.target.checked); };
-glowT.onchange = (e) => { document.body.classList.toggle('glow-active', e.target.checked); };
-glitchT.onchange = (e) => { document.body.classList.toggle('glitch-enabled', e.target.checked); };
-scanlineT.onchange = (e) => { get('scanline-overlay').classList.toggle('hidden', !e.target.checked); };
-bgFilterT.onchange = (e) => { document.body.classList.toggle('bg-filter-active', e.target.checked); };
-bgT.onchange = (e) => { mainContainer.classList.toggle('transparent-bg', e.target.checked); };
-cycleT.onchange = (e) => { if (e.target.checked) { quoteI.value = ""; startQuoteCycling(); } else { stopQuoteCycling(); } };
+rainbowT.onchange = (e) => isFlashing = e.target.checked;
+fontT.onchange = (e) => document.body.classList.toggle('cyberpunk-font', e.target.checked);
+glowT.onchange = (e) => document.body.classList.toggle('glow-active', e.target.checked);
+glitchT.onchange = (e) => document.body.classList.toggle('glitch-enabled', e.target.checked);
+scanlineT.onchange = (e) => get('scanline-overlay').classList.toggle('hidden', !e.target.checked);
+bgFilterT.onchange = (e) => document.body.classList.toggle('bg-filter-active', e.target.checked);
+bgT.onchange = (e) => mainContainer.classList.toggle('transparent-bg', e.target.checked);
+cycleT.onchange = (e) => { if (e.target.checked) { quoteI.value = ""; startQuoteCycling(); } else stopQuoteCycling(); };
 speedS.oninput = (e) => { rainSpeed = parseInt(e.target.value); startRain(); };
-sizeS.oninput = (e) => { mainContainer.style.transform = `translate(-50%, -50%) scale(${e.target.value})`; };
-textScaleS.oninput = (e) => { document.documentElement.style.setProperty('--text-scale', e.target.value); };
-glitchS.oninput = (e) => { document.documentElement.style.setProperty('--glitch-intensity', e.target.value + 'px'); };
-scaleS.onchange = (e) => { document.documentElement.style.setProperty('--bg-scale', e.target.value); };
+sizeS.oninput = (e) => mainContainer.style.transform = `translate(-50%, -50%) scale(${e.target.value})`;
+textScaleS.oninput = (e) => document.documentElement.style.setProperty('--text-scale', e.target.value);
+glitchS.oninput = (e) => document.documentElement.style.setProperty('--glitch-intensity', e.target.value + 'px');
+scaleS.onchange = (e) => document.documentElement.style.setProperty('--bg-scale', e.target.value);
 
 phoneT.onchange = (e) => { isPhoneEnabled = e.target.checked; get('phone-container').classList.toggle('hidden', !isPhoneEnabled); setupPhoneInterval(); };
 phoneFreqS.oninput = (e) => { phoneFrequency = parseInt(e.target.value); phoneFreqVal.textContent = phoneFrequency; setupPhoneInterval(); };
@@ -300,7 +290,7 @@ rssI.onchange = (e) => {
 
 saveB.onclick = () => {
     const settings = { rainColor: colorP.value, rainSpeed, uiScale: sizeS.value, textScale: textScaleS.value, showMinutes, showSeconds, use24Hour, isMatrixGreen, isBinary, isSnowing, isCyberpunkFont: fontT.checked, isFlashing, isGlow: glowT.checked, isGlitch: glitchT.checked, glitchIntensity: glitchS.value, isScanline: scanlineT.checked, isBgFilter: bgFilterT.checked, isTransparent: bgT.checked, scaleMode: scaleS.value, isCycling: cycleT.checked, customQuote: quoteI.value, isPhoneEnabled, phoneFrequency, isChatEnabled, isRssEnabled: rssT.checked, rssSubs: rssI.value };
-    chrome.storage.sync.set(settings, () => { modal.classList.add('hidden'); });
+    chrome.storage.sync.set(settings, () => modal.classList.add('hidden'));
 };
 
 resetB.onclick = () => { if(confirm("Hard Reset?")) { chrome.storage.sync.clear(); clearVideoFromDB().then(() => location.reload()); } };
@@ -309,9 +299,8 @@ imgI.onchange = (e) => { if(!e.target.files[0]) return; const r = new FileReader
 upVidB.onclick = () => vidI.click();
 vidI.onchange = (e) => { const file = e.target.files[0]; if(!file) return; applyVid(file); saveVideoToDB(file); chrome.storage.local.remove('customImg'); };
 clearB.onclick = () => { removeM(); chrome.storage.local.remove('customImg'); clearVideoFromDB(); };
-
 upAudB.onclick = () => audI.click();
-audI.onchange = async (e) => { for(let file of e.target.files) { await saveAudioToDB(file); } alert("Messages stored."); };
+audI.onchange = async (e) => { for(let file of e.target.files) await saveAudioToDB(file); alert("Messages stored."); };
 clearAudB.onclick = () => { if(confirm("Purge all messages?")) clearAudiosFromDB(); };
 
 function startQuoteCycling() { stopQuoteCycling(); let idx = 0; quoteInterval = setInterval(() => { const qEl = get('display-quote'); qEl.style.opacity = 0; setTimeout(() => { qEl.textContent = `"${MATRIX_QUOTES[idx]}"`; qEl.style.opacity = 0.9; idx = (idx + 1) % MATRIX_QUOTES.length; }, 500); }, 15000); }
@@ -320,38 +309,84 @@ function stopQuoteCycling() { clearInterval(quoteInterval); }
 function setupPhoneInterval() { clearInterval(ringCycleInterval); if (isPhoneEnabled) ringCycleInterval = setInterval(triggerRinging, phoneFrequency * 60000); }
 
 let isProcessingPhone = false;
-function triggerRinging() { if (isProcessingPhone || !isPhoneEnabled) return; get('phone-container').classList.add('ringing'); get('ring-audio').play().catch(() => {}); }
+
+function triggerRinging() { 
+    if (isProcessingPhone || !isPhoneEnabled) return; 
+    const ringAudio = get('ring-audio');
+    ringAudio.src = "ringing.mp3"; 
+    get('phone-container').classList.add('ringing'); 
+    ringAudio.play().catch(() => {}); 
+}
 
 function initPhoneSystem() {
-    const phoneCont = get('phone-container'), transText = get('transmission-text'), transAudio = get('transmission-audio');
+    const phoneCont = get('phone-container'), transText = get('transmission-text'), transAudio = get('transmission-audio'), ringAudio = get('ring-audio');
     const pool = [["ESTABLISHING LINK...", "CONNECTION SECURED.", "THEY'RE WATCHING YOU, NEO.", "GOODBYE."], ["SYSTEM BREACH...", "KNOCK, KNOCK, NEO.", "FOLLOW THE WHITE RABBIT.", "RUN."]];
-    const speakText = (text) => { window.speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(text.toLowerCase().replace(/[^a-zA-Z ,.?!]/g, "")); utterance.rate = 0.8; utterance.pitch = 0.1; window.speechSynthesis.speak(utterance); };
+    const speakText = (text) => { const utterance = new SpeechSynthesisUtterance(text.toLowerCase().replace(/[^a-zA-Z ,.?!]/g, "")); utterance.rate = 0.8; utterance.pitch = 0.1; window.speechSynthesis.speak(utterance); };
     phoneCont.onclick = async () => {
         if (phoneCont.classList.contains('ringing') && !isProcessingPhone) {
-            isProcessingPhone = true; phoneCont.classList.remove('ringing'); get('ring-audio').pause(); get('ring-audio').currentTime = 0; phoneCont.classList.add('receiving');
+            isProcessingPhone = true; phoneCont.classList.remove('ringing'); 
+            ringAudio.pause(); ringAudio.src = ""; // Kill Ring Icon
+            phoneCont.classList.add('receiving');
             const userAudios = await getAudiosFromDB();
             if (userAudios.length > 0) {
-                const blob = userAudios[Math.floor(Math.random() * userAudios.length)]; transAudio.src = URL.createObjectURL(blob); transText.textContent = "ENCRYPTED TRANSMISSION..."; transAudio.play().catch(() => {}); transAudio.onended = () => { URL.revokeObjectURL(transAudio.src); finishCall(); };
+                const blob = userAudios[Math.floor(Math.random() * userAudios.length)]; transAudio.src = URL.createObjectURL(blob); transText.textContent = "ENCRYPTED TRANSMISSION..."; transAudio.play().catch(() => {});
+                transAudio.onended = () => { URL.revokeObjectURL(transAudio.src); transAudio.src = ""; finishCall(); };
             } else {
                 const seq = pool[Math.floor(Math.random() * pool.length)]; let step = 0;
                 const timer = setInterval(() => { if (step >= seq.length) { clearInterval(timer); setTimeout(finishCall, 2500); return; } const currentLine = seq[step++]; transText.textContent = currentLine; speakText(currentLine); }, 1800);
             }
         }
     };
-    function finishCall() { get('hangup-audio').play(); setTimeout(() => { phoneCont.classList.remove('receiving'); transText.textContent = "INCOMING SIGNAL..."; isProcessingPhone = false; }, 1200); }
+    function finishCall() { 
+        const hangup = get('hangup-audio'); hangup.src = "hangup.mp3"; hangup.play(); 
+        hangup.onended = () => { hangup.src = ""; }; // Kill Hangup Icon
+        setTimeout(() => { phoneCont.classList.remove('receiving'); transText.textContent = "INCOMING SIGNAL..."; isProcessingPhone = false; }, 1200); 
+    }
     setupPhoneInterval();
 }
 
-const CHAT_SCRIPTS = [[{u:"MORPHEUS", t:"Neo, sooner or later you're going to realize...", c:"morpheus"}, {u:"MORPHEUS", t:"...there's a difference between knowing the path and walking the path.", c:"morpheus"}]];
+const CHAT_SCRIPTS = [
+    [
+        {u:"MORPHEUS", t:"Neo, sooner or later you're going to realize...", c:"morpheus"},
+        {u:"MORPHEUS", t:"...there's a difference between knowing the path and walking the path.", c:"morpheus"}
+    ],
+    [
+        {u:"TRINITY", t:"Please, Neo. You have to trust me.", c:"trinity"},
+        {u:"NEO", t:"Why?", c:"neo"},
+        {u:"TRINITY", t:"Because you have been down there, Neo. You know that road.", c:"trinity"}
+    ],
+    [
+        {u:"AGENT SMITH", t:"It is purpose that created us.", c:"smith"},
+        {u:"AGENT SMITH", t:"Purpose that connects us. Purpose that pulls us.", c:"smith"},
+        {u:"AGENT SMITH", t:"It is purpose that defines us.", c:"smith"}
+    ],
+    [
+        {u:"ORACLE", t:"I'd ask you to sit down, but you're not going to anyway.", c:"oracle"},
+        {u:"ORACLE", t:"And don't worry about the vase.", c:"oracle"},
+        {u:"NEO", t:"What vase?", c:"neo"}
+    ],
+    [
+        {u:"MORPHEUS", t:"This is your last chance. After this, there is no turning back.", c:"morpheus"},
+        {u:"MORPHEUS", t:"You take the blue pill—the story ends.", c:"morpheus"},
+        {u:"MORPHEUS", t:"You take the red pill—you stay in Wonderland.", c:"morpheus"}
+    ],
+    [
+        {u:"TRINITY", t:"The answer is out there, Neo.", c:"trinity"},
+        {u:"TRINITY", t:"It's looking for you, and it will find you if you want it to.", c:"trinity"}
+    ]
+];
+
 async function runChatTerminal() {
     if (!isChatEnabled) return;
-    const script = CHAT_SCRIPTS[Math.floor(Math.random() * CHAT_SCRIPTS.length)]; const log = get('chat-log');
+    const script = CHAT_SCRIPTS[Math.floor(Math.random() * CHAT_SCRIPTS.length)]; const log = get('chat-log'), beep = get('signal-beep');
     for (const line of script) {
-        if (!isChatEnabled) break; await new Promise(r => setTimeout(r, 1800 + Math.random() * 1500));
-        if (log.children.length > 3) log.removeChild(log.firstChild);
-        const div = document.createElement('div'); div.className = 'chat-msg'; div.innerHTML = `<b class="${line.c}">${line.u}:</b> ${line.t}`; log.appendChild(div); get('signal-beep').play().catch(()=>{});
+        if (!isChatEnabled) break; await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
+        if (log.children.length > 4) log.removeChild(log.firstChild);
+        const div = document.createElement('div'); div.className = 'chat-msg'; div.innerHTML = `<b class="${line.c}">${line.u}:</b> ${line.t}`; log.appendChild(div); 
+        beep.src = "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YTtvT18AAAAA";
+        beep.play().catch(()=>{}); beep.onended = () => beep.src = ""; // Kill Chat Beep Icon
     }
-    setTimeout(runChatTerminal, 15000 + Math.random() * 10000);
+    setTimeout(runChatTerminal, 10000 + Math.random() * 10000);
 }
 
 chrome.storage.sync.get(null, (d) => {
@@ -377,8 +412,7 @@ chrome.storage.sync.get(null, (d) => {
     resize(); startRain(); animateSentinels(); updateUI(); initPhoneSystem(); runChatTerminal(); mainContainer.style.opacity = "1";
 });
 
-// REAL-TIME RSS HEARTBEAT: Update every 2 minutes
-setInterval(() => updateZionFeed(true), 120000);
+setInterval(() => updateZionFeed(true), 120000); // Real-time RSS refresh every 2 mins
 
 chrome.storage.local.get(['customImg'], (res) => { if(res.customImg) applyImg(res.customImg); else loadVideoFromDB().then(file => { if(file) applyVid(file); }); });
 window.onresize = resize;

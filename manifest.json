@@ -12,7 +12,11 @@
     "storage",
     "unlimitedStorage",
     "search"
-  ],
+],
+  "host_permissions": [
+    "https://www.reddit.com/*"  
+
+],
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },
