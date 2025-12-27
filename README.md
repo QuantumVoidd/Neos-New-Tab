@@ -1,6 +1,7 @@
 \# Neo's New Tab (Matrix Themed Dashboard)
 
-<img width="3825" height="1911" alt="Screenshot 2025-12-27 081652" src="https://github.com/user-attachments/assets/732770b9-b0bc-49b3-8535-aac0b9376894" />
+<img width="3833" height="1908" alt="Screenshot 2025-12-27 102228" src="https://github.com/user-attachments/assets/07758d2a-4fa3-4548-94b5-e34effc89e1b" />
+
 
 
 
@@ -86,6 +87,7 @@ Quote Engine: Cycle through classic Matrix quotes or set your own custom text.
 \## ⚠️ Disclaimer
 
 This is a non-commercial fan project created for aesthetic purposes. It is not affiliated with, endorsed by, or sponsored by Warner Bros. or the creators of The Matrix franchise.
+
 
 
 
