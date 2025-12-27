@@ -5,12 +5,15 @@ const mainContainer = document.querySelector('.main-container');
 const MATRIX_ALPHABET = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789", BINARY_ALPHABET = "01", CLASSIC_GREEN = "#00FF41", fontSize = 16;
 const MATRIX_QUOTES = ["There is no spoon.", "Free your mind.", "I know kung fu.", "Follow the white rabbit.", "The answer is out there.", "Welcome to the desert of the real.", "Ignorance is bliss.", "Choice is an illusion."];
 
-const DEFAULTS = { rainColor: "#00f2ff", rainSpeed: 35, uiScale: "1", textScale: "1.2", showMinutes: true, showSeconds: false, use24Hour: false, isMatrixGreen: false, isBinary: false, isCyberpunkFont: false, isFlashing: false, isTransparent: false, isGlow: false, isScanline: false, isBgFilter: false, isGlitch: false, glitchIntensity: 5, scaleMode: "cover", isCycling: false, customQuote: "", isSnowing: false, isPhoneEnabled: true, phoneFrequency: 3, isChatEnabled: true, isRssEnabled: false, rssSubs: "matrix+cyberpunk" };
+const DEFAULTS = { rainColor: "#00f2ff", rainSpeed: 35, uiScale: "1", textScale: "1.2", showMinutes: true, showSeconds: false, use24Hour: false, isMatrixGreen: false, isBinary: false, isCyberpunkFont: false, isFlashing: false, isTransparent: false, isGlow: false, isScanline: false, isBgFilter: false, isGlitch: false, glitchIntensity: 5, scaleMode: "cover", isCycling: false, customQuote: "", isSnowing: false, isPhoneEnabled: true, phoneFrequency: 3, isChatEnabled: true, isRssEnabled: false, rssSubs: "matrix+cyberpunk", isStatsEnabled: true };
 
 let rainColor = DEFAULTS.rainColor, rainSpeed = DEFAULTS.rainSpeed, rainInterval, rainDrops = [], showMinutes = DEFAULTS.showMinutes, showSeconds = DEFAULTS.showSeconds, use24Hour = DEFAULTS.use24Hour, isMatrixGreen = DEFAULTS.isMatrixGreen, isBinary = DEFAULTS.isBinary, isFlashing = DEFAULTS.isFlashing, currentAlphabet = MATRIX_ALPHABET, quoteInterval;
 
 let isPhoneEnabled = DEFAULTS.isPhoneEnabled, phoneFrequency = DEFAULTS.phoneFrequency, ringCycleInterval;
 let isChatEnabled = DEFAULTS.isChatEnabled;
+
+// --- DIAGNOSTICS STATE ---
+let lastCpuInfo = null;
 
 // --- INDEXEDDB FOR STORAGE ---
 const dbName = "MatrixBackdropDB";
@@ -158,6 +161,45 @@ function updateUI() {
     let ts = `${hours}`; if (showMinutes) ts += `:${mins}`; if (showSeconds) ts += `:${secs}`; if (!use24Hour) ts += ` ${ampm}`;
     clockEl.textContent = ts; clockEl.setAttribute('data-text', ts);
     document.getElementById('date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+    // --- OPERATOR CONSOLE DIAGNOSTICS ---
+    const cpuFill = get('cpu-fill'), memFill = get('mem-fill'), pwrFill = get('pwr-fill');
+
+    if (chrome.system && chrome.system.cpu) {
+        chrome.system.cpu.getInfo((info) => {
+            if (lastCpuInfo) {
+                let totalDiff = 0, idleDiff = 0;
+                for (let i = 0; i < info.processors.length; i++) {
+                    const usage = info.processors[i].usage, lastUsage = lastCpuInfo.processors[i].usage;
+                    totalDiff += (usage.user - lastUsage.user) + (usage.kernel - lastUsage.kernel) + (usage.idle - lastUsage.idle);
+                    idleDiff += (usage.idle - lastUsage.idle);
+                }
+                const cpuPercent = Math.max(Math.round((1 - (idleDiff / totalDiff)) * 100), 5);
+                if (cpuFill) {
+                    cpuFill.style.height = `${cpuPercent}%`;
+                    cpuFill.classList.toggle('warning-flash', cpuPercent > 85);
+                }
+            }
+            lastCpuInfo = info;
+        });
+    }
+
+    if (chrome.system && chrome.system.memory) {
+        chrome.system.memory.getInfo((info) => {
+            const memPercent = Math.round(((info.capacity - info.availableCapacity) / info.capacity) * 100);
+            if (memFill) memFill.style.height = `${memPercent}%`;
+        });
+    }
+
+    if (navigator.getBattery) {
+        navigator.getBattery().then(battery => {
+            const pwrPercent = Math.round(battery.level * 100);
+            if (pwrFill) {
+                pwrFill.style.height = `${pwrPercent}%`;
+                pwrFill.classList.toggle('warning-flash', pwrPercent < 15);
+            }
+        });
+    }
 }
 
 // --- ZION NETWORK RSS LOGIC ---
@@ -241,6 +283,7 @@ const imgI = get('image-input'), vidI = get('video-input'), upImgB = get('upload
 const phoneT = get('phone-toggle'), phoneFreqS = get('phone-freq-slider'), phoneFreqVal = get('phone-freq-value'), chatT = get('chat-toggle');
 const audI = get('audio-input'), upAudB = get('upload-audio-btn'), clearAudB = get('clear-audios');
 const rssT = get('rss-toggle'), rssI = get('rss-input');
+const statsT = get('stats-toggle');
 
 function applyImg(s) { removeM(); const i = document.createElement('img'); i.id = 'bg-image-layer'; i.src = s; mainContainer.prepend(i); }
 function applyVid(file) { removeM(); const v = document.createElement('video'); v.id = 'bg-video'; v.src = URL.createObjectURL(file); v.autoplay = v.loop = v.muted = v.playsInline = true; mainContainer.prepend(v); }
@@ -288,8 +331,12 @@ rssI.onchange = (e) => {
     updateZionFeed();
 };
 
+statsT.onchange = (e) => {
+    get('operator-console').classList.toggle('stats-hidden', !e.target.checked);
+};
+
 saveB.onclick = () => {
-    const settings = { rainColor: colorP.value, rainSpeed, uiScale: sizeS.value, textScale: textScaleS.value, showMinutes, showSeconds, use24Hour, isMatrixGreen, isBinary, isSnowing, isCyberpunkFont: fontT.checked, isFlashing, isGlow: glowT.checked, isGlitch: glitchT.checked, glitchIntensity: glitchS.value, isScanline: scanlineT.checked, isBgFilter: bgFilterT.checked, isTransparent: bgT.checked, scaleMode: scaleS.value, isCycling: cycleT.checked, customQuote: quoteI.value, isPhoneEnabled, phoneFrequency, isChatEnabled, isRssEnabled: rssT.checked, rssSubs: rssI.value };
+    const settings = { rainColor: colorP.value, rainSpeed, uiScale: sizeS.value, textScale: textScaleS.value, showMinutes, showSeconds, use24Hour, isMatrixGreen, isBinary, isSnowing, isCyberpunkFont: fontT.checked, isFlashing, isGlow: glowT.checked, isGlitch: glitchT.checked, glitchIntensity: glitchS.value, isScanline: scanlineT.checked, isBgFilter: bgFilterT.checked, isTransparent: bgT.checked, scaleMode: scaleS.value, isCycling: cycleT.checked, customQuote: quoteI.value, isPhoneEnabled, phoneFrequency, isChatEnabled, isRssEnabled: rssT.checked, rssSubs: rssI.value, isStatsEnabled: statsT.checked };
     chrome.storage.sync.set(settings, () => modal.classList.add('hidden'));
 };
 
@@ -381,16 +428,10 @@ async function runChatTerminal() {
     const script = CHAT_SCRIPTS[Math.floor(Math.random() * CHAT_SCRIPTS.length)]; const log = get('chat-log'), beep = get('signal-beep');
     for (const line of script) {
         if (!isChatEnabled) break; await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
+        if (log.children.length > 4) log.removeChild(log.firstChild);
         const div = document.createElement('div'); div.className = 'chat-msg'; div.innerHTML = `<b class="${line.c}">${line.u}:</b> ${line.t}`; log.appendChild(div); 
-        
-        // Exact pin to the bottom scroll limit
-        log.scrollTo({
-            top: log.scrollHeight,
-            behavior: 'auto'
-        });
-        
         beep.src = "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YTtvT18AAAAA";
-        beep.play().catch(()=>{}); beep.onended = () => beep.src = "";
+        beep.play().catch(()=>{}); beep.onended = () => beep.src = ""; // Kill Chat Beep Icon
     }
     setTimeout(runChatTerminal, 10000 + Math.random() * 10000);
 }
@@ -415,6 +456,11 @@ chrome.storage.sync.get(null, (d) => {
     mainContainer.style.transform = `translate(-50%, -50%) scale(${data.uiScale})`; sizeS.value = data.uiScale;
     if (data.customQuote) { quoteI.value = data.customQuote; get('display-quote').textContent = `"${data.customQuote}"`; } else if (data.isCycling) { cycleT.checked = true; startQuoteCycling(); }
     rssT.checked = data.isRssEnabled; rssI.value = data.rssSubs; updateZionFeed();
+    
+    // Restore Stats Toggle State
+    statsT.checked = data.isStatsEnabled;
+    get('operator-console').classList.toggle('stats-hidden', !data.isStatsEnabled);
+    
     resize(); startRain(); animateSentinels(); updateUI(); initPhoneSystem(); runChatTerminal(); mainContainer.style.opacity = "1";
 });
 

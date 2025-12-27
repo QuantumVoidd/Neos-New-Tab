@@ -32,6 +32,13 @@
             </div>
 
             <div class="setting-group">
+                <h4 class="sub-menu-title">Operator Console</h4>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="stats-toggle" checked> Enable System Diagnostics</label>
+                </div>
+            </div>
+
+            <div class="setting-group">
                 <h4 class="sub-menu-title">Time Configuration</h4>
                 <div class="checkbox-group">
                     <label><input type="checkbox" id="show-minutes" checked> Show Minutes</label>
@@ -135,6 +142,12 @@
     </div>
 
     <div class="main-container">
+        <div id="operator-console">
+            <div class="stat-bar"><div id="cpu-fill" class="stat-fill"></div><span class="stat-label">CPU</span></div>
+            <div class="stat-bar"><div id="mem-fill" class="stat-fill"></div><span class="stat-label">MEM</span></div>
+            <div class="stat-bar"><div id="pwr-fill" class="stat-fill"></div><span class="stat-label">PWR</span></div>
+        </div>
+
         <div id="transmission-terminal">
             <div class="terminal-header">Secure Link: Encrypted</div>
             <div id="chat-log"></div>

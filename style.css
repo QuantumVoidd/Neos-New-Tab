@@ -27,6 +27,19 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color:
     box-shadow: 0 0 25px var(--theme-color), inset 0 0 10px var(--theme-color) !important;
 }
 
+/* OPERATOR CONSOLE STYLES */
+#operator-console {
+    position: absolute; bottom: 20px; left: 20px;
+    display: flex; gap: 15px; z-index: 100;
+}
+.stat-bar { width: 12px; height: 100px; background: rgba(0, 242, 255, 0.1); border: 1px solid var(--theme-color); position: relative; border-radius: 2px; }
+.stat-fill { position: absolute; bottom: 0; left: 0; width: 100%; background: var(--theme-color); transition: height 0.5s ease; box-shadow: 0 0 10px var(--theme-color); }
+.stat-label { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-size: 0.55rem; font-weight: bold; letter-spacing: 1px; }
+.warning-flash { animation: alert-pulse 0.5s infinite alternate; }
+@keyframes alert-pulse { from { background: var(--theme-color); } to { background: #f00; box-shadow: 0 0 15px #f00; } }
+.stats-hidden { display: none !important; }
+
+/* Transmission Terminal */
 #transmission-terminal {
     position: absolute; 
     top: 50%; 
@@ -34,29 +47,11 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color:
     transform: translateY(-50%);
     width: 300px; height: 120px;
     background: rgba(0, 0, 0, 0.85); border: 1px solid var(--theme-color);
-    border-radius: 5px; 
-    padding: 22px 10px 0px 10px; /* Zero padding at the bottom */
-    overflow: hidden;
+    border-radius: 5px; padding: 25px 15px 5px 15px; overflow: hidden;
     box-shadow: 0 0 15px var(--theme-color);
     z-index: 100;
     transition: box-shadow 0.3s ease, border 0.3s ease;
-    display: flex;
-    flex-direction: column;
 }
-
-#chat-log { 
-    display: flex; 
-    flex-direction: column; 
-    gap: 3px; 
-    text-align: left; 
-    font-size: 0.72rem; 
-    flex-grow: 1; /* Pushes content to the bottom boundary */
-    overflow-y: auto;
-    scrollbar-width: none;
-    margin-bottom: 0;
-}
-
-#chat-log::-webkit-scrollbar { display: none; }
 
 #zion-rss-container {
     position: absolute;
@@ -117,9 +112,10 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color:
     background: var(--theme-color); color: black; 
     font-size: 0.65rem; font-weight: bold; padding: 3px 10px; 
     box-sizing: border-box; text-align: left; 
-    z-index: 10;
+    text-shadow: 0 0 5px rgba(0,0,0,0.5);
 }
 
+#chat-log { display: flex; flex-direction: column; gap: 3px; text-align: left; font-size: 0.72rem; }
 .chat-msg { animation: msg-in 0.3s forwards; line-height: 1.1; }
 .trinity { color: #ff00f2; } 
 .morpheus { color: var(--theme-color); } 
