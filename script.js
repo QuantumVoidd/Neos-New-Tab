@@ -20,7 +20,7 @@ const dbName = "MatrixBackdropDB";
 
 function openDB() {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open(dbName, 3); // Version bumped for SFX store
+        const request = indexedDB.open(dbName, 3);
         request.onupgradeneeded = (e) => {
             const db = e.target.result;
             if (!db.objectStoreNames.contains("videos")) db.createObjectStore("videos");
@@ -304,7 +304,6 @@ const audI = get('audio-input'), upAudB = get('upload-audio-btn'), clearAudB = g
 const rssT = get('rss-toggle'), rssI = get('rss-input');
 const statsT = get('stats-toggle');
 
-// New Audio UI Selectors
 const rainAmbT = get('rain-ambience-toggle'), humT = get('hum-toggle'), matrixSfxT = get('matrix-sfx-toggle'), envVolS = get('env-volume-slider');
 const upSfxB = get('upload-custom-sfx-btn'), sfxI = get('custom-sfx-input'), clearSfxB = get('clear-custom-sfx');
 
@@ -358,7 +357,6 @@ statsT.onchange = (e) => {
     get('operator-console').classList.toggle('stats-hidden', !e.target.checked);
 };
 
-// Background Audio Listeners
 rainAmbT.onchange = (e) => {
     const audio = get('ambience-rain');
     e.target.checked ? audio.play().catch(() => {}) : audio.pause();
@@ -486,18 +484,16 @@ const CHAT_SCRIPTS = [
 
 async function runChatTerminal() {
     if (!isChatEnabled) return;
-    const script = CHAT_SCRIPTS[Math.floor(Math.random() * CHAT_SCRIPTS.length)]; const log = get('chat-log'), beep = get('signal-beep');
+    const script = CHAT_SCRIPTS[Math.floor(Math.random() * CHAT_SCRIPTS.length)]; const log = get('chat-log');
     for (const line of script) {
         if (!isChatEnabled) break; await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
         if (log.children.length > 4) log.removeChild(log.firstChild);
         const div = document.createElement('div'); div.className = 'chat-msg'; div.innerHTML = `<b class="${line.c}">${line.u}:</b> ${line.t}`; log.appendChild(div); 
-        beep.src = "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YTtvT18AAAAA";
-        beep.play().catch(()=>{}); beep.onended = () => beep.src = ""; 
+        // Beep logic removed per request
     }
     setTimeout(runChatTerminal, 10000 + Math.random() * 10000);
 }
 
-// --- DYNAMIC NAV BAR LOGIC ---
 const navWrapper = get('dynamic-links-wrapper');
 const addLinkBtn = get('add-link-btn');
 
@@ -505,29 +501,13 @@ function loadNavLinks() {
     chrome.storage.sync.get({ userNavLinks: [] }, (data) => {
         navWrapper.innerHTML = '';
         const linkCount = data.userNavLinks.length;
-        if (linkCount >= 10) {
-            addLinkBtn.style.display = 'none';
-        } else {
-            addLinkBtn.style.display = 'flex';
-            addLinkBtn.title = `Add Secure Node (${linkCount}/10)`;
-        }
+        if (linkCount >= 10) { addLinkBtn.style.display = 'none'; } else { addLinkBtn.style.display = 'flex'; addLinkBtn.title = `Add Secure Node (${linkCount}/10)`; }
         data.userNavLinks.forEach((url, index) => {
-            let domain;
-            try { domain = new URL(url).hostname; } catch (e) { domain = 'secure-node'; }
-            const node = document.createElement('div');
-            node.className = 'nav-icon-circle';
-            node.title = `Access: ${domain} (Right-click to purge)`;
-            const iconImg = document.createElement('img');
-            iconImg.src = `https://www.google.com/s2/favicons?sz=64&domain=${domain}`;
-            node.appendChild(iconImg);
-            node.onclick = () => window.location.href = url;
-            node.oncontextmenu = (e) => {
-                e.preventDefault();
-                if(confirm(`Purge this node from the construct? (${domain})`)) {
-                    data.userNavLinks.splice(index, 1);
-                    chrome.storage.sync.set({ userNavLinks: data.userNavLinks }, loadNavLinks);
-                }
-            };
+            let domain; try { domain = new URL(url).hostname; } catch (e) { domain = 'secure-node'; }
+            const node = document.createElement('div'); node.className = 'nav-icon-circle'; node.title = `Access: ${domain} (Right-click to purge)`;
+            const iconImg = document.createElement('img'); iconImg.src = `https://www.google.com/s2/favicons?sz=64&domain=${domain}`;
+            node.appendChild(iconImg); node.onclick = () => window.location.href = url;
+            node.oncontextmenu = (e) => { e.preventDefault(); if(confirm(`Purge this node?`)) { data.userNavLinks.splice(index, 1); chrome.storage.sync.set({ userNavLinks: data.userNavLinks }, loadNavLinks); } };
             navWrapper.appendChild(node);
         });
     });
@@ -535,19 +515,10 @@ function loadNavLinks() {
 
 addLinkBtn.onclick = () => {
     chrome.storage.sync.get({ userNavLinks: [] }, (data) => {
-        if (data.userNavLinks.length >= 10) {
-            alert("Protocol Overload: Maximum of 10 secure nodes allowed in the construct.");
-            return;
-        }
-        const url = prompt("Input target URL (e.g., https://discord.com):");
+        if (data.userNavLinks.length >= 10) return;
+        const url = prompt("Input target URL:");
         if (url) {
-            try {
-                let formattedUrl = url.trim();
-                if (!/^https?:\/\//i.test(formattedUrl)) formattedUrl = 'https://' + formattedUrl;
-                new URL(formattedUrl);
-                data.userNavLinks.push(formattedUrl);
-                chrome.storage.sync.set({ userNavLinks: data.userNavLinks }, loadNavLinks);
-            } catch (e) { alert("Protocol error: Invalid URL format."); }
+            try { let f = url.trim(); if (!/^https?:\/\//i.test(f)) f = 'https://' + f; new URL(f); data.userNavLinks.push(f); chrome.storage.sync.set({ userNavLinks: data.userNavLinks }, loadNavLinks); } catch (e) {}
         }
     });
 };
@@ -574,11 +545,8 @@ chrome.storage.sync.get(null, (d) => {
     rssT.checked = data.isRssEnabled; rssI.value = data.rssSubs; updateZionFeed();
     
     const rAudio = get('ambience-rain'), hAudio = get('ambience-hum'), mAudio = get('matrix-code-sfx'), cAudio = get('custom-background-sfx');
-    rainAmbT.checked = data.isRainAmbience;
-    humT.checked = data.isHumEnabled;
-    matrixSfxT.checked = data.isMatrixSfxEnabled;
-    envVolS.value = data.envVolume;
-    rAudio.volume = hAudio.volume = mAudio.volume = cAudio.volume = data.envVolume;
+    rainAmbT.checked = data.isRainAmbience; humT.checked = data.isHumEnabled; matrixSfxT.checked = data.isMatrixSfxEnabled;
+    envVolS.value = data.envVolume; rAudio.volume = hAudio.volume = mAudio.volume = cAudio.volume = data.envVolume;
 
     if(data.isRainAmbience) rAudio.play().catch(() => {});
     if(data.isHumEnabled) hAudio.play().catch(() => {});
