@@ -5,7 +5,7 @@ const mainContainer = document.querySelector('.main-container');
 const MATRIX_ALPHABET = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789", BINARY_ALPHABET = "01", CLASSIC_GREEN = "#00FF41", fontSize = 16;
 const MATRIX_QUOTES = ["There is no spoon.", "Free your mind.", "I know kung fu.", "Follow the white rabbit.", "The answer is out there.", "Welcome to the desert of the real.", "Ignorance is bliss.", "Choice is an illusion."];
 
-const DEFAULTS = { rainColor: "#00f2ff", rainSpeed: 35, uiScale: "1", textScale: "1.2", showMinutes: true, showSeconds: false, use24Hour: false, isMatrixGreen: false, isBinary: false, isCyberpunkFont: false, isFlashing: false, isTransparent: false, isGlow: false, isScanline: false, isBgFilter: false, isGlitch: false, glitchIntensity: 5, scaleMode: "cover", isCycling: false, customQuote: "", isSnowing: false, isPhoneEnabled: true, phoneFrequency: 3, isChatEnabled: true, isRssEnabled: false, rssSubs: "matrix+cyberpunk", isStatsEnabled: true };
+const DEFAULTS = { rainColor: "#00f2ff", rainSpeed: 35, uiScale: "1", textScale: "1.2", showMinutes: true, showSeconds: false, use24Hour: false, isMatrixGreen: false, isBinary: false, isCyberpunkFont: false, isFlashing: false, isTransparent: false, isGlow: false, isScanline: false, isBgFilter: false, isGlitch: false, glitchIntensity: 5, scaleMode: "cover", isCycling: false, customQuote: "", isSnowing: false, isPhoneEnabled: true, phoneFrequency: 3, isChatEnabled: true, isRssEnabled: false, rssSubs: "matrix+cyberpunk", isStatsEnabled: true, isRainAmbience: false, isHumEnabled: false, envVolume: 0.5 };
 
 let rainColor = DEFAULTS.rainColor, rainSpeed = DEFAULTS.rainSpeed, rainInterval, rainDrops = [], showMinutes = DEFAULTS.showMinutes, showSeconds = DEFAULTS.showSeconds, use24Hour = DEFAULTS.use24Hour, isMatrixGreen = DEFAULTS.isMatrixGreen, isBinary = DEFAULTS.isBinary, isFlashing = DEFAULTS.isFlashing, currentAlphabet = MATRIX_ALPHABET, quoteInterval;
 
@@ -285,6 +285,9 @@ const audI = get('audio-input'), upAudB = get('upload-audio-btn'), clearAudB = g
 const rssT = get('rss-toggle'), rssI = get('rss-input');
 const statsT = get('stats-toggle');
 
+// New Audio Elements
+const rainAmbT = get('rain-ambience-toggle'), humT = get('hum-toggle'), envVolS = get('env-volume-slider');
+
 function applyImg(s) { removeM(); const i = document.createElement('img'); i.id = 'bg-image-layer'; i.src = s; mainContainer.prepend(i); }
 function applyVid(file) { removeM(); const v = document.createElement('video'); v.id = 'bg-video'; v.src = URL.createObjectURL(file); v.autoplay = v.loop = v.muted = v.playsInline = true; mainContainer.prepend(v); }
 function removeM() { const v = get('bg-video'), i = get('bg-image-layer'); if(v) { URL.revokeObjectURL(v.src); v.remove(); } if(i) i.remove(); }
@@ -335,8 +338,23 @@ statsT.onchange = (e) => {
     get('operator-console').classList.toggle('stats-hidden', !e.target.checked);
 };
 
+// Background Audio Listeners
+rainAmbT.onchange = (e) => {
+    const audio = get('ambience-rain');
+    e.target.checked ? audio.play().catch(() => {}) : audio.pause();
+};
+humT.onchange = (e) => {
+    const audio = get('ambience-hum');
+    e.target.checked ? audio.play().catch(() => {}) : audio.pause();
+};
+envVolS.oninput = (e) => {
+    const vol = parseFloat(e.target.value);
+    get('ambience-rain').volume = vol;
+    get('ambience-hum').volume = vol;
+};
+
 saveB.onclick = () => {
-    const settings = { rainColor: colorP.value, rainSpeed, uiScale: sizeS.value, textScale: textScaleS.value, showMinutes, showSeconds, use24Hour, isMatrixGreen, isBinary, isSnowing, isCyberpunkFont: fontT.checked, isFlashing, isGlow: glowT.checked, isGlitch: glitchT.checked, glitchIntensity: glitchS.value, isScanline: scanlineT.checked, isBgFilter: bgFilterT.checked, isTransparent: bgT.checked, scaleMode: scaleS.value, isCycling: cycleT.checked, customQuote: quoteI.value, isPhoneEnabled, phoneFrequency, isChatEnabled, isRssEnabled: rssT.checked, rssSubs: rssI.value, isStatsEnabled: statsT.checked };
+    const settings = { rainColor: colorP.value, rainSpeed, uiScale: sizeS.value, textScale: textScaleS.value, showMinutes, showSeconds, use24Hour, isMatrixGreen, isBinary, isSnowing, isCyberpunkFont: fontT.checked, isFlashing, isGlow: glowT.checked, isGlitch: glitchT.checked, glitchIntensity: glitchS.value, isScanline: scanlineT.checked, isBgFilter: bgFilterT.checked, isTransparent: bgT.checked, scaleMode: scaleS.value, isCycling: cycleT.checked, customQuote: quoteI.value, isPhoneEnabled, phoneFrequency, isChatEnabled, isRssEnabled: rssT.checked, rssSubs: rssI.value, isStatsEnabled: statsT.checked, isRainAmbience: rainAmbT.checked, isHumEnabled: humT.checked, envVolume: envVolS.value };
     chrome.storage.sync.set(settings, () => modal.classList.add('hidden'));
 };
 
@@ -457,6 +475,19 @@ chrome.storage.sync.get(null, (d) => {
     if (data.customQuote) { quoteI.value = data.customQuote; get('display-quote').textContent = `"${data.customQuote}"`; } else if (data.isCycling) { cycleT.checked = true; startQuoteCycling(); }
     rssT.checked = data.isRssEnabled; rssI.value = data.rssSubs; updateZionFeed();
     
+    // Restore Audio Environment
+    const rAudio = get('ambience-rain'), hAudio = get('ambience-hum');
+    rainAmbT.checked = data.isRainAmbience;
+    humT.checked = data.isHumEnabled;
+    envVolS.value = data.envVolume;
+    rAudio.volume = data.envVolume;
+    hAudio.volume = data.envVolume;
+
+    // We only attempt play() after a user gesture usually, but as a New Tab,
+    // we try to start loops if they were enabled.
+    if(data.isRainAmbience) rAudio.play().catch(() => {});
+    if(data.isHumEnabled) hAudio.play().catch(() => {});
+
     // Restore Stats Toggle State
     statsT.checked = data.isStatsEnabled;
     get('operator-console').classList.toggle('stats-hidden', !data.isStatsEnabled);

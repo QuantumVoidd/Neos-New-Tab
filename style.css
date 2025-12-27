@@ -19,6 +19,7 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color:
     box-shadow: 0 0 20px var(--theme-color); text-align: center; color: var(--theme-color); opacity: 0; 
     transition: opacity 0.3s ease, background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease; 
     display: flex; flex-direction: column; align-items: center; justify-content: center;
+    /* Removed overflow:hidden from here so side panels stay visible */
 }
 
 .main-container.transparent-bg { 
@@ -156,7 +157,14 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color:
     100% { transform: rotate(0deg) scale(1.1); }
 }
 
-#bg-video, #bg-image-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: var(--bg-scale, cover); z-index: -1; pointer-events: none; }
+/* Fix: Contain the media without hiding the side terminals */
+#bg-video, #bg-image-layer { 
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+    object-fit: var(--bg-scale, cover); z-index: -1; pointer-events: none; 
+    border-radius: inherit; 
+    clip-path: inset(0 round 20px); /* This crops the media specifically to the container shape */
+}
+
 .bg-filter-active #bg-video, .bg-filter-active #bg-image-layer { filter: sepia(100%) hue-rotate(90deg) saturate(300%) brightness(50%); }
 
 .settings-scroll-area::-webkit-scrollbar { width: 6px; }
