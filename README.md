@@ -22,71 +22,50 @@ Since this is a fan-made project not on the Chrome Web Store, follow these steps
 
 
 
+Neo's New Tab is a highly customizable, Matrix-themed browser extension that transforms your new tab page into a digital terminal.
 
-🔗 Neo's New Tab: The Construct
-A highly immersive, Matrix themed "New Tab" browser extension. This extension transforms your home page/new tab page into a functional digital terminal featuring real-time data feeds, environmental audio, and a deeply customizable visual engine.
+Core Visual Experience
+Dynamic Matrix Rain: Features a customizable digital rain background with adjustable speed, colors, and character sets including Classic Matrix, Binary, and Hexadecimal.
 
-🖥️ Visual Engine Features
-1. Dynamic Matrix Rain
-Customizable Rain: Change the speed, color, and character set (Classic katakana or Binary) of the falling code.
+Sentinel Swarm: An optional visual layer that adds animated "Sentinel" machines drifting across the screen.
 
-Sentinel Layer: A secondary animation layer that adds depth and movement behind the main interface.
+CRT Aesthetics: Includes a toggleable Scanline CRT overlay and a digital glow effect to mimic vintage hardware.
 
-2. Immersive Overlays
-Scanline Overlay: Toggle vintage CRT-style scanlines for an authentic terminal feel.
+Custom Backdrops: Users can upload their own images or videos to serve as the background behind the terminal interface.
 
-Digital Flicker & Glow: An optional "Glow Mode" that adds a neon pulse to text and containers.
+Functional Terminals
+Operator Console (Diagnostics): Real-time system monitoring bars that track CPU usage, memory consumption, and battery levels.
 
-Glitch Effects: Interactive glitch animations on the clock when hovered, with adjustable intensity.
+ZION Network RSS: A dedicated feed container that fetches and displays live posts from selected subreddits, featuring a "decryption" animation on hover.
 
-3. Background Customization
-Video & Image Support: Support for high-quality background videos or static images.
+Secure Chat Terminal: A simulated transmission window that displays messages from iconic characters like Morpheus, Trinity, and Neo.
 
-Atmospheric Filters: A "Background Filter" toggle to apply a stylized green tint to background media for that old school matrix feel.
+CLI Command System: A built-in command-line interface allowing users to control the extension via commands like /weather, /glitch, /whoami, and /night.
 
-🛠️ Functional Modules
-📟 Secure Transmission Terminal (Chat)
-Encrypted Logic: A simulated live-feed terminal featuring scrolling messages from characters like Agent Smith, Oracle, Morpheus, Trinity, and Neo.
+Interactive Elements
+Rotary Link System: An interactive rotary phone that "rings" periodically to deliver incoming signals or messages.
 
-📰 Zion Network Feed (RSS)
-Real-time News: Integrates a functional RSS reader that pulls the newest posts from you're favourite sub reddit into your dashboard, using reddit's API.
+Matrix Quotes: Displays iconic quotes from the franchise, with options to set custom "mantras" or cycle through a preset list.
 
-Integrated Browser: Clickable news items that link directly to the source.
+Search Terminal: A centered search input with a blinking terminal cursor for web queries.
 
-Balanced Layout: Perfectly mirrored to the right side of the dashboard for visual symmetry.
+Dynamic Nav Bar: A customizable bottom bar for quick access to "Secure Nodes" (user-defined links).
 
-🕰️ System Chronometer & Search
-Advanced Clock: Toggle between 12/24 hour formats and show/hide minutes or seconds.
+Atmosphere & Customization
+Audio Environment: Includes toggleable ambient sounds such as "Nebuchadnezzar Hum," "Rain Ambience," and custom Matrix sound effects.
 
-Themed Search: A minimalist terminal-style search bar with a blinking block cursor that interacts with your default search engine.
+Flexible Scaling: The entire UI can be scaled from 0.5x to 1.5x, with options for transparent backgrounds and different typography (Classic or Cyberpunk).
 
-Date Display: Modern date formatting with an integrated calendar icon.
+Time & Date: A large, stylized clock supporting 24-hour protocols and configurable second/minute visibility.
 
-📞 The Hardline (Phone System)
-Interactive Rotary Phone: A functional notification system. When a "Signal" is incoming, the phone rings and shakes, allowing you to "pick up" to trigger terminal events.
 
-🔊 Audio Environment
-Ambience Loops: Toggleable high-quality audio loops for "Rain Hitting Window" and "Nebuchadnezzar Hum."
 
-Interface Sounds: Dedicated audio triggers for incoming transmissions and hanging up the phone.
-
-Volume Control: A master environment slider to balance background ambience with your workflow.
-
-⚙️ System Settings (The Operator Console)
-Access the modal to fine-tune every aspect of the Construct:
-
-UI Scaling: Adjust the overall size of the interface from 0.5x to 1.5x.
-
-Text Scaling: Increase or decrease font size for better accessibility.
-
-Transparency: Toggle the main container background between solid black and glass-morphism.
-
-Quote Engine: Cycle through classic Matrix quotes or set your own custom text.
 
 
 \## ⚠️ Disclaimer
 
 This is a non-commercial fan project created for aesthetic purposes. It is not affiliated with, endorsed by, or sponsored by Warner Bros. or the creators of The Matrix franchise.
+
 
 
 
