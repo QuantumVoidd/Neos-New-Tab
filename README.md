@@ -1,4 +1,4 @@
-\# Neo's New Tab (Matrix Themed Dashboard)
+Neo's New Tab is a highly customizable, Matrix-themed browser extension that transforms your new tab page into a digital terminal.
 
 <img width="3833" height="1908" alt="Screenshot 2025-12-27 102228" src="https://github.com/user-attachments/assets/07758d2a-4fa3-4548-94b5-e34effc89e1b" />
 
@@ -23,7 +23,7 @@ Since this is a fan-made project not on the Chrome Web Store, follow these steps
 
 
 
-Neo's New Tab is a highly customizable, Matrix-themed browser extension that transforms your new tab page into a digital terminal.
+
 
 Core Visual Experience
 - Dynamic Matrix Rain: Features a customizable digital rain background with adjustable speed, colors, and character sets including Classic Matrix, Binary, and Hexadecimal.
@@ -68,6 +68,7 @@ Atmosphere & Customization
 \## ⚠️ Disclaimer
 
 This is a non-commercial fan project created for aesthetic purposes. It is not affiliated with, endorsed by, or sponsored by Warner Bros. or the creators of The Matrix franchise.
+
 
 
 
