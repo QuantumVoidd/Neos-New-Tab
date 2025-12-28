@@ -22,6 +22,8 @@ Since this is a fan-made project not on the Chrome Web Store, follow these steps
 
 
 
+
+
 Neo's New Tab is a highly customizable, Matrix-themed browser extension that transforms your new tab page into a digital terminal.
 
 Core Visual Experience
@@ -62,9 +64,12 @@ Time & Date: A large, stylized clock supporting 24-hour protocols and configurab
 
 
 
+
+
 \## ⚠️ Disclaimer
 
 This is a non-commercial fan project created for aesthetic purposes. It is not affiliated with, endorsed by, or sponsored by Warner Bros. or the creators of The Matrix franchise.
+
 
 
 
