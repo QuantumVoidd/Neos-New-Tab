@@ -230,7 +230,6 @@ input[type="text"], select { width: 100%; box-sizing: border-box; background: #2
     border: 2px solid var(--theme-color);
     border-radius: 50%;
     background: rgba(0, 0, 0, 0.6);
-    /* INCREASED GLOW HERE */
     box-shadow: 0 0 15px var(--theme-color), inset 0 0 8px var(--theme-color);
     display: flex;
     align-items: center;
@@ -257,7 +256,6 @@ input[type="text"], select { width: 100%; box-sizing: border-box; background: #2
 
 .nav-icon-circle:hover {
     transform: scale(1.15) translateY(-5px);
-    /* INTENSE GLOW ON HOVER */
     box-shadow: 0 0 30px var(--theme-color), inset 0 0 15px var(--theme-color);
     opacity: 1;
 }

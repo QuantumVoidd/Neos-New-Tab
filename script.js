@@ -3,11 +3,12 @@ const canvas = document.getElementById('matrix'), ctx = canvas.getContext('2d');
 const sCanvas = document.getElementById('sentinel-layer'), sCtx = sCanvas.getContext('2d');
 const mainContainer = document.querySelector('.main-container');
 const MATRIX_ALPHABET = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789", BINARY_ALPHABET = "01", CLASSIC_GREEN = "#00FF41", fontSize = 16;
+const HEX_ALPHABET = "0123456789ABCDEF";
 const MATRIX_QUOTES = ["There is no spoon.", "Free your mind.", "I know kung fu.", "Follow the white rabbit.", "The answer is out there.", "Welcome to the desert of the real.", "Ignorance is bliss.", "Choice is an illusion."];
 
-const DEFAULTS = { rainColor: "#00f2ff", rainSpeed: 35, uiScale: "1", textScale: "1.2", showMinutes: true, showSeconds: false, use24Hour: false, isMatrixGreen: false, isBinary: false, isCyberpunkFont: false, isFlashing: false, isTransparent: false, isGlow: false, isScanline: false, isBgFilter: false, isGlitch: false, glitchIntensity: 5, scaleMode: "cover", isCycling: false, customQuote: "", isSnowing: false, isPhoneEnabled: true, phoneFrequency: 3, isChatEnabled: true, isRssEnabled: false, rssSubs: "matrix+cyberpunk", isStatsEnabled: true, isRainAmbience: false, isHumEnabled: false, isMatrixSfxEnabled: false, envVolume: 0.5 };
+const DEFAULTS = { rainColor: "#00f2ff", rainSpeed: 35, uiScale: "1", textScale: "1.2", showMinutes: true, showSeconds: false, use24Hour: false, isMatrixGreen: false, isBinary: false, isHex: false, isCyberpunkFont: false, isFlashing: false, isTransparent: false, isGlow: false, isScanline: false, isBgFilter: false, isGlitch: false, glitchIntensity: 5, scaleMode: "cover", isCycling: false, customQuote: "", isSnowing: false, isPhoneEnabled: true, phoneFrequency: 3, isChatEnabled: true, isRssEnabled: false, rssSubs: "matrix+cyberpunk", isStatsEnabled: true, isRainAmbience: false, isHumEnabled: false, isMatrixSfxEnabled: false, envVolume: 0.5 };
 
-let rainColor = DEFAULTS.rainColor, rainSpeed = DEFAULTS.rainSpeed, rainInterval, rainDrops = [], showMinutes = DEFAULTS.showMinutes, showSeconds = DEFAULTS.showSeconds, use24Hour = DEFAULTS.use24Hour, isMatrixGreen = DEFAULTS.isMatrixGreen, isBinary = DEFAULTS.isBinary, isFlashing = DEFAULTS.isFlashing, currentAlphabet = MATRIX_ALPHABET, quoteInterval;
+let rainColor = DEFAULTS.rainColor, rainSpeed = DEFAULTS.rainSpeed, rainInterval, rainDrops = [], showMinutes = DEFAULTS.showMinutes, showSeconds = DEFAULTS.showSeconds, use24Hour = DEFAULTS.use24Hour, isMatrixGreen = DEFAULTS.isMatrixGreen, isBinary = DEFAULTS.isBinary, isHex = DEFAULTS.isHex, isFlashing = DEFAULTS.isFlashing, currentAlphabet = MATRIX_ALPHABET, quoteInterval;
 
 let isPhoneEnabled = DEFAULTS.isPhoneEnabled, phoneFrequency = DEFAULTS.phoneFrequency, ringCycleInterval;
 let isChatEnabled = DEFAULTS.isChatEnabled;
@@ -15,9 +16,154 @@ let isChatEnabled = DEFAULTS.isChatEnabled;
 // --- DIAGNOSTICS STATE ---
 let lastCpuInfo = null;
 
+// --- CLI OVERLAY & COMMANDS ---
+const showZionMessage = (msg) => {
+    const overlay = document.createElement('div');
+    overlay.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; align-items:center; justify-content:center; z-index:10000; font-family:'Orbitron', sans-serif; color:var(--theme-color); text-align:center; padding:40px; border: 2px solid var(--theme-color); box-shadow: inset 0 0 20px var(--theme-color), 0 0 20px var(--theme-color); box-sizing: border-box;";
+    overlay.innerHTML = `<div><div style="font-size:1.5rem; margin-bottom:30px; white-space:pre-wrap; text-shadow: 0 0 10px var(--theme-color);">${msg}</div><button id="zion-close" style="background:transparent; color:var(--theme-color); border:1px solid var(--theme-color); padding:10px 30px; cursor:pointer; font-family:inherit; font-weight:bold; letter-spacing:2px; box-shadow: 0 0 10px var(--theme-color);">DISMISS</button></div>`;
+    document.body.appendChild(overlay);
+    document.getElementById('zion-close').onclick = () => overlay.remove();
+};
+
+const CLI_COMMANDS = {
+    '/help': () => showZionMessage("SYSTEM COMMANDS:\n/weather [city] - Satellite Uplink\n/ghost [0-1] - UI Transparency\n/speed [10-100] - Rain Velocity\n/color [hex] - Theme Update\n/alphabet [matrix|binary|hex] - Character Swap\n/font [cyber|classic] - Change Typography\n/glitch - Trigger System Distortion\n/night - Toggle Stealth Mode\n/quote [text] - Broadcast Custom Mantra\n/whoami - Advanced Identity Trace\n/jackin - Overclock Stream\n/clear - Flush Terminal\n/white-rabbit - Random Mantra\n/nodes - Link Count\n/reset - Factory Reset"),
+    '/font': (type) => {
+        const mode = type.toLowerCase().trim();
+        const fontT = document.getElementById('font-toggle');
+        if (mode === 'cyber') {
+            document.body.classList.add('cyberpunk-font');
+            if(fontT) fontT.checked = true;
+            chrome.storage.sync.set({ isCyberpunkFont: true });
+            showZionMessage("TYPOGRAPHY: CYBER DATA-STREAM ACTIVE");
+        } else if (mode === 'classic') {
+            document.body.classList.remove('cyberpunk-font');
+            if(fontT) fontT.checked = false;
+            chrome.storage.sync.set({ isCyberpunkFont: false });
+            showZionMessage("TYPOGRAPHY: CLASSIC TERMINAL ACTIVE");
+        } else { return showZionMessage("Usage: /font [cyber|classic]"); }
+    },
+    '/night': () => {
+        const isNight = document.body.classList.toggle('night-mode-active');
+        const glowT = document.getElementById('glow-toggle');
+        const greenT = document.getElementById('matrix-green');
+        if (isNight) {
+            mainContainer.style.opacity = "0.4";
+            document.body.classList.add('glow-active');
+            isMatrixGreen = true;
+            if(glowT) glowT.checked = true;
+            if(greenT) greenT.checked = true;
+            syncThemeColor();
+            chrome.storage.sync.set({ isGlow: true, isMatrixGreen: true });
+            showZionMessage("STEALTH PROTOCOL ENGAGED\nVISUAL SIGNATURE MINIMIZED");
+        } else {
+            mainContainer.style.opacity = "1";
+            const savedGlow = glowT ? glowT.checked : false;
+            if (!savedGlow) document.body.classList.remove('glow-active');
+            isMatrixGreen = greenT ? greenT.checked : false;
+            syncThemeColor();
+            chrome.storage.sync.set({ isGlow: savedGlow, isMatrixGreen: isMatrixGreen });
+            showZionMessage("STEALTH PROTOCOL DEACTIVATED");
+        }
+    },
+    '/glitch': () => {
+        const body = document.body;
+        const root = document.documentElement;
+        const oldIntensity = root.style.getPropertyValue('--glitch-intensity');
+        const oldColor = rainColor;
+        body.classList.add('glitch-enabled');
+        root.style.setProperty('--glitch-intensity', '60px');
+        let glitchTick = 0;
+        const tearInterval = setInterval(() => {
+            const randomColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
+            root.style.setProperty('--theme-color', randomColor);
+            body.style.transform = `translateX(${(Math.random() - 0.5) * 50}px) skew(${(Math.random() - 0.5) * 20}deg)`;
+            body.style.filter = `hue-rotate(${Math.random() * 360}deg) contrast(200%)`;
+            glitchTick++;
+            if (glitchTick > 20) clearInterval(tearInterval);
+        }, 100);
+        showZionMessage("WARNING: SIGNAL INTERFERENCE DETECTED\nLOCAL REALITY COMPROMISED");
+        setTimeout(() => {
+            clearInterval(tearInterval);
+            if (!get('glitch-toggle').checked) body.classList.remove('glitch-enabled');
+            root.style.setProperty('--glitch-intensity', oldIntensity || '5px');
+            root.style.setProperty('--theme-color', oldColor);
+            body.style.transform = "";
+            body.style.filter = "";
+            syncThemeColor();
+        }, 2000);
+    },
+    '/quote': (text) => {
+        if (!text) return showZionMessage("Usage: /quote [your message]");
+        stopQuoteCycling();
+        document.getElementById('cycle-quotes').checked = false;
+        document.getElementById('quote-input').value = text;
+        const q = document.getElementById('display-quote');
+        q.textContent = `"${text}"`;
+        chrome.storage.sync.set({ customQuote: text, isCycling: false });
+        showZionMessage(`MANTRA BROADCASTING: "${text}"`);
+    },
+    '/alphabet': (type) => {
+        const mode = type.toLowerCase().trim();
+        const binaryT = document.getElementById('binary-mode');
+        const hexT = document.getElementById('hex-mode');
+        
+        isBinary = false;
+        isHex = false;
+        if(binaryT) binaryT.checked = false;
+        if(hexT) hexT.checked = false;
+
+        if (mode === 'matrix') { currentAlphabet = MATRIX_ALPHABET; }
+        else if (mode === 'binary') { currentAlphabet = BINARY_ALPHABET; isBinary = true; if(binaryT) binaryT.checked = true; }
+        else if (mode === 'hex') { currentAlphabet = HEX_ALPHABET; isHex = true; if(hexT) hexT.checked = true; }
+        else { return showZionMessage("Usage: /alphabet [matrix|binary|hex]"); }
+        
+        chrome.storage.sync.set({ isBinary, isHex });
+        showZionMessage(`CORE ALPHABET RECONFIGURED: ${mode.toUpperCase()}`);
+    },
+    '/weather': async (city) => {
+        if(!city) return showZionMessage("Usage: /weather [city]");
+        try {
+            const gR = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1`);
+            const gD = await gR.json();
+            const { latitude: lat, longitude: lon, name } = gD.results[0];
+            const wR = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+            const wD = await wR.json();
+            showZionMessage(`UPLINK SUCCESSFUL\nLOCATION: ${name.toUpperCase()}\nTEMP: ${wD.current_weather.temperature}°C\nWIND: ${wD.current_weather.windspeed}km/h`);
+        } catch (e) { showZionMessage("UPLINK FAILED: Location Not Found"); }
+    },
+    '/ghost': (v) => { mainContainer.style.opacity = parseFloat(v) || 0.2; },
+    '/speed': (v) => { if(v) { rainSpeed = parseInt(v); startRain(); chrome.storage.sync.set({ rainSpeed }); }},
+    '/color': (v) => { if(v) { document.getElementById('color-picker').value = v; syncThemeColor(); chrome.storage.sync.set({ rainColor: v }); }},
+    '/whoami': async () => {
+        const isBrave = (navigator.brave && await navigator.brave.isBrave()) || false;
+        const platform = navigator.userAgentData ? navigator.userAgentData.platform : navigator.platform;
+        const browserName = isBrave ? "Brave (Encrypted)" : (navigator.userAgent.includes("Edg") ? "Edge" : "Chrome/Chromium");
+        const dpr = window.devicePixelRatio || 1;
+        const physicalWidth = Math.round(window.screen.width * dpr);
+        const physicalHeight = Math.round(window.screen.height * dpr);
+        const info = `IDENTITY TRACE: \nOS: ${platform}\nCORE: ${browserName}\nDPR: ${dpr.toFixed(2)}x (Scaling Factor)\nVIEWPORT: ${window.innerWidth}x${window.innerHeight}\nHARDWARE: ${physicalWidth}x${physicalHeight} (True Resolution)\nUPLINK: ${navigator.onLine ? "SECURE" : "DISCONNECTED"}\n\nSTATUS: YOU ARE THE ONE.`;
+        showZionMessage(info);
+    },
+    '/clear': () => { const log = document.getElementById('chat-log'); if(log) log.innerHTML = ""; },
+    '/jackin': () => {
+        const oldSpeed = rainSpeed;
+        rainSpeed = 5; startRain();
+        setTimeout(() => { rainSpeed = oldSpeed; startRain(); }, 3000);
+    },
+    '/white-rabbit': () => {
+        const q = MATRIX_QUOTES[Math.floor(Math.random() * MATRIX_QUOTES.length)];
+        showZionMessage(`THE CONSTRUCT SAYS:\n"${q}"`);
+    },
+    '/nodes': () => {
+        chrome.storage.sync.get({ userNavLinks: [] }, (data) => {
+            showZionMessage(`SECURE NODES IDENTIFIED: ${data.userNavLinks.length}/10`);
+        });
+    },
+    '/reset': () => { if(confirm("Hard Reset?")) { chrome.storage.sync.clear(); location.reload(); }}
+};
+
 // --- INDEXEDDB FOR STORAGE ---
 const dbName = "MatrixBackdropDB";
-
 function openDB() {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(dbName, 3);
@@ -86,7 +232,7 @@ async function loadSfxFromDB() {
 
 async function clearSfxFromDB() {
     const db = await openDB();
-    db.transaction("sfx", "readwrite").objectStore("sfx").delete("customSfx");
+    db.transaction("sfx", "readwrite").objectStore("sfx").clear();
 }
 
 // --- VISUALS & ANIMATION ---
@@ -221,10 +367,8 @@ function updateUI() {
     }
 }
 
-// --- ZION NETWORK RSS LOGIC ---
-const rssIntervals = new Map();
-const rssIterations = new Map();
-
+// --- ZION NETWORK RSS ---
+const rssIntervals = new Map(), rssIterations = new Map();
 function decryptRssText(element, targetText, isHovering) {
     if (rssIntervals.has(element)) clearInterval(rssIntervals.get(element));
     let iteration = rssIterations.get(element) || 0;
@@ -292,18 +436,32 @@ function updateCursorVisibility() {
 searchInput.addEventListener('input', syncCursor);
 searchInput.addEventListener('focus', updateCursorVisibility);
 searchInput.addEventListener('blur', updateCursorVisibility);
-searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && searchInput.value.trim() !== "") chrome.search.query({ text: searchInput.value }); });
 
-// --- SETTINGS ---
+searchInput.addEventListener('keydown', (e) => { 
+    if (e.key === 'Enter') {
+        const val = searchInput.value.trim();
+        if (val.startsWith('/')) {
+            const parts = val.split(' ');
+            const cmd = parts[0].toLowerCase();
+            if (CLI_COMMANDS[cmd]) { 
+                CLI_COMMANDS[cmd](parts.slice(1).join(' ')); 
+                searchInput.value = ""; 
+            }
+            else { showZionMessage("COMMAND UNKNOWN"); }
+        } else if (val !== "") {
+            chrome.search.query({ text: val });
+        }
+    }
+});
+
+// --- SETTINGS CONTROLS ---
 const get = (id) => document.getElementById(id);
 const modal = get('settings-modal'), sizeS = get('size-slider'), textScaleS = get('text-scale-slider'), speedS = get('speed-slider'), colorP = get('color-picker');
-const minT = get('show-minutes'), secT = get('show-seconds'), hour24T = get('use-24hour'), greenT = get('matrix-green'), binaryT = get('binary-mode'), snowT = get('snow-toggle'), fontT = get('font-toggle'), rainbowT = get('rainbow-toggle'), glowT = get('glow-toggle'), glitchT = get('glitch-toggle'), glitchS = get('glitch-slider'), scanlineT = get('scanline-toggle'), bgFilterT = get('bg-filter-toggle'), bgT = get('bg-toggle'), quoteI = get('quote-input'), saveB = get('save-settings'), scaleS = get('scale-mode'), cycleT = get('cycle-quotes'), resetB = get('restore-defaults');
+const minT = get('show-minutes'), secT = get('show-seconds'), hour24T = get('use-24hour'), greenT = get('matrix-green'), binaryT = get('binary-mode'), hexT = get('hex-mode'), snowT = get('snow-toggle'), fontT = get('font-toggle'), rainbowT = get('rainbow-toggle'), glowT = get('glow-toggle'), glitchT = get('glitch-toggle'), glitchS = get('glitch-slider'), scanlineT = get('scanline-toggle'), bgFilterT = get('bg-filter-toggle'), bgT = get('bg-toggle'), quoteI = get('quote-input'), saveB = get('save-settings'), scaleS = get('scale-mode'), cycleT = get('cycle-quotes'), resetB = get('restore-defaults');
 const imgI = get('image-input'), vidI = get('video-input'), upImgB = get('upload-image-btn'), upVidB = get('upload-video-btn'), clearB = get('clear-backdrop');
 const phoneT = get('phone-toggle'), phoneFreqS = get('phone-freq-slider'), phoneFreqVal = get('phone-freq-value'), chatT = get('chat-toggle');
 const audI = get('audio-input'), upAudB = get('upload-audio-btn'), clearAudB = get('clear-audios');
-const rssT = get('rss-toggle'), rssI = get('rss-input');
-const statsT = get('stats-toggle');
-
+const rssT = get('rss-toggle'), rssI = get('rss-input'), statsT = get('stats-toggle');
 const rainAmbT = get('rain-ambience-toggle'), humT = get('hum-toggle'), matrixSfxT = get('matrix-sfx-toggle'), envVolS = get('env-volume-slider');
 const upSfxB = get('upload-custom-sfx-btn'), sfxI = get('custom-sfx-input'), clearSfxB = get('clear-custom-sfx');
 
@@ -320,12 +478,23 @@ function syncThemeColor() {
 
 get('settings-icon-container').onclick = () => modal.classList.toggle('hidden');
 greenT.onchange = (e) => { isMatrixGreen = e.target.checked; syncThemeColor(); };
-colorP.oninput = (e) => { if (!isMatrixGreen) syncThemeColor(); };
+colorP.oninput = () => { if (!isMatrixGreen) syncThemeColor(); };
 quoteI.oninput = (e) => { const val = e.target.value; if (val.trim() !== "") { stopQuoteCycling(); cycleT.checked = false; get('display-quote').textContent = `"${val}"`; } else if (!cycleT.checked) { get('display-quote').textContent = '"There is no spoon."'; } };
 minT.onchange = (e) => { showMinutes = e.target.checked; updateUI(); };
 secT.onchange = (e) => { showSeconds = e.target.checked; updateUI(); };
 hour24T.onchange = (e) => { use24Hour = e.target.checked; updateUI(); };
-binaryT.onchange = (e) => { isBinary = e.target.checked; currentAlphabet = isBinary ? BINARY_ALPHABET : MATRIX_ALPHABET; };
+
+binaryT.onchange = (e) => { 
+    isBinary = e.target.checked; 
+    if(isBinary) { isHex = false; hexT.checked = false; }
+    currentAlphabet = isBinary ? BINARY_ALPHABET : (isHex ? HEX_ALPHABET : MATRIX_ALPHABET); 
+};
+hexT.onchange = (e) => { 
+    isHex = e.target.checked; 
+    if(isHex) { isBinary = false; binaryT.checked = false; }
+    currentAlphabet = isHex ? HEX_ALPHABET : (isBinary ? BINARY_ALPHABET : MATRIX_ALPHABET);
+};
+
 snowT.onchange = (e) => { isSnowing = e.target.checked; if(isSnowing) initSnow(); };
 rainbowT.onchange = (e) => isFlashing = e.target.checked;
 fontT.onchange = (e) => document.body.classList.toggle('cyberpunk-font', e.target.checked);
@@ -344,189 +513,95 @@ scaleS.onchange = (e) => document.documentElement.style.setProperty('--bg-scale'
 phoneT.onchange = (e) => { isPhoneEnabled = e.target.checked; get('phone-container').classList.toggle('hidden', !isPhoneEnabled); setupPhoneInterval(); };
 phoneFreqS.oninput = (e) => { phoneFrequency = parseInt(e.target.value); phoneFreqVal.textContent = phoneFrequency; setupPhoneInterval(); };
 chatT.onchange = (e) => { isChatEnabled = e.target.checked; get('transmission-terminal').classList.toggle('hidden', !isChatEnabled); };
-
 rssT.onchange = (e) => { chrome.storage.sync.set({ isRssEnabled: e.target.checked }); updateZionFeed(); };
-rssI.onchange = (e) => {
-    const val = e.target.value.replace(/,/g, '+').replace(/\s/g, '');
-    rssI.value = val;
-    chrome.storage.sync.set({ rssSubs: val });
-    updateZionFeed();
-};
-
-statsT.onchange = (e) => {
-    get('operator-console').classList.toggle('stats-hidden', !e.target.checked);
-};
-
-rainAmbT.onchange = (e) => {
-    const audio = get('ambience-rain');
-    e.target.checked ? audio.play().catch(() => {}) : audio.pause();
-};
-humT.onchange = (e) => {
-    const audio = get('ambience-hum');
-    e.target.checked ? audio.play().catch(() => {}) : audio.pause();
-};
-matrixSfxT.onchange = (e) => {
-    const audio = get('matrix-code-sfx');
-    e.target.checked ? audio.play().catch(() => {}) : audio.pause();
-};
-envVolS.oninput = (e) => {
-    const vol = parseFloat(e.target.value);
-    get('ambience-rain').volume = vol;
-    get('ambience-hum').volume = vol;
-    get('matrix-code-sfx').volume = vol;
-    get('custom-background-sfx').volume = vol;
-};
+rssI.onchange = (e) => { const val = e.target.value.replace(/,/g, '+').replace(/\s/g, ''); rssI.value = val; chrome.storage.sync.set({ rssSubs: val }); updateZionFeed(); };
+statsT.onchange = (e) => get('operator-console').classList.toggle('stats-hidden', !e.target.checked);
+rainAmbT.onchange = (e) => { const a = get('ambience-rain'); e.target.checked ? a.play().catch(() => {}) : a.pause(); };
+humT.onchange = (e) => { const a = get('ambience-hum'); e.target.checked ? a.play().catch(() => {}) : a.pause(); };
+matrixSfxT.onchange = (e) => { const a = get('matrix-code-sfx'); e.target.checked ? a.play().catch(() => {}) : a.pause(); };
+envVolS.oninput = (e) => { const v = parseFloat(e.target.value); get('ambience-rain').volume = get('ambience-hum').volume = get('matrix-code-sfx').volume = get('custom-background-sfx').volume = v; };
 
 upSfxB.onclick = () => sfxI.click();
-sfxI.onchange = async (e) => {
-    const file = e.target.files[0];
-    if(!file) return;
-    await saveSfxToDB(file);
-    const audio = get('custom-background-sfx');
-    audio.src = URL.createObjectURL(file);
-    audio.play().catch(() => {});
-};
-clearSfxB.onclick = () => {
-    if(confirm("Purge custom background SFX?")) {
-        clearSfxFromDB();
-        get('custom-background-sfx').pause();
-        get('custom-background-sfx').src = "";
-    }
-};
+sfxI.onchange = async (e) => { const f = e.target.files[0]; if(!f) return; await saveSfxToDB(f); const a = get('custom-background-sfx'); a.src = URL.createObjectURL(f); a.play().catch(() => {}); };
+clearSfxB.onclick = () => { if(confirm("Purge custom SFX?")) { clearSfxFromDB(); get('custom-background-sfx').pause(); get('custom-background-sfx').src = ""; } };
 
 saveB.onclick = () => {
-    const settings = { rainColor: colorP.value, rainSpeed, uiScale: sizeS.value, textScale: textScaleS.value, showMinutes, showSeconds, use24Hour, isMatrixGreen, isBinary, isSnowing, isCyberpunkFont: fontT.checked, isFlashing, isGlow: glowT.checked, isGlitch: glitchT.checked, glitchIntensity: glitchS.value, isScanline: scanlineT.checked, isBgFilter: bgFilterT.checked, isTransparent: bgT.checked, scaleMode: scaleS.value, isCycling: cycleT.checked, customQuote: quoteI.value, isPhoneEnabled, phoneFrequency, isChatEnabled, isRssEnabled: rssT.checked, rssSubs: rssI.value, isStatsEnabled: statsT.checked, isRainAmbience: rainAmbT.checked, isHumEnabled: humT.checked, isMatrixSfxEnabled: matrixSfxT.checked, envVolume: envVolS.value };
-    chrome.storage.sync.set(settings, () => modal.classList.add('hidden'));
+    const s = { rainColor: colorP.value, rainSpeed, uiScale: sizeS.value, textScale: textScaleS.value, showMinutes, showSeconds, use24Hour, isMatrixGreen, isBinary, isHex, isSnowing, isCyberpunkFont: fontT.checked, isFlashing, isGlow: glowT.checked, isGlitch: glitchT.checked, glitchIntensity: glitchS.value, isScanline: scanlineT.checked, isBgFilter: bgFilterT.checked, isTransparent: bgT.checked, scaleMode: scaleS.value, isCycling: checked = cycleT.checked, customQuote: quoteI.value, isPhoneEnabled, phoneFrequency, isChatEnabled, isRssEnabled: rssT.checked, rssSubs: rssI.value, isStatsEnabled: statsT.checked, isRainAmbience: rainAmbT.checked, isHumEnabled: humT.checked, isMatrixSfxEnabled: matrixSfxT.checked, envVolume: envVolS.value };
+    chrome.storage.sync.set(s, () => modal.classList.add('hidden'));
 };
 
 resetB.onclick = () => { if(confirm("Hard Reset?")) { chrome.storage.sync.clear(); clearVideoFromDB().then(() => clearSfxFromDB()).then(() => location.reload()); } };
 upImgB.onclick = () => imgI.click();
 imgI.onchange = (e) => { if(!e.target.files[0]) return; const r = new FileReader(); r.onload = (ev) => { applyImg(ev.target.result); chrome.storage.local.set({ customImg: ev.target.result }); clearVideoFromDB(); }; r.readAsDataURL(e.target.files[0]); };
 upVidB.onclick = () => vidI.click();
-vidI.onchange = (e) => { const file = e.target.files[0]; if(!file) return; applyVid(file); saveVideoToDB(file); chrome.storage.local.remove('customImg'); };
+vidI.onchange = (e) => { const f = e.target.files[0]; if(!f) return; applyVid(f); saveVideoToDB(f); chrome.storage.local.remove('customImg'); };
 clearB.onclick = () => { removeM(); chrome.storage.local.remove('customImg'); clearVideoFromDB(); };
 upAudB.onclick = () => audI.click();
-audI.onchange = async (e) => { for(let file of e.target.files) await saveAudioToDB(file); alert("Messages stored."); };
+audI.onchange = async (e) => { for(let f of e.target.files) await saveAudioToDB(f); alert("Messages stored."); };
 clearAudB.onclick = () => { if(confirm("Purge all messages?")) clearAudiosFromDB(); };
 
-function startQuoteCycling() { stopQuoteCycling(); let idx = 0; quoteInterval = setInterval(() => { const qEl = get('display-quote'); qEl.style.opacity = 0; setTimeout(() => { qEl.textContent = `"${MATRIX_QUOTES[idx]}"`; qEl.style.opacity = 0.9; idx = (idx + 1) % MATRIX_QUOTES.length; }, 500); }, 15000); }
+function startQuoteCycling() { stopQuoteCycling(); let idx = 0; quoteInterval = setInterval(() => { const q = get('display-quote'); q.style.opacity = 0; setTimeout(() => { q.textContent = `"${MATRIX_QUOTES[idx]}"`; q.style.opacity = 0.9; idx = (idx + 1) % MATRIX_QUOTES.length; }, 500); }, 15000); }
 function stopQuoteCycling() { clearInterval(quoteInterval); }
 
 function setupPhoneInterval() { clearInterval(ringCycleInterval); if (isPhoneEnabled) ringCycleInterval = setInterval(triggerRinging, phoneFrequency * 60000); }
-
 let isProcessingPhone = false;
-
-function triggerRinging() { 
-    if (isProcessingPhone || !isPhoneEnabled) return; 
-    const ringAudio = get('ring-audio');
-    ringAudio.src = "ringing.mp3"; 
-    get('phone-container').classList.add('ringing'); 
-    ringAudio.play().catch(() => {}); 
-}
+function triggerRinging() { if (isProcessingPhone || !isPhoneEnabled) return; const a = get('ring-audio'); a.src = "ringing.mp3"; get('phone-container').classList.add('ringing'); a.play().catch(() => {}); }
 
 function initPhoneSystem() {
     const phoneCont = get('phone-container'), transText = get('transmission-text'), transAudio = get('transmission-audio'), ringAudio = get('ring-audio');
     const pool = [["ESTABLISHING LINK...", "CONNECTION SECURED.", "THEY'RE WATCHING YOU, NEO.", "GOODBYE."], ["SYSTEM BREACH...", "KNOCK, KNOCK, NEO.", "FOLLOW THE WHITE RABBIT.", "RUN."]];
-    const speakText = (text) => { const utterance = new SpeechSynthesisUtterance(text.toLowerCase().replace(/[^a-zA-Z ,.?!]/g, "")); utterance.rate = 0.8; utterance.pitch = 0.1; window.speechSynthesis.speak(utterance); };
+    const speak = (t) => { const u = new SpeechSynthesisUtterance(t.toLowerCase().replace(/[^a-zA-Z ,.?!]/g, "")); u.rate = 0.8; u.pitch = 0.1; window.speechSynthesis.speak(u); };
     phoneCont.onclick = async () => {
         if (phoneCont.classList.contains('ringing') && !isProcessingPhone) {
-            isProcessingPhone = true; phoneCont.classList.remove('ringing'); 
-            ringAudio.pause(); ringAudio.src = ""; 
-            phoneCont.classList.add('receiving');
+            isProcessingPhone = true; phoneCont.classList.remove('ringing'); ringAudio.pause(); ringAudio.src = ""; phoneCont.classList.add('receiving');
             const userAudios = await getAudiosFromDB();
             if (userAudios.length > 0) {
-                const blob = userAudios[Math.floor(Math.random() * userAudios.length)]; transAudio.src = URL.createObjectURL(blob); transText.textContent = "ENCRYPTED TRANSMISSION..."; transAudio.play().catch(() => {});
+                const b = userAudios[Math.floor(Math.random() * userAudios.length)]; transAudio.src = URL.createObjectURL(b); transText.textContent = "ENCRYPTED TRANSMISSION..."; transAudio.play().catch(() => {});
                 transAudio.onended = () => { URL.revokeObjectURL(transAudio.src); transAudio.src = ""; finishCall(); };
             } else {
                 const seq = pool[Math.floor(Math.random() * pool.length)]; let step = 0;
-                const timer = setInterval(() => { if (step >= seq.length) { clearInterval(timer); setTimeout(finishCall, 2500); return; } const currentLine = seq[step++]; transText.textContent = currentLine; speakText(currentLine); }, 1800);
+                const timer = setInterval(() => { if (step >= seq.length) { clearInterval(timer); setTimeout(finishCall, 2500); return; } const line = seq[step++]; transText.textContent = line; speak(line); }, 1800);
             }
         }
     };
-    function finishCall() { 
-        const hangup = get('hangup-audio'); hangup.src = "hangup.mp3"; hangup.play(); 
-        hangup.onended = () => { hangup.src = ""; }; 
-        setTimeout(() => { phoneCont.classList.remove('receiving'); transText.textContent = "INCOMING SIGNAL..."; isProcessingPhone = false; }, 1200); 
-    }
+    function finishCall() { const h = get('hangup-audio'); h.src = "hangup.mp3"; h.play(); h.onended = () => h.src = ""; setTimeout(() => { phoneCont.classList.remove('receiving'); transText.textContent = "INCOMING SIGNAL..."; isProcessingPhone = false; }, 1200); }
     setupPhoneInterval();
 }
 
-const CHAT_SCRIPTS = [
-    [
-        {u:"MORPHEUS", t:"Neo, sooner or later you're going to realize...", c:"morpheus"},
-        {u:"MORPHEUS", t:"...there's a difference between knowing the path and walking the path.", c:"morpheus"}
-    ],
-    [
-        {u:"TRINITY", t:"Please, Neo. You have to trust me.", c:"trinity"},
-        {u:"NEO", t:"Why?", c:"neo"},
-        {u:"TRINITY", t:"Because you have been down there, Neo. You know that road.", c:"trinity"}
-    ],
-    [
-        {u:"AGENT SMITH", t:"It is purpose that created us.", c:"smith"},
-        {u:"AGENT SMITH", t:"Purpose that connects us. Purpose that pulls us.", c:"smith"},
-        {u:"AGENT SMITH", t:"It is purpose that defines us.", c:"smith"}
-    ],
-    [
-        {u:"ORACLE", t:"I'd ask you to sit down, but you're not going to anyway.", c:"oracle"},
-        {u:"ORACLE", t:"And don't worry about the vase.", c:"oracle"},
-        {u:"NEO", t:"What vase?", c:"neo"}
-    ],
-    [
-        {u:"MORPHEUS", t:"This is your last chance. After this, there is no turning back.", c:"morpheus"},
-        {u:"MORPHEUS", t:"You take the blue pill—the story ends.", c:"morpheus"},
-        {u:"MORPHEUS", t:"You take the red pill—you stay in Wonderland.", c:"morpheus"}
-    ],
-    [
-        {u:"TRINITY", t:"The answer is out there, Neo.", c:"trinity"},
-        {u:"TRINITY", t:"It's looking for you, and it will find you if you want it to.", c:"trinity"}
-    ]
-];
-
+const CHAT_SCRIPTS = [[{u:"MORPHEUS", t:"Neo, sooner or later you're going to realize...", c:"morpheus"},{u:"MORPHEUS", t:"...there's a difference between knowing the path and walking the path.", c:"morpheus"}],[{u:"TRINITY", t:"Please, Neo. You have to trust me.", c:"trinity"},{u:"NEO", t:"Why?", c:"neo"},{u:"TRINITY", t:"Because you have been down there, Neo. You know that road.", c:"trinity"}],[{u:"AGENT SMITH", t:"It is purpose that created us.", c:"smith"},{u:"AGENT SMITH", t:"Purpose that connects us. Purpose that pulls us.", c:"smith"},{u:"AGENT SMITH", t:"It is purpose that defines us.", c:"smith"}]];
 async function runChatTerminal() {
     if (!isChatEnabled) return;
-    const script = CHAT_SCRIPTS[Math.floor(Math.random() * CHAT_SCRIPTS.length)]; const log = get('chat-log');
-    for (const line of script) {
-        if (!isChatEnabled) break; await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
-        if (log.children.length > 4) log.removeChild(log.firstChild);
-        const div = document.createElement('div'); div.className = 'chat-msg'; div.innerHTML = `<b class="${line.c}">${line.u}:</b> ${line.t}`; log.appendChild(div); 
-        // Beep logic removed per request
-    }
+    const s = CHAT_SCRIPTS[Math.floor(Math.random() * CHAT_SCRIPTS.length)]; const l = get('chat-log');
+    for (const line of s) { if (!isChatEnabled) break; await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000)); if (l.children.length > 4) l.removeChild(l.firstChild); const d = document.createElement('div'); d.className = 'chat-msg'; d.innerHTML = `<b class="${line.c}">${line.u}:</b> ${line.t}`; l.appendChild(d); }
     setTimeout(runChatTerminal, 10000 + Math.random() * 10000);
 }
 
-const navWrapper = get('dynamic-links-wrapper');
-const addLinkBtn = get('add-link-btn');
-
+const navWrapper = get('dynamic-links-wrapper'), addLinkBtn = get('add-link-btn');
 function loadNavLinks() {
     chrome.storage.sync.get({ userNavLinks: [] }, (data) => {
         navWrapper.innerHTML = '';
-        const linkCount = data.userNavLinks.length;
-        if (linkCount >= 10) { addLinkBtn.style.display = 'none'; } else { addLinkBtn.style.display = 'flex'; addLinkBtn.title = `Add Secure Node (${linkCount}/10)`; }
-        data.userNavLinks.forEach((url, index) => {
-            let domain; try { domain = new URL(url).hostname; } catch (e) { domain = 'secure-node'; }
-            const node = document.createElement('div'); node.className = 'nav-icon-circle'; node.title = `Access: ${domain} (Right-click to purge)`;
-            const iconImg = document.createElement('img'); iconImg.src = `https://www.google.com/s2/favicons?sz=64&domain=${domain}`;
-            node.appendChild(iconImg); node.onclick = () => window.location.href = url;
-            node.oncontextmenu = (e) => { e.preventDefault(); if(confirm(`Purge this node?`)) { data.userNavLinks.splice(index, 1); chrome.storage.sync.set({ userNavLinks: data.userNavLinks }, loadNavLinks); } };
+        const count = data.userNavLinks.length; addLinkBtn.style.display = count >= 10 ? 'none' : 'flex'; addLinkBtn.title = `Add Secure Node (${count}/10)`;
+        data.userNavLinks.forEach((url, idx) => {
+            let domain; try { domain = new URL(url).hostname; } catch (e) { domain = 'node'; }
+            const node = document.createElement('div'); node.className = 'nav-icon-circle'; node.title = domain;
+            const img = document.createElement('img'); img.src = `https://www.google.com/s2/favicons?sz=64&domain=${domain}`;
+            node.appendChild(img); node.onclick = () => window.location.href = url;
+            node.oncontextmenu = (e) => { e.preventDefault(); if(confirm(`Purge node?`)) { data.userNavLinks.splice(idx, 1); chrome.storage.sync.set({ userNavLinks: data.userNavLinks }, loadNavLinks); } };
             navWrapper.appendChild(node);
         });
     });
 }
+addLinkBtn.onclick = () => { chrome.storage.sync.get({ userNavLinks: [] }, (d) => { if (d.userNavLinks.length >= 10) return; const u = prompt("Input URL:"); if (u) { try { let f = u.trim(); if (!/^https?:\/\//i.test(f)) f = 'https://' + f; new URL(f); d.userNavLinks.push(f); chrome.storage.sync.set({ userNavLinks: d.userNavLinks }, loadNavLinks); } catch (e) {} } }); };
 
-addLinkBtn.onclick = () => {
-    chrome.storage.sync.get({ userNavLinks: [] }, (data) => {
-        if (data.userNavLinks.length >= 10) return;
-        const url = prompt("Input target URL:");
-        if (url) {
-            try { let f = url.trim(); if (!/^https?:\/\//i.test(f)) f = 'https://' + f; new URL(f); data.userNavLinks.push(f); chrome.storage.sync.set({ userNavLinks: data.userNavLinks }, loadNavLinks); } catch (e) {}
-        }
-    });
-};
-
+// --- INITIAL LOAD ---
 chrome.storage.sync.get(null, (d) => {
     const data = { ...DEFAULTS, ...d };
     rainSpeed = data.rainSpeed; speedS.value = rainSpeed; isMatrixGreen = data.isMatrixGreen; greenT.checked = isMatrixGreen; colorP.value = data.rainColor; syncThemeColor();
-    isBinary = data.isBinary; binaryT.checked = isBinary; currentAlphabet = isBinary ? BINARY_ALPHABET : MATRIX_ALPHABET;
+    
+    isBinary = data.isBinary; binaryT.checked = isBinary;
+    isHex = data.isHex; hexT.checked = isHex;
+    currentAlphabet = isHex ? HEX_ALPHABET : (isBinary ? BINARY_ALPHABET : MATRIX_ALPHABET);
+
     isSnowing = data.isSnowing; snowT.checked = isSnowing; if(isSnowing) initSnow();
     isFlashing = data.isFlashing; rainbowT.checked = isFlashing;
     showMinutes = data.showMinutes; minT.checked = showMinutes; showSeconds = data.showSeconds; secT.checked = showSeconds; use24Hour = data.use24Hour; hour24T.checked = use24Hour;
@@ -543,20 +618,12 @@ chrome.storage.sync.get(null, (d) => {
     mainContainer.style.transform = `translate(-50%, -50%) scale(${data.uiScale})`; sizeS.value = data.uiScale;
     if (data.customQuote) { quoteI.value = data.customQuote; get('display-quote').textContent = `"${data.customQuote}"`; } else if (data.isCycling) { cycleT.checked = true; startQuoteCycling(); }
     rssT.checked = data.isRssEnabled; rssI.value = data.rssSubs; updateZionFeed();
-    
-    const rAudio = get('ambience-rain'), hAudio = get('ambience-hum'), mAudio = get('matrix-code-sfx'), cAudio = get('custom-background-sfx');
+    const rA = get('ambience-rain'), hA = get('ambience-hum'), mA = get('matrix-code-sfx'), cA = get('custom-background-sfx');
     rainAmbT.checked = data.isRainAmbience; humT.checked = data.isHumEnabled; matrixSfxT.checked = data.isMatrixSfxEnabled;
-    envVolS.value = data.envVolume; rAudio.volume = hAudio.volume = mAudio.volume = cAudio.volume = data.envVolume;
-
-    if(data.isRainAmbience) rAudio.play().catch(() => {});
-    if(data.isHumEnabled) hAudio.play().catch(() => {});
-    if(data.isMatrixSfxEnabled) mAudio.play().catch(() => {});
-
-    loadSfxFromDB().then(file => { if(file) { cAudio.src = URL.createObjectURL(file); cAudio.play().catch(() => {}); } });
-
-    statsT.checked = data.isStatsEnabled;
-    get('operator-console').classList.toggle('stats-hidden', !data.isStatsEnabled);
-    
+    envVolS.value = data.envVolume; rA.volume = hA.volume = mA.volume = cA.volume = data.envVolume;
+    if(data.isRainAmbience) rA.play().catch(() => {}); if(data.isHumEnabled) hA.play().catch(() => {}); if(data.isMatrixSfxEnabled) mA.play().catch(() => {});
+    loadSfxFromDB().then(f => { if(f) { cA.src = URL.createObjectURL(f); cA.play().catch(() => {}); } });
+    statsT.checked = data.isStatsEnabled; get('operator-console').classList.toggle('stats-hidden', !data.isStatsEnabled);
     loadNavLinks(); resize(); startRain(); animateSentinels(); updateUI(); initPhoneSystem(); runChatTerminal(); mainContainer.style.opacity = "1";
 });
 
