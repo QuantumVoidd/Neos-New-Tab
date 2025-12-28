@@ -70,19 +70,23 @@ const CLI_COMMANDS = {
         const root = document.documentElement;
         const oldIntensity = root.style.getPropertyValue('--glitch-intensity');
         const oldColor = rainColor;
+
+        const glitchAudio = new Audio('glitch.mp3');
+        
         body.classList.add('glitch-enabled');
         root.style.setProperty('--glitch-intensity', '60px');
-        let glitchTick = 0;
+        
         const tearInterval = setInterval(() => {
             const randomColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
             root.style.setProperty('--theme-color', randomColor);
             body.style.transform = `translateX(${(Math.random() - 0.5) * 50}px) skew(${(Math.random() - 0.5) * 20}deg)`;
             body.style.filter = `hue-rotate(${Math.random() * 360}deg) contrast(200%)`;
-            glitchTick++;
-            if (glitchTick > 20) clearInterval(tearInterval);
         }, 100);
+
+        glitchAudio.play().catch(e => console.error("Glitch audio failed", e));
         showZionMessage("WARNING: SIGNAL INTERFERENCE DETECTED\nLOCAL REALITY COMPROMISED");
-        setTimeout(() => {
+
+        glitchAudio.onended = () => {
             clearInterval(tearInterval);
             if (!get('glitch-toggle').checked) body.classList.remove('glitch-enabled');
             root.style.setProperty('--glitch-intensity', oldIntensity || '5px');
@@ -90,7 +94,7 @@ const CLI_COMMANDS = {
             body.style.transform = "";
             body.style.filter = "";
             syncThemeColor();
-        }, 2000);
+        };
     },
     '/quote': (text) => {
         if (!text) return showZionMessage("Usage: /quote [your message]");
@@ -147,8 +151,17 @@ const CLI_COMMANDS = {
     '/clear': () => { const log = document.getElementById('chat-log'); if(log) log.innerHTML = ""; },
     '/jackin': () => {
         const oldSpeed = rainSpeed;
-        rainSpeed = 5; startRain();
-        setTimeout(() => { rainSpeed = oldSpeed; startRain(); }, 3000);
+        const jackinAudio = new Audio('jackin.mp3');
+        
+        rainSpeed = 5; 
+        startRain();
+        
+        jackinAudio.play().catch(e => console.error("Jackin audio failed", e));
+        
+        jackinAudio.onended = () => {
+            rainSpeed = oldSpeed;
+            startRain();
+        };
     },
     '/white-rabbit': () => {
         const q = MATRIX_QUOTES[Math.floor(Math.random() * MATRIX_QUOTES.length)];
