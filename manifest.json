@@ -14,17 +14,25 @@
     "search",
     "system.cpu",
     "system.memory"
-],
+  ],
   "host_permissions": [
-    "https://www.reddit.com/*"  
-
-],
+    "https://www.reddit.com/*"
+  ],
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },
   "web_accessible_resources": [
     {
-      "resources": [ "sentinel.webm" ],
+      "resources": [ 
+        "sentinel.webm",
+        "puter.js",
+        "scripts/puter.js",
+        "typewriter-key.mp3",
+        "glitch.mp3",
+        "jackin.mp3",
+        "ringing.mp3",
+        "hangup.mp3"
+      ],
       "matches": [ "<all_urls>" ]
     }
   ]

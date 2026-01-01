@@ -20,16 +20,6 @@
                 <label>UI Scale</label>
                 <input type="range" id="size-slider" min="0.5" max="1.5" step="0.01" value="1">
             </div>
-            
-            <div class="setting-item">
-                <label>Rain Speed</label>
-                <input type="range" id="speed-slider" min="10" max="100" step="5" value="35">
-            </div>
-            
-            <div class="setting-item">
-                <label>Rain Color</label>
-                <input type="color" id="color-picker" value="#00f2ff">
-            </div>
 
             <div class="setting-group">
                 <h4 class="sub-menu-title">Operator Console</h4>
@@ -48,14 +38,64 @@
             </div>
 
             <div class="setting-group">
+                <h4 class="sub-menu-title">2D Rain Configuration</h4>
+                <div class="setting-item">
+                    <label>Rain Speed</label>
+                    <input type="range" id="speed-slider" min="10" max="100" step="5" value="35">
+                </div>
+                
+                <div class="setting-item">
+                    <label>Rain Color</label>
+                    <input type="color" id="color-picker" value="#00f2ff">
+                </div>
+                
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="binary-mode"> Binary Mode</label>
+                    <label><input type="checkbox" id="hex-mode"> Hex Mode</label>
+                    <label><input type="checkbox" id="ascii-mode"> ASCII Mode</label>
+                    <label><input type="checkbox" id="math-mode"> Mathematical Symbols</label>
+                    <label><input type="checkbox" id="rainbow-toggle"> Rainbow Mode</label>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h4 class="sub-menu-title">3D Rain Configuration</h4>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="vertical-rain-toggle"> Vertical Rain</label>
+                    <hr class="separator-3d-rain">
+                    <label><input type="checkbox" id="vertical-rain-binary-mode"> Binary Mode (3D)</label>
+                    <label><input type="checkbox" id="vertical-rain-hex-mode"> Hex Mode (3D)</label>
+                    <label><input type="checkbox" id="vertical-rain-ascii-mode"> ASCII Mode (3D)</label>
+                    <label><input type="checkbox" id="vertical-rain-math-mode"> Mathematical Symbols (3D)</label>
+                    <label><input type="checkbox" id="vertical-rain-rainbow-toggle"> Rainbow Mode (3D)</label>
+                </div>
+                <p style="font-size: 0.7rem; opacity: 0.6; margin-top: 5px;">High-density 3D rain with optimal slow cruising speed</p>
+            </div>
+
+            <div class="setting-group">
+                <h4 class="sub-menu-title">3D Backgrounds</h4>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="journey2-toggle"> Endless voyage</label>
+                    <label><input type="checkbox" id="binary-toggle"> Matrix Tunnel</label>
+                    <label><input type="checkbox" id="room-toggle"> Matrix Class Room</label>
+                    <label><input type="checkbox" id="movie-tunnel-toggle"> Matrix Movie Tunnel</label>
+                    <label><input type="checkbox" id="matrix-room-toggle"> Matrix Room</label>
+                    <label><input type="checkbox" id="combat-training-toggle"> Combat Training</label>
+                    <label><input type="checkbox" id="meditation-toggle"> Meditation</label>
+                </div>
+                <p style="font-size: 0.7rem; opacity: 0.6; margin-top: 5px;">Note: Only one 3D background can be active at a time</p>
+            </div>
+
+            <div class="setting-group">
                 <h4 class="sub-menu-title">Intelligence</h4>
                 <div class="checkbox-group">
-                    <label><input type="checkbox" id="phone-toggle" checked> Enable Rotary Link</label>
                     <label><input type="checkbox" id="chat-toggle" checked> Secure Chat Terminal</label>
-                    <div class="setting-item" style="margin-top: 5px;">
-                        <label>Signal Frequency: <span id="phone-freq-value">3</span> Minutes</label>
-                        <input type="range" id="phone-freq-slider" min="1" max="30" step="1" value="3">
-                    </div>
+                    <label><input type="checkbox" id="oracle-toggle"> Enable Oracle Link <span style="opacity: 0.6; font-size: 0.8em;">(Real AI)</span></label>
+                    <label><input type="checkbox" id="phone-toggle" checked> Enable Rotary Link</label>
+                </div>
+                <div class="setting-item" style="margin-top: 5px;">
+                    <label>Signal Frequency: <span id="phone-freq-value">3</span> Minutes</label>
+                    <input type="range" id="phone-freq-slider" min="1" max="30" step="1" value="3">
                 </div>
             </div>
 
@@ -74,11 +114,8 @@
                 <h4 class="sub-menu-title">Visuals</h4>
                 <div class="checkbox-group">
                     <label><input type="checkbox" id="matrix-green"> Matrix Green UI</label>
-                    <label><input type="checkbox" id="binary-mode"> Binary Mode</label>
-                    <label><input type="checkbox" id="hex-mode"> Hex Mode</label>
                     <label><input type="checkbox" id="snow-toggle"> Sentinel Swarm</label>
                     <label><input type="checkbox" id="font-toggle"> Cyberpunk Font</label>
-                    <label><input type="checkbox" id="rainbow-toggle"> Rainbow Mode</label>
                     <label><input type="checkbox" id="glow-toggle"> Digital Glow Effect</label>
                     <label><input type="checkbox" id="glitch-toggle"> Glitch on Hover</label>
                     <div class="setting-item" style="margin-top: 10px;">
@@ -161,15 +198,84 @@
     </div>
 
     <div class="main-container">
+        
         <div id="operator-console">
-            <div class="stat-bar"><div id="cpu-fill" class="stat-fill"></div><span class="stat-label">CPU</span></div>
-            <div class="stat-bar"><div id="mem-fill" class="stat-fill"></div><span class="stat-label">MEM</span></div>
-            <div class="stat-bar"><div id="pwr-fill" class="stat-fill"></div><span class="stat-label">PWR</span></div>
+            <div class="deck-frame">
+                <div class="ship-plate">
+                    <span class="ship-name">NEBUCHADNEZZAR</span>
+                    <span class="ship-serial">MK-III // NO.11</span>
+                </div>
+                
+                <div class="deck-modules">
+                    <div class="deck-group">
+                        <div class="gauge-container">
+                            <div id="cpu-fill" class="stat-fill"></div>
+                            <div class="gauge-lines"></div>
+                        </div>
+                        <div class="deck-label">CPU</div>
+                        <div class="led green blink-slow"></div>
+                    </div>
+
+                    <div class="deck-group">
+                        <div class="gauge-container">
+                            <div id="mem-fill" class="stat-fill"></div>
+                            <div class="gauge-lines"></div>
+                        </div>
+                        <div class="deck-label">RAM</div>
+                        <div class="led green solid"></div>
+                    </div>
+
+                    <div class="deck-group">
+                        <div class="gauge-container">
+                            <div id="net-fill" class="stat-fill"></div>
+                            <div class="gauge-lines"></div>
+                        </div>
+                        <div class="deck-label">NET</div>
+                        <div class="led blue blink-fast"></div>
+                    </div>
+
+                    <div class="deck-group">
+                        <div class="gauge-container">
+                            <div id="pwr-fill" class="stat-fill"></div>
+                            <div class="gauge-lines"></div>
+                        </div>
+                        <div class="deck-label">PWR</div>
+                        <div class="led yellow solid"></div>
+                    </div>
+
+                    <div class="deck-group">
+                        <div class="gauge-container">
+                            <div id="io-fill" class="stat-fill"></div>
+                            <div class="gauge-lines"></div>
+                        </div>
+                        <div class="deck-label">I/O</div>
+                        <div class="led cyan blink-slow"></div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div id="transmission-terminal">
             <div class="terminal-header">Secure Link: Encrypted</div>
             <div id="chat-log"></div>
+        </div>
+
+        <div id="oracle-chat-container" class="hidden">
+            <div id="oracle-header">ZION UPLINK</div>
+            <div id="oracle-chat-history">
+                <div class="oracle-entry">
+                    <div class="oracle-response-container">
+                        <div class="oracle-response-text">TEMET NOSCE. Welcome to the kitchen, Neo.</div>
+                    </div>
+                </div>
+            </div>
+            <div id="oracle-input-area">
+                <span id="oracle-prompt">&gt;</span>
+                <div class="oracle-input-cursor-container">
+                    <input type="text" id="oracle-input" placeholder="Ask the Oracle..." autocomplete="off">
+                    <span id="oracle-cursor"></span>
+                </div>
+            </div>
         </div>
 
         <div id="zion-rss-container" class="hidden">
@@ -193,7 +299,7 @@
 
         <div id="display-quote" class="quote">"There is no spoon."</div>
 
-        <div id="phone-container">
+        <div id="phone-container" class="hidden">
             <div id="transmission-text">INCOMING SIGNAL...</div>
             <div id="rotary-phone"></div>
         </div>
