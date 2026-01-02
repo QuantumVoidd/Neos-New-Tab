@@ -16,6 +16,16 @@ body, html {
     overflow: hidden; 
 }
 
+/* --- GLOBAL SCROLLBAR HIDING --- */
+* {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+*::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+
 .cyberpunk-font { 
     --main-font: 'Orbitron', sans-serif; 
 }
@@ -172,6 +182,19 @@ body, html {
     box-sizing: border-box;
 }
 
+/* Zion RSS Header - Centered with separator */
+#rss-header {
+    color: var(--theme-color);
+    font-size: 0.7rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--theme-color);
+}
+
 /* ORACLE AI CHAT - Right side (Replaces YouTube/Twitter Feed) */
 #oracle-chat-container {
     position: absolute;
@@ -210,8 +233,6 @@ body, html {
     border-radius: 5px;
     padding: 25px 15px 5px 15px;
     overflow-y: scroll;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
     box-shadow: 0 0 15px var(--theme-color);
     z-index: 101; 
     box-sizing: border-box;
@@ -219,12 +240,11 @@ body, html {
 }
 
 .rss-item {
-    margin-bottom: 12px;
-    display: block;
-    text-decoration: none;
-    border-bottom: 1px solid rgba(0, 242, 255, 0.1);
-    padding-bottom: 8px;
-    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start; /* Keeps content anchored to the top */
+    min-height: 60px;            /* Gives a base size before media loads */
+    /* ... rest of your existing rss-item styles ... */
 }
 
 .rss-item:hover {
@@ -233,12 +253,14 @@ body, html {
 }
 
 .rss-title {
-    font-size: 0.75rem;
-    color: var(--theme-color);
-    line-height: 1.3;
-    word-wrap: break-word;
-    font-family: 'Courier New', monospace;
-    margin-bottom: 3px;
+    /* ... existing styles ... */
+    display: block;
+    min-height: 1.2em;      /* Reserves space so it doesn't collapse */
+    line-height: 1.2em;     /* Keeps spacing consistent */
+    overflow: hidden;       /* Prevents character height leaks */
+    white-space: nowrap;    /* Keeps text on one line during decryption */
+    text-overflow: ellipsis; /* Adds '...' if the title is too long */
+    margin-bottom: 4px;
 }
 
 .rss-meta {
@@ -247,15 +269,6 @@ body, html {
     opacity: 0.5;
     margin-top: 3px;
     text-transform: uppercase;
-}
-
-#zion-rss-container::-webkit-scrollbar { width: 6px; }
-#zion-rss-container::-webkit-scrollbar-thumb { 
-    background: var(--theme-color); 
-    border-radius: 3px;
-}
-#zion-rss-container::-webkit-scrollbar-track { 
-    background: rgba(0, 15, 15, 0.3);
 }
 
 .terminal-header { 
@@ -279,8 +292,6 @@ body, html {
     box-sizing: border-box;
     scroll-behavior: auto !important;
     overflow-anchor: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
 }
 
 /* Simulated Conversation Styles */
@@ -401,6 +412,10 @@ body, html {
     width: 100%;
     caret-color: transparent;
     min-width: 0;
+    /* Prevent text wrapping that could cause scrollbars */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 #oracle-cursor {
@@ -466,10 +481,6 @@ body, html {
 
 .bg-filter-active #bg-video, .bg-filter-active #bg-image-layer { filter: sepia(100%) hue-rotate(90deg) saturate(300%) brightness(50%); }
 
-.settings-scroll-area::-webkit-scrollbar { width: 6px; }
-.settings-scroll-area::-webkit-scrollbar-track { background: #111; }
-.settings-scroll-area::-webkit-scrollbar-thumb { background: var(--theme-color); border-radius: 10px; box-shadow: 0 0 5px var(--theme-color); }
-
 .glow-active #clock, .glow-active .date-container, .glow-active .quote, .glow-active #search-input, .glow-active #terminal-cursor { animation: digital-flicker 4s infinite alternate; }
 @keyframes digital-flicker {
     0%, 19.999%, 22%, 62.999%, 64%, 64.999%, 70%, 100% { opacity: 1; text-shadow: 0 0 10px var(--theme-color); }
@@ -485,7 +496,22 @@ body, html {
 @keyframes glitch-anim2 { 0% { clip: rect(70px, 9999px, 90px, 0); } 100% { clip: rect(30px, 9999px, 50px, 0); } }
 
 .date-container { display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 30px; font-size: calc(1.5rem * var(--text-scale)); }
-#calendar-icon { width: 1em; height: 1em; background-color: var(--theme-color); -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19,4H18V2H16V4H8V2H6V4H5C3.89,4 3,4.9 3,6V20C3,21.1 3.89,22 5,22H19C20.1,22 21,21.1 21,20V6C21,4.9 20.1,4 19,4M19,20H5V10H19V20M19,8H5V6H19V8M7,12H9V14H7V12M11,12H13V14H11V12M15,12H17V14H15V12Z"/></svg>') no-repeat center; -webkit-mask-size: contain; }
+#calendar-icon { 
+    width: 1.2em; 
+    height: 1.2em; 
+    cursor: pointer;
+    background-color: var(--theme-color);
+    -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19,4H18V2H16V4H8V2H6V4H5C3.89,4 3,4.9 3,6V20C3,21.1 3.89,22 5,22H19C20.1,22 21,21.1 21,20V6C21,4.9 20.1,4 19,4M19,20H5V10H19V20M19,8H5V6H19V8M7,12H9V14H7V12M11,12H13V14H11V12M15,12H17V14H15V12Z"/></svg>') no-repeat center; 
+    -webkit-mask-size: contain;
+    mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19,4H18V2H16V4H8V2H6V4H5C3.89,4 3,4.9 3,6V20C3,21.1 3.89,22 5,22H19C20.1,22 21,21.1 21,20V6C21,4.9 20.1,4 19,4M19,20H5V10H19V20M19,8H5V6H19V8M7,12H9V14H7V12M11,12H13V14H11V12M15,12H17V14H15V12Z"/></svg>') no-repeat center;
+    mask-size: contain;
+    transition: all 0.3s ease;
+    filter: drop-shadow(0 0 3px var(--theme-color));
+}
+#calendar-icon:hover {
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 8px var(--theme-color));
+}
 
 .search-wrapper { display: flex; justify-content: center; margin-bottom: 30px; width: 100%; }
 .input-cursor-container { display: inline-flex; align-items: center; position: relative; min-width: 440px; }
@@ -504,8 +530,47 @@ body, html {
 input[type="text"], select { width: 100%; box-sizing: border-box; background: #222; border: 1px solid #444; color: white; padding: 8px; border-radius: 4px; }
 .button-group button { width: 100%; padding: 12px; background: var(--theme-color); border: none; cursor: pointer; font-weight: bold; border-radius: 4px; color: black; margin-bottom: 10px; }
 .hidden { display: none !important; }
-#settings-icon { width: 24px; height: 24px; background-color: var(--theme-color); -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5A3.5 3.5 0 0 1 15.5 12A3.5 3.5 0 0 1 12 15.5M19.43 12.65 19.5 12.33 19.5 12C19.5 11.67 19.47 11.34 19.43 11.03L21.54 9.37C21.73 9.22 21.78 8.95 21.66 8.73L19.66 5.27C19.54 5.05 19.27 4.96 19.05 5.05L16.56 6.05C16.04 5.66 15.47 5.34 14.86 5.12L14.47 2.47C14.44 2.23 14.24 2.05 14 2.05H10C9.76 2.05 9.56 2.23 9.53 2.47L9.14 5.12C8.53 5.34 7.96 5.66 7.44 6.05L4.95 5.05C4.73 4.96 4.46 5.05 4.34 5.27L2.34 8.73C2.21 8.95 2.27 9.22 2.46 9.37L4.57 11.03C4.53 11.34 4.5 11.67 4.5 12C4.5 12.33 4.53 12.65 4.57 12.97L2.46 14.63C2.27 14.78 2.21 15.05 2.34 15.27L2.34 18.73C2.46 18.95 2.73 19.03 2.95 18.95L5.44 17.94C5.96 18.34 6.53 18.66 7.14 18.88L7.53 21.52C7.56 21.77 7.76 21.95 8 21.95H12C12.24 21.95 12.44 21.77 12.47 21.52L12.86 18.88C13.47 18.66 14.04 18.34 14.56 17.94L17.05 18.95C17.27 19.03 17.54 18.95 17.66 18.73L19.66 15.27C19.78 15.05 19.73 14.78 19.54 14.63L19.43 12.97Z" /></svg>') no-repeat center; }
-#settings-icon-container { position: absolute; top: 15px; right: 20px; cursor: pointer; padding: 5px; z-index: 100; }
+/* style.css */
+
+#settings-icon-container {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    z-index: 5000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Ensure the rotation doesn't get clipped */
+    overflow: visible; 
+}
+
+#settings-icon {
+    width: 24px;
+    height: 24px;
+    
+    /* THEME COLOR LOGIC: */
+    /* We use the PNG as a mask and set the background to the theme color */
+    background-color: var(--theme-color);
+    -webkit-mask-image: url('settings-cog.png');
+    mask-image: url('settings-cog.png');
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-position: center;
+
+    /* Smooth rotation logic */
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease;
+    
+    /* Keeps the image crisp */
+    image-rendering: -webkit-optimize-contrast;
+}
+
+#settings-icon-container:hover #settings-icon {
+    transform: rotate(90deg);
+}
 
 /* DYNAMIC NAV BAR STYLES */
 #nav-bar-container {
@@ -642,4 +707,307 @@ textarea:focus {
 input[type="password"] {
     letter-spacing: 2px;
     font-family: 'Courier New', monospace;
+}
+
+/* --- MATRIX TEMPORAL INTERFACE --- */
+#calendar-popup {
+    display: block !important; 
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 320px !important;
+    
+    /* Set to 0.85 to match Oracle AI and Zion Feed */
+    background: rgba(0, 0, 0, 0.85) !important; 
+    
+    border: 2px solid var(--theme-color) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 0 30px var(--theme-color) !important;
+    z-index: 99999 !important;
+    padding: 20px !important;
+    
+    /* Handled by .active class in JS */
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transition: opacity 0.3s ease, visibility 0.3s ease !important;
+    
+    /* Glassmorphism effect */
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+}
+
+/* Logic for when the temporal interface is accessed */
+#calendar-popup.active {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+}
+
+/* Ensure internal elements don't have solid backgrounds */
+#calendar-grid, .calendar-header {
+    background: transparent !important;
+}
+/* Fixes the Grid and Weekday Headers */
+#calendar-grid {
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
+    gap: 10px;
+    text-align: center;
+}
+
+.calendar-weekday-header {
+    font-weight: bold;
+    font-size: 0.85rem;
+    color: #fff;
+    text-shadow: 0 0 8px var(--theme-color);
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(0, 242, 255, 0.3);
+    margin-bottom: 8px;
+}
+
+.calendar-day {
+    padding: 15px 5px;
+    border: 1px solid rgba(0, 242, 255, 0.15);
+    background: rgba(0, 20, 20, 0.6);
+    position: relative;
+    cursor: crosshair;
+    transition: all 0.2s;
+    font-size: 1rem;
+}
+
+/* Matrix character reveal effect */
+.calendar-day::before {
+    content: attr(data-char);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0.05;
+    font-size: 1.8rem;
+    pointer-events: none;
+}
+
+.calendar-day:hover:not(.empty) {
+    background: rgba(0, 242, 255, 0.15);
+    border-color: var(--theme-color);
+    color: #fff;
+    box-shadow: 0 0 15px rgba(0, 242, 255, 0.4);
+}
+
+.calendar-day:hover::before {
+    opacity: 0.3;
+    filter: blur(1px);
+}
+
+.calendar-day.today {
+    background: var(--theme-color);
+    color: #000;
+    font-weight: 900;
+    box-shadow: 0 0 20px var(--theme-color);
+}
+
+.calendar-day.empty {
+    border: none;
+    background: transparent;
+}
+
+@keyframes terminal-flicker {
+    0% { opacity: 0; filter: brightness(3); }
+    10% { opacity: 0.5; }
+    100% { opacity: 1; filter: brightness(1); }
+}
+
+
+/* --- CALENDAR HEADER & NAVIGATION --- */
+.calendar-header {
+    display: flex;
+    justify-content: space-between; /* Pushes buttons to far left/right */
+    align-items: center;
+    margin-bottom: 25px;
+    padding: 10px 5px;
+    border-bottom: 1px solid rgba(0, 242, 255, 0.2);
+}
+
+#calendar-month-year {
+    /* Removed Orbitron - now inherits var(--main-font) from parent */
+    color: #fff;
+    text-shadow: 0 0 10px var(--theme-color);
+    margin: 0;
+    font-size: 1.2rem;
+    letter-spacing: 3px;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+/* --- THE MATRIX BUTTONS --- */
+.matrix-btn {
+    background: rgba(0, 20, 20, 0.7);
+    border: 1px solid var(--theme-color);
+    color: var(--theme-color);
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 5px rgba(0, 242, 255, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Glitch/Scanline effect on buttons */
+.matrix-btn::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: rgba(0, 242, 255, 0.3);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.matrix-btn:hover {
+    background: var(--theme-color);
+    color: #000;
+    box-shadow: 0 0 15px var(--theme-color);
+    transform: scale(1.05);
+}
+
+.matrix-btn:hover::before {
+    opacity: 1;
+    animation: scanline-move 1s linear infinite;
+}
+
+.matrix-btn:active {
+    transform: scale(0.95);
+    filter: brightness(1.5);
+}
+
+/* Animation for the button scanline */
+@keyframes scanline-move {
+    0% { top: 0; }
+    100% { top: 100%; }
+}
+
+/* --- ZION FEED MEDIA ENHANCEMENTS --- */
+
+.rss-item {
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    border-bottom: 1px solid rgba(0, 242, 255, 0.1);
+    transition: background 0.2s ease;
+    text-decoration: none;
+    color: var(--theme-color);
+    /* Removed position: relative from here */
+}
+
+/* NEW: The container for just the image/video */
+.rss-media-wrapper {
+    position: relative; 
+    margin-top: 10px;
+    width: 100%;
+    max-height: 250px;
+    overflow: hidden;
+    border: 1px solid rgba(0, 242, 255, 0.2);
+    border-radius: 2px;
+}
+
+.rss-media-content {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    filter: sepia(1) hue-rotate(100deg) brightness(0.5) contrast(1.5);
+    opacity: 0.7;
+    transition: all 0.4s ease;
+}
+
+/* Scanline Overlay - NOW ONLY ON THE WRAPPER */
+.rss-media-wrapper {
+    position: relative; 
+    margin-top: 10px;
+    width: 100%;
+    max-height: 250px;
+    overflow: hidden;
+    border: 1px solid rgba(0, 242, 255, 0.2);
+    border-radius: 2px;
+}
+
+/* The Scanner Line and Scanline Overlay */
+.rss-media-wrapper::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* Updated Gradient: 
+       The first part is the static scanlines.
+       The second part is the moving scanner bar (using 0.4 opacity for reduced brightness).
+    */
+    background: 
+        linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%),
+        linear-gradient(to bottom, 
+            transparent 0%, 
+            rgba(0, 242, 255, 0.4) 50%, 
+            transparent 50.5%);
+    
+    /* Using var(--theme-color) with opacity is tricky in CSS without helper functions, 
+       so I used a hex-alpha or rgba. If your theme is green, use: rgba(0, 255, 65, 0.4) */
+    
+    background-size: 100% 4px, 100% 200%;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0.8;
+    transition: opacity 0.3s;
+    animation: media-scanner 4s linear infinite; /* Slowed down slightly to 4s for a smoother feel */
+}
+
+/* On hover: Hide the scanner and lines */
+.rss-item:hover .rss-media-wrapper::after {
+    opacity: 0;
+    animation-play-state: paused;
+}
+
+/* The Scanner Animation Logic */
+@keyframes media-scanner {
+    0% { background-position: 0 0, 0 100%; }
+    100% { background-position: 0 0, 0 -100%; }
+}
+
+/* Hover Effects */
+.rss-item:hover .rss-media-content {
+    filter: none;
+    opacity: 1;
+}
+
+.rss-item:hover .rss-media-wrapper {
+    border-color: var(--theme-color);
+    box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
+}
+
+.rss-item:hover .rss-media-wrapper::after {
+    opacity: 0; /* Scanlines disappear on hover */
+}
+
+/* --- ORACLE CHAT HOVER FIX --- */
+/* This prevents the response text from turning white when the mouse is over it */
+.oracle-response-text:hover {
+    color: var(--theme-color) !important;
+    text-shadow: 0 0 5px var(--theme-color); /* Maintains the digital glow */
+    cursor: default;
+}
+
+/* Ensures the encrypted/typing state also stays the correct color */
+.oracle-response-text.encrypted:hover, 
+.oracle-response-text.matrix-typing:hover {
+    color: var(--theme-color) !important;
 }

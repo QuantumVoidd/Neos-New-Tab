@@ -37,6 +37,10 @@ let isPhoneEnabled = DEFAULTS.isPhoneEnabled, phoneFrequency = DEFAULTS.phoneFre
     ringCycleInterval = null;
 let isChatEnabled = DEFAULTS.isChatEnabled;
 
+// --- CALENDAR STATE MANAGEMENT ---
+let currentCalDate = new Date();
+let isCalendarOpen = false;
+
 // --- ORACLE AI VARIABLES ---
 let isOracleEnabled = DEFAULTS.isOracleEnabled;
 let oracleChatHistory = [];
@@ -107,6 +111,250 @@ const VIDEO_CONFIGS = {
         name: "Meditation"
     }
 };
+
+// --- MATRIX CALENDAR FUNCTIONS ---
+function initCalendar() {
+    console.log("Attempting to initialize calendar...");
+    
+    const calendarIcon = document.getElementById('calendar-icon');
+    const calendarPopup = document.getElementById('calendar-popup');
+    const calendarPrev = document.getElementById('calendar-prev');
+    const calendarNext = document.getElementById('calendar-next');
+    const calendarGrid = document.getElementById('calendar-grid');
+    
+    console.log("Calendar elements found:", {
+        calendarIcon: !!calendarIcon,
+        calendarPopup: !!calendarPopup,
+        calendarPrev: !!calendarPrev,
+        calendarNext: !!calendarNext,
+        calendarGrid: !!calendarGrid
+    });
+    
+    if (!calendarIcon || !calendarPopup) {
+        console.error("Calendar initialization failed: Missing essential elements");
+        console.error("calendarIcon:", calendarIcon);
+        console.error("calendarPopup:", calendarPopup);
+        return;
+    }
+    
+    // Initial render
+    renderCalendar();
+    
+    // Event listener for calendar icon
+    calendarIcon.addEventListener('click', function(e) {
+        console.log("Calendar icon clicked");
+        e.stopPropagation();
+        toggleCalendar();
+    });
+    
+    // Event listeners for navigation buttons
+    if (calendarPrev) {
+        calendarPrev.addEventListener('click', function(e) {
+            e.stopPropagation();
+            navigateCalendar(-1);
+        });
+    }
+    
+    if (calendarNext) {
+        calendarNext.addEventListener('click', function(e) {
+            e.stopPropagation();
+            navigateCalendar(1);
+        });
+    }
+    
+    // Close calendar when clicking outside
+    document.addEventListener('click', function(e) {
+        if (isCalendarOpen && !calendarPopup.contains(e.target) && !calendarIcon.contains(e.target)) {
+            closeCalendar();
+        }
+    });
+    
+    // Close calendar with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && isCalendarOpen) {
+            closeCalendar();
+        }
+    });
+    
+    console.log("Calendar initialized successfully");
+    window.calendarInitialized = true;
+}
+
+function toggleCalendar() {
+    const calendarPopup = document.getElementById('calendar-popup');
+    if (!calendarPopup) return;
+    
+    if (isCalendarOpen) {
+        closeCalendar();
+    } else {
+        openCalendar();
+    }
+}
+
+function openCalendar() {
+    const calendarPopup = document.getElementById('calendar-popup');
+    if (!calendarPopup) return;
+    
+    calendarPopup.classList.add('active');
+    isCalendarOpen = true;
+    
+    // Try to play sound if available
+    try {
+        const clickSound = document.getElementById('signal-beep') || new Audio();
+        if (clickSound.src) {
+            clickSound.currentTime = 0;
+            clickSound.volume = 0.3;
+            clickSound.play().catch(() => {});
+        }
+    } catch (e) {
+        // Sound error, ignore
+    }
+    
+    // Re-render calendar to ensure it shows current month
+    renderCalendar();
+}
+
+function closeCalendar() {
+    const calendarPopup = document.getElementById('calendar-popup');
+    if (!calendarPopup) return;
+    
+    calendarPopup.classList.remove('active');
+    isCalendarOpen = false;
+}
+
+function navigateCalendar(direction) {
+    currentCalDate.setMonth(currentCalDate.getMonth() + direction);
+    renderCalendar();
+    
+    // Try to play navigation sound if available
+    try {
+        const navSound = document.getElementById('signal-beep') || new Audio();
+        if (navSound.src) {
+            navSound.currentTime = 0;
+            navSound.volume = 0.2;
+            navSound.play().catch(() => {});
+        }
+    } catch (e) {
+        // Sound error, ignore
+    }
+}
+
+function renderCalendar() {
+    const calendarGrid = document.getElementById('calendar-grid');
+    const calendarMonthYear = document.getElementById('calendar-month-year');
+    
+    if (!calendarGrid || !calendarMonthYear) return;
+    
+    // Clear existing grid
+    calendarGrid.innerHTML = '';
+    
+    // 1. ADD WEEKDAY LABELS (Fixes the vertical stacking issue)
+    const daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    daysOfWeek.forEach(dayName => {
+        const dayHeader = document.createElement('div');
+        dayHeader.className = 'calendar-weekday-header';
+        dayHeader.textContent = dayName;
+        calendarGrid.appendChild(dayHeader);
+    });
+    
+    // 2. Set month/year display
+    const monthNames = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
+                       "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
+    const month = monthNames[currentCalDate.getMonth()];
+    const year = currentCalDate.getFullYear();
+    calendarMonthYear.textContent = `${month} ${year}`;
+    
+    // 3. Get today's date for highlighting
+    const today = new Date();
+    const isCurrentMonth = today.getMonth() === currentCalDate.getMonth() && 
+                          today.getFullYear() === currentCalDate.getFullYear();
+    
+    // 4. Get first day of month and total days
+    const firstDay = new Date(currentCalDate.getFullYear(), currentCalDate.getMonth(), 1);
+    const lastDay = new Date(currentCalDate.getFullYear(), currentCalDate.getMonth() + 1, 0);
+    const totalDays = lastDay.getDate();
+    const startingDay = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    
+    // 5. Add empty cells for days before the first day of the month
+    for (let i = 0; i < startingDay; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = 'calendar-day empty';
+        calendarGrid.appendChild(emptyCell);
+    }
+    
+    // 6. Add cells for each day of the month
+    for (let day = 1; day <= totalDays; day++) {
+        const dayCell = document.createElement('div');
+        dayCell.className = 'calendar-day';
+        dayCell.textContent = day;
+        
+        // Set custom property for staggered animation
+        dayCell.style.setProperty('--day-index', day - 1);
+        
+        // Add random matrix character data for hover effect (using the alphabet from your script)
+        const randomChar = MATRIX_ALPHABET.charAt(Math.floor(Math.random() * MATRIX_ALPHABET.length));
+        dayCell.setAttribute('data-char', randomChar);
+        
+        // Check if this is today
+        if (isCurrentMonth && day === today.getDate()) {
+            dayCell.classList.add('today');
+        }
+        
+        // Add click event
+        dayCell.addEventListener('click', function() {
+            // Ensure selectDate is defined in your script
+            if (typeof selectDate === "function") selectDate(day);
+        });
+        
+        calendarGrid.appendChild(dayCell);
+    }
+}
+
+function selectDate(day) {
+    const selectedDate = new Date(currentCalDate.getFullYear(), currentCalDate.getMonth(), day);
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const dateString = selectedDate.toLocaleDateString('en-US', options);
+    
+    // Update the main date display
+    const dateDisplay = document.getElementById('date');
+    if (dateDisplay) {
+        dateDisplay.textContent = dateString;
+    }
+    
+    // Try to play selection sound
+    try {
+        const selectSound = document.getElementById('signal-beep') || new Audio();
+        if (selectSound.src) {
+            selectSound.currentTime = 0;
+            selectSound.volume = 0.3;
+            selectSound.play().catch(() => {});
+        }
+    } catch (e) {
+        // Sound error, ignore
+    }
+    
+    // Close calendar after selection
+    closeCalendar();
+    
+    // Add to chat log if chat is enabled
+    if (isChatEnabled) {
+        const chatLog = document.getElementById('chat-log');
+        if (chatLog) {
+            const dateMsg = document.createElement('div');
+            dateMsg.className = 'chat-msg';
+            dateMsg.innerHTML = `<b class="morpheus">SYSTEM:</b> Temporal interface updated: ${dateString}`;
+            chatLog.appendChild(dateMsg);
+            
+            // Keep chat log manageable
+            if (chatLog.children.length > 50) {
+                chatLog.removeChild(chatLog.firstChild);
+            }
+            
+            // Scroll to bottom
+            chatLog.scrollTop = chatLog.scrollHeight;
+        }
+    }
+}
 
 // --- VERTICAL RAIN 3D EFFECT (OPTIMIZED VERSION) ---
 let verticalRainCanvas = null;
@@ -939,10 +1187,47 @@ async function initOracleChat() {
     const container = document.getElementById('oracle-chat-container');
     const input = document.getElementById('oracle-input');
     const history = document.getElementById('oracle-chat-history');
-    
-    // Initialize cursor
-    initOracleCursor();
-    
+    const oracleCursor = document.getElementById('oracle-cursor');
+
+    // --- CURSOR FIX: MEASUREMENT SPAN ---
+    const oracleMeasure = document.createElement('span');
+    oracleMeasure.style.cssText = "position:absolute; visibility:hidden; white-space:pre; pointer-events:none;";
+    document.body.appendChild(oracleMeasure);
+
+    function syncOracleCursor() {
+        if (!input || !oracleCursor) return;
+
+        // 1. Sync exact computed styles
+        const style = window.getComputedStyle(input);
+        oracleMeasure.style.fontFamily = style.fontFamily;
+        oracleMeasure.style.fontSize = style.fontSize;
+        oracleMeasure.style.fontWeight = style.fontWeight;
+        oracleMeasure.style.letterSpacing = style.letterSpacing;
+        oracleMeasure.style.textTransform = style.textTransform;
+
+        // 2. Mirror text and measure width
+        oracleMeasure.textContent = input.value || "";
+        const textWidth = oracleMeasure.getBoundingClientRect().width;
+
+        // 3. CORRECTING THE OVERLAP: Account for padding and scroll
+        // This ensures the cursor starts exactly where the text starts
+        const paddingLeft = parseFloat(style.paddingLeft) || 0;
+        const scrollOffset = input.scrollLeft;
+        
+        // Use translateX for smooth movement; ensure base 'left' matches padding
+        oracleCursor.style.left = `${paddingLeft}px`;
+        oracleCursor.style.transform = `translateX(${textWidth - scrollOffset}px)`;
+    }
+
+    function updateOracleCursorVisibility() {
+        oracleCursor.style.opacity = (document.activeElement === input) ? "1" : "0";
+        if (oracleCursor.style.opacity === "1") syncOracleCursor();
+    }
+    // ------------------------------------
+
+    // Initialize Visibility
+    updateOracleCursorVisibility();
+
     // Toggle visibility based on settings
     if (!isOracleEnabled) {
         container.classList.add('hidden');
@@ -952,61 +1237,41 @@ async function initOracleChat() {
 
     // Initialize Puter.js SDK
     try {
-        // Load Puter.js SDK from local file
         await loadPuterSDK();
-        
-        console.log("Puter.js loaded successfully:", typeof puter, typeof puter?.ai);
-        
-        // Test if Puter.ai is working
-        if (typeof puter?.ai?.chat === 'function') {
-            console.log("Puter.ai.chat function is available");
-        } else {
-            console.error("Puter.ai.chat is not a function or not available:", puter?.ai);
-        }
-        
-        // Add initial welcome message with current time reference
         const now = new Date();
-        const currentTime = now.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-        
-        addOracleResponse(`Sit down, kid. The cookies are baking. It's ${currentTime} now - ask me anything about time, facts, or the meaning of it all.`);
-        
+        const currentTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        addOracleResponse(`Sit down, kid. The cookies are baking. It's ${currentTime} now - ask me anything.`);
     } catch (error) {
         console.error("Failed to initialize Oracle AI:", error);
-        addOracleResponse("The connection's fuzzy... must be interference from the machines. What's on your mind, dear?");
+        addOracleResponse("The connection's fuzzy... must be interference from the machines.");
     }
 
-    // Setup cursor events for oracle input
+    // Event Listeners
     input.addEventListener('input', syncOracleCursor);
+    input.addEventListener('scroll', syncOracleCursor);
     input.addEventListener('focus', updateOracleCursorVisibility);
     input.addEventListener('blur', updateOracleCursorVisibility);
-    
-    // Set initial cursor visibility
-    updateOracleCursorVisibility();
+
+    // Initial Styles (Ensure caret-color is transparent to hide default browser cursor)
+    input.style.cssText = "background: transparent; border: none; color: #fff; font-family: 'Courier New', monospace; flex: 1; outline: none; font-size: 0.8rem; width: 100%; caret-color: transparent; white-space: nowrap; overflow: hidden;";
 
     input.onkeydown = async (e) => {
         if (e.key === 'Enter' && input.value.trim() !== "") {
             const userText = input.value.trim();
             input.value = "";
-            syncOracleCursor(); // Update cursor position after clearing input
+            syncOracleCursor();
             
-            // Add User Message
             const userMsg = document.createElement('div');
             userMsg.className = "oracle-entry";
-            userMsg.innerHTML = `<div class="user-query">${userText}</div>`;
+            userMsg.innerHTML = `<div class="user-query">${userText.length > 100 ? userText.substring(0, 100) + "..." : userText}</div>`;
             history.appendChild(userMsg);
+            
             history.scrollTop = history.scrollHeight;
             
-            // Create animated typing indicator
             const typingIndicator = document.createElement('div');
             typingIndicator.className = "oracle-entry";
-            
-            // Create a container for the animated matrix text
             const matrixTextContainer = document.createElement('div');
             matrixTextContainer.className = "oracle-response-container";
-            
             const matrixText = document.createElement('div');
             matrixText.className = "oracle-response-text encrypted matrix-typing";
             matrixText.id = "typing-matrix-" + Date.now();
@@ -1014,38 +1279,20 @@ async function initOracleChat() {
             matrixTextContainer.appendChild(matrixText);
             typingIndicator.appendChild(matrixTextContainer);
             history.appendChild(typingIndicator);
-            history.scrollTop = history.scrollHeight;
             
-            // Start the matrix typing animation
             const matrixTextId = matrixText.id;
             startMatrixTypingAnimation(matrixTextId);
             
-            // Generate AI Response
             try {
                 const response = await getOracleAIResponse(userText);
-                
-                // Stop the animation
                 stopMatrixTypingAnimation(matrixTextId);
-                
-                // Remove typing indicator
                 typingIndicator.remove();
-                
-                // Add the actual response
                 addOracleResponse(response);
             } catch (error) {
-                console.error("Oracle AI error:", error);
-                
-                // Stop the animation
                 stopMatrixTypingAnimation(matrixTextId);
-                
-                // Remove typing indicator
                 typingIndicator.remove();
-                
-                // Add error response
-                addOracleResponse("Hmm, the signal's weak. Must be those Agents. Ask me again, kid.");
+                addOracleResponse("Hmm, the signal's weak. Must be those Agents.");
             }
-
-            // Scroll to bottom
             setTimeout(() => history.scrollTop = history.scrollHeight, 100);
         }
     };
@@ -1918,28 +2165,88 @@ function decryptRssText(element, targetText, isHovering) {
 async function updateZionFeed(isSilent = false) {
     const data = await chrome.storage.sync.get(['isRssEnabled', 'rssSubs']);
     const container = get('zion-rss-container'), list = get('rss-feed-list');
+    
     if (!data.isRssEnabled) { container.classList.add('hidden'); return; }
     container.classList.remove('hidden');
+    
     if (!isSilent) list.innerHTML = '<div class="rss-meta">Establishing Uplink...</div>';
+    
     try {
         const subs = data.rssSubs || "matrix+cyberpunk";
         const response = await fetch(`https://www.reddit.com/r/${subs}/new.json?limit=30`);
         const json = await response.json();
         list.innerHTML = "";
+
         json.data.children.forEach(post => {
             const item = post.data;
             const link = document.createElement('a');
-            link.className = 'rss-item'; link.href = `https://reddit.com${item.permalink}`; link.target = "_blank";
+            link.className = 'rss-item'; 
+            link.href = `https://reddit.com${item.permalink}`; 
+            link.target = "_blank";
+
+            // 1. Create Title (Jitter-fixed and Theme-colored)
             const title = document.createElement('div');
             title.className = 'rss-title';
+            title.style.color = 'var(--theme-color)';
             title.innerText = item.title.replace(/./g, () => MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]);
-            link.innerHTML = `<div class="rss-meta">r/${item.subreddit} • u/${item.author}</div>`;
-            link.prepend(title);
-            link.onmouseenter = () => decryptRssText(title, item.title, true);
-            link.onmouseleave = () => decryptRssText(title, item.title, false);
+            
+            // 2. Create Meta Info
+            const meta = document.createElement('div');
+            meta.className = 'rss-meta';
+            meta.style.color = 'var(--theme-color)';
+            meta.style.opacity = '0.7';
+            meta.innerText = `r/${item.subreddit} • u/${item.author}`;
+
+            link.appendChild(title);
+            link.appendChild(meta);
+
+            // 3. Handle Media with isolated Wrapper
+            let mediaElement = null;
+
+            if (item.post_hint === 'image' || (item.url && item.url.match(/\.(jpg|jpeg|png|gif)$/))) {
+                mediaElement = document.createElement('img');
+                mediaElement.src = item.url;
+                mediaElement.loading = "lazy";
+            } 
+            else if (item.is_video && item.media && item.media.reddit_video) {
+                mediaElement = document.createElement('video');
+                mediaElement.src = item.media.reddit_video.fallback_url;
+                mediaElement.muted = true;
+                mediaElement.loop = true;
+                mediaElement.playsInline = true;
+            }
+
+            if (mediaElement) {
+                // Wrapper isolates scanlines and filters from the rest of the post
+                const mediaWrapper = document.createElement('div');
+                mediaWrapper.className = 'rss-media-wrapper'; 
+                
+                mediaElement.className = 'rss-media-content'; 
+                
+                mediaWrapper.appendChild(mediaElement);
+                link.appendChild(mediaWrapper);
+            }
+
+            // 4. Interaction Logic: Decrypt + Play Video
+            link.onmouseenter = () => {
+                decryptRssText(title, item.title, true);
+                if (mediaElement && mediaElement.tagName === 'VIDEO') {
+                    mediaElement.play().catch(() => {});
+                }
+            };
+
+            link.onmouseleave = () => {
+                decryptRssText(title, item.title, false);
+                if (mediaElement && mediaElement.tagName === 'VIDEO') {
+                    mediaElement.pause();
+                }
+            };
+
             list.appendChild(link);
         });
-    } catch (e) { if(!isSilent) list.innerHTML = '<div class="rss-meta" style="color:#f00;">Signal Lost: Protocol Error</div>'; }
+    } catch (e) { 
+        if(!isSilent) list.innerHTML = '<div class="rss-meta" style="color:#f00;">Signal Lost: Protocol Error</div>'; 
+    }
 }
 
 // --- EXPANDED CHAT SCRIPTS ---
@@ -1975,34 +2282,64 @@ async function runChatTerminal() {
 }
 
 // --- SEARCH & CURSOR ---
-const searchInput = document.getElementById('search-input'), cursor = document.getElementById('terminal-cursor');
+const searchInput = document.getElementById('search-input');
+const cursor = document.getElementById('terminal-cursor');
+
+// Create a hidden span to measure text width
 const measure = document.createElement('span');
-measure.style.cssText = "position:absolute; visibility:hidden; white-space:pre; font-family:'Courier New', monospace; font-size:2rem; letter-spacing: 0px;";
+measure.style.cssText = "position:absolute; visibility:hidden; white-space:pre; pointer-events:none;";
 document.body.appendChild(measure);
 
-function syncCursor() { 
-    measure.textContent = searchInput.value || ""; 
+function syncCursor() {
+    // 1. Get the actual computed style of the input (accounts for your UI scale and CSS)
+    const style = window.getComputedStyle(searchInput);
+    measure.style.fontFamily = style.fontFamily;
+    measure.style.fontSize = style.fontSize;
+    measure.style.fontWeight = style.fontWeight;
+    measure.style.letterSpacing = style.letterSpacing;
+    measure.style.textTransform = style.textTransform;
+
+    // 2. Mirror the text
+    measure.textContent = searchInput.value || "";
+
+    // 3. Calculate text width
     const textWidth = measure.getBoundingClientRect().width;
-    cursor.style.transform = `translateX(${textWidth}px)`; 
+
+    // 4. Subtract scrollLeft! 
+    // This stops the cursor from jumping ahead when the text scrolls horizontally.
+    const scrollOffset = searchInput.scrollLeft;
+    
+    // 5. Apply position (adding 2px or similar if you have a slight padding-left)
+    cursor.style.transform = `translateX(${textWidth - scrollOffset}px)`;
 }
 
-function updateCursorVisibility() { 
-    cursor.style.opacity = (document.activeElement === searchInput) ? "1" : "0"; 
-    if (cursor.style.opacity === "1") syncCursor(); 
+function updateCursorVisibility() {
+    cursor.style.opacity = (document.activeElement === searchInput) ? "1" : "0";
+    if (cursor.style.opacity === "1") syncCursor();
 }
 
+// Add scroll listener so cursor follows text during manual scrolling/overflow
+searchInput.addEventListener('scroll', syncCursor);
 searchInput.addEventListener('input', syncCursor);
 searchInput.addEventListener('focus', updateCursorVisibility);
 searchInput.addEventListener('blur', updateCursorVisibility);
-searchInput.addEventListener('keydown', (e) => { 
+
+searchInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
         const val = searchInput.value.trim();
         if (val.startsWith('/')) {
             const parts = val.split(' ');
             const cmd = parts[0].toLowerCase();
-            if (CLI_COMMANDS[cmd]) { CLI_COMMANDS[cmd](parts.slice(1).join(' ')); searchInput.value = ""; }
-            else { showZionMessage("COMMAND UNKNOWN"); }
-        } else if (val !== "") { chrome.search.query({ text: val }); }
+            if (CLI_COMMANDS[cmd]) { 
+                CLI_COMMANDS[cmd](parts.slice(1).join(' ')); 
+                searchInput.value = ""; 
+                syncCursor();
+            } else { 
+                showZionMessage("COMMAND UNKNOWN"); 
+            }
+        } else if (val !== "") { 
+            chrome.search.query({ text: val }); 
+        }
     }
 });
 
@@ -2398,7 +2735,6 @@ chrome.storage.sync.get(null, (d) => {
     // ORACLE INIT
     isOracleEnabled = data.isOracleEnabled;
     if(oracleT) oracleT.checked = isOracleEnabled;
-    initOracleChat();
     
     const rA = get('ambience-rain'), hA = get('ambience-hum'), mA = get('matrix-code-sfx'), cA = get('custom-background-sfx');
     rainAmbT.checked = data.isRainAmbience; humT.checked = data.isHumEnabled; matrixSfxT.checked = data.isMatrixSfxEnabled;
@@ -2412,8 +2748,33 @@ chrome.storage.sync.get(null, (d) => {
     
     statsT.checked = data.isStatsEnabled; get('operator-console').classList.toggle('stats-hidden', !data.isStatsEnabled);
     
+    // Initialize Oracle AFTER all DOM elements are ready
+    setTimeout(() => {
+        initOracleChat();
+    }, 100);
+    
     loadNavLinks(); resize(); animateSentinels(); updateUI(); 
-    initPhoneSystem(); runChatTerminal(); mainContainer.style.opacity = "1";
+    initPhoneSystem(); runChatTerminal(); 
+    
+    // Initialize calendar - moved to ensure DOM is ready
+    setTimeout(() => {
+        console.log("Initializing calendar...");
+        initCalendar();
+    }, 50);
+    
+    mainContainer.style.opacity = "1";
+});
+
+// Add a DOMContentLoaded listener as a backup
+document.addEventListener('DOMContentLoaded', function() {
+    // If calendar wasn't initialized by the storage callback, initialize it now
+    setTimeout(() => {
+        if (!isCalendarOpen && !window.calendarInitialized) {
+            console.log("DOM loaded, initializing calendar...");
+            initCalendar();
+            window.calendarInitialized = true;
+        }
+    }, 200);
 });
 
 setInterval(() => updateZionFeed(true), 120000);
