@@ -1663,7 +1663,7 @@ function getLocalOracleResponse(userInput) {
         "You're asking the right questions, but maybe the wrong ones. Try again.",
         "The answer isn't in the code, it's in you. What does your gut tell you?",
         "Sometimes you have to unplug to see the truth. What's really on your mind?",
-        "Would you like a cookie while you think about that? They help with clarity.",
+        "Would you like a cookie? They're almost done baking.",
         "The machines are listening. Ask me something real.",
         "I see you're searching. The answer might surprise you.",
         "In the Matrix, some questions have no answers. Others have too many.",
@@ -2165,16 +2165,30 @@ function decryptRssText(element, targetText, isHovering) {
 async function updateZionFeed(isSilent = false) {
     const data = await chrome.storage.sync.get(['isRssEnabled', 'rssSubs']);
     const container = get('zion-rss-container'), list = get('rss-feed-list');
+    const barCont = get('rss-loading-bar-container'), bar = get('rss-loading-bar');
     
     if (!data.isRssEnabled) { container.classList.add('hidden'); return; }
     container.classList.remove('hidden');
     
-    if (!isSilent) list.innerHTML = '<div class="rss-meta">Establishing Uplink...</div>';
+    // Initialize Loading State
+    if (!isSilent) {
+        list.innerHTML = '<div class="rss-meta">Establishing Uplink...</div>';
+        if (barCont && bar) {
+            barCont.style.display = 'block';
+            bar.style.width = '30%'; // Handshake phase
+        }
+    }
     
     try {
         const subs = data.rssSubs || "matrix+cyberpunk";
-        const response = await fetch(`https://www.reddit.com/r/${subs}/new.json?limit=30`);
+        const response = await fetch(`https://www.reddit.com/r/${subs}/hot.json?limit=50`);
+        
+        if (!isSilent && bar) bar.style.width = '70%'; // Data Transfer phase
+        
         const json = await response.json();
+        
+        if (!isSilent && bar) bar.style.width = '100%'; // Processing phase
+        
         list.innerHTML = "";
 
         json.data.children.forEach(post => {
@@ -2184,68 +2198,157 @@ async function updateZionFeed(isSilent = false) {
             link.href = `https://reddit.com${item.permalink}`; 
             link.target = "_blank";
 
-            // 1. Create Title (Jitter-fixed and Theme-colored)
+            // 1. Create Title (Matrix Cipher Effect)
             const title = document.createElement('div');
             title.className = 'rss-title';
             title.style.color = 'var(--theme-color)';
-            title.innerText = item.title.replace(/./g, () => MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]);
+            const originalTitle = item.title;
+            title.innerText = originalTitle.replace(/./g, () => MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]);
             
             // 2. Create Meta Info
             const meta = document.createElement('div');
             meta.className = 'rss-meta';
             meta.style.color = 'var(--theme-color)';
             meta.style.opacity = '0.7';
-            meta.innerText = `r/${item.subreddit} • u/${item.author}`;
+            
+            const subText = `r/${item.subreddit}`;
+            const authText = `u/${item.author}`;
+            const combinedMeta = `${subText} • ${authText}`;
+            
+            meta.innerText = combinedMeta.replace(/./g, () => MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]);
 
             link.appendChild(title);
             link.appendChild(meta);
 
-            // 3. Handle Media with isolated Wrapper
-            let mediaElement = null;
-
+            // 3. Media Wrapper (Image or Audio-Enabled Video)
             if (item.post_hint === 'image' || (item.url && item.url.match(/\.(jpg|jpeg|png|gif)$/))) {
-                mediaElement = document.createElement('img');
-                mediaElement.src = item.url;
-                mediaElement.loading = "lazy";
-            } 
-            else if (item.is_video && item.media && item.media.reddit_video) {
-                mediaElement = document.createElement('video');
-                mediaElement.src = item.media.reddit_video.fallback_url;
-                mediaElement.muted = true;
-                mediaElement.loop = true;
-                mediaElement.playsInline = true;
+                const wrap = document.createElement('div');
+                wrap.className = 'rss-media-wrapper';
+
+                const img = document.createElement('img');
+                img.src = item.url;
+                img.className = 'rss-media-content';
+
+                // --- IMAGE FULLSCREEN BUTTON ---
+                const imgFsBtn = document.createElement('button');
+                imgFsBtn.className = 'video-fullscreen-btn'; // Same class as video for styling
+                imgFsBtn.innerHTML = '⛶';
+                imgFsBtn.title = "Maximize Visual";
+                imgFsBtn.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (img.requestFullscreen) img.requestFullscreen();
+                    else if (img.webkitRequestFullscreen) img.webkitRequestFullscreen();
+                    else if (img.msRequestFullscreen) img.msRequestFullscreen();
+                };
+
+                wrap.appendChild(img);
+                wrap.appendChild(imgFsBtn);
+                link.appendChild(wrap);
+            } else if (item.is_video && item.media && item.media.reddit_video) {
+                const wrap = document.createElement('div');
+                wrap.className = 'rss-media-wrapper';
+
+                const video = document.createElement('video');
+                video.src = item.media.reddit_video.hls_url || item.media.reddit_video.fallback_url;
+                video.className = 'rss-media-content';
+                video.autoplay = true;
+                video.loop = true;
+                video.muted = true; 
+                video.playsInline = true;
+
+                // --- FULLSCREEN TOGGLE ---
+                const fsBtn = document.createElement('button');
+                fsBtn.className = 'video-fullscreen-btn';
+                fsBtn.innerHTML = '⛶';
+                fsBtn.title = "Maximize Transmission";
+                fsBtn.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (video.requestFullscreen) video.requestFullscreen();
+                    else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
+                    else if (video.msRequestFullscreen) video.msRequestFullscreen();
+                };
+
+                // --- VOLUME TOGGLE ---
+                const volBtn = document.createElement('button');
+                volBtn.className = 'video-vol-btn';
+                volBtn.innerHTML = '🔇';
+                volBtn.title = "Toggle Audio";
+                volBtn.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    video.muted = !video.muted;
+                    if (!video.muted) video.play().catch(() => {});
+                    volBtn.innerHTML = video.muted ? '🔇' : '🔊';
+                    volBtn.style.boxShadow = video.muted ? 'none' : '0 0 10px var(--theme-color)';
+                };
+
+                wrap.appendChild(video);
+                wrap.appendChild(fsBtn);
+                wrap.appendChild(volBtn);
+                link.appendChild(wrap);
             }
 
-            if (mediaElement) {
-                // Wrapper isolates scanlines and filters from the rest of the post
-                const mediaWrapper = document.createElement('div');
-                mediaWrapper.className = 'rss-media-wrapper'; 
-                
-                mediaElement.className = 'rss-media-content'; 
-                
-                mediaWrapper.appendChild(mediaElement);
-                link.appendChild(mediaWrapper);
+            // 4. Stats Row
+            const statsRow = document.createElement('div');
+            statsRow.className = 'rss-stats-row';
+            const format = (n) => (n > 999 ? (n/1000).toFixed(1) + 'k' : Math.floor(n) || 0);
+
+            // Upvote
+            const upDiv = document.createElement('div');
+            upDiv.className = 'rss-stat-item upvote-item';
+            upDiv.innerHTML = `<span class="rss-stat-icon"><svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M12.833 16V9h3.334L10 2 3.833 9h3.334v7h5.666z"></path></svg></span> ${format(item.ups)}`;
+            statsRow.appendChild(upDiv);
+
+            // Downvote
+            const ratio = item.upvote_ratio || 1;
+            const estimatedDowns = ratio < 1 ? Math.round((item.ups / ratio) - item.ups) : 0;
+            if (estimatedDowns > 0) {
+                const downDiv = document.createElement('div');
+                downDiv.className = 'rss-stat-item downvote-item';
+                downDiv.innerHTML = `<span class="rss-stat-icon"><svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M7.167 4v7H3.833L10 18l6.167-7h-3.334V4H7.167z"></path></svg></span> ${format(estimatedDowns)}`;
+                statsRow.appendChild(downDiv);
             }
 
-            // 4. Interaction Logic: Decrypt + Play Video
+            // Comments
+            const commDiv = document.createElement('div');
+            commDiv.className = 'rss-stat-item';
+            commDiv.innerHTML = `<span class="rss-stat-icon">💬</span> ${format(item.num_comments)}`;
+            statsRow.appendChild(commDiv);
+
+            link.appendChild(statsRow);
+
+            // 5. Interaction: Decrypt Title AND Meta
             link.onmouseenter = () => {
-                decryptRssText(title, item.title, true);
-                if (mediaElement && mediaElement.tagName === 'VIDEO') {
-                    mediaElement.play().catch(() => {});
-                }
+                decryptRssText(title, originalTitle, true);
+                decryptRssText(meta, combinedMeta, true);
+                const vid = link.querySelector('video');
+                if (vid) vid.play().catch(() => {});
             };
 
             link.onmouseleave = () => {
-                decryptRssText(title, item.title, false);
-                if (mediaElement && mediaElement.tagName === 'VIDEO') {
-                    mediaElement.pause();
-                }
+                decryptRssText(title, originalTitle, false);
+                decryptRssText(meta, combinedMeta, false);
+                const vid = link.querySelector('video');
+                if (vid) vid.pause();
             };
 
             list.appendChild(link);
         });
+
+        // Cleanup Loading State
+        if (!isSilent && barCont) {
+            setTimeout(() => {
+                barCont.style.display = 'none';
+                if (bar) bar.style.width = '0%';
+            }, 800);
+        }
+
     } catch (e) { 
-        if(!isSilent) list.innerHTML = '<div class="rss-meta" style="color:#f00;">Signal Lost: Protocol Error</div>'; 
+        console.error("Zion Feed Error:", e);
+        if (barCont) barCont.style.display = 'none';
+        if(!isSilent) list.innerHTML = `<div class="rss-meta" style="color:#f00;">Signal Lost: Protocol Error</div>`; 
     }
 }
 
@@ -2442,7 +2545,35 @@ document.addEventListener('DOMContentLoaded', function() {
     if (verticalRainEmojiToggle) { verticalRainEmojiToggle.disabled = true; verticalRainEmojiToggle.checked = false; }
 });
 
-snowT.onchange = (e) => { isSnowing = e.target.checked; if(isSnowing) initSnow(); };
+// --- UPDATED SENTINEL SWARM TOGGLE WITH AUDIO ---
+snowT.onchange = (e) => { 
+    isSnowing = e.target.checked; 
+    chrome.storage.sync.set({ isSnowing }); // Save state immediately
+    
+    const swarmAudio = document.getElementById('sentinel-swarm-sfx');
+    
+    if(isSnowing) { 
+        initSnow(); 
+        sCanvas.style.display = 'block';
+        // Play audio if element exists
+        if (swarmAudio) {
+            swarmAudio.volume = 0.4;
+            swarmAudio.play().catch(err => {
+                console.log("Audio waiting for user interaction");
+            });
+        }
+    } else {
+        // Stop visuals
+        sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
+        sCanvas.style.display = 'none';
+        // Stop audio
+        if (swarmAudio) {
+            swarmAudio.pause();
+            swarmAudio.currentTime = 0;
+        }
+    }
+};
+
 rainbowT.onchange = (e) => isFlashing = e.target.checked;
 fontT.onchange = (e) => document.body.classList.toggle('cyberpunk-font', e.target.checked);
 glowT.onchange = (e) => document.body.classList.toggle('glow-active', e.target.checked);
@@ -2704,7 +2835,19 @@ chrome.storage.sync.get(null, (d) => {
         startRain();
     }
 
-    isSnowing = data.isSnowing; snowT.checked = isSnowing; if(isSnowing) initSnow();
+    // --- UPDATED INIT FOR SENTINEL AUDIO ---
+    isSnowing = data.isSnowing; 
+    snowT.checked = isSnowing; 
+    if(isSnowing) {
+        initSnow();
+        // Check for audio element and play if exists
+        const swarmAudio = document.getElementById('sentinel-swarm-sfx');
+        if (swarmAudio) {
+            swarmAudio.volume = 0.4;
+            swarmAudio.play().catch(() => {});
+        }
+    }
+
     isFlashing = data.isFlashing; rainbowT.checked = isFlashing;
     showMinutes = data.showMinutes; minT.checked = showMinutes; 
     showSeconds = data.showSeconds; secT.checked = showSeconds; 

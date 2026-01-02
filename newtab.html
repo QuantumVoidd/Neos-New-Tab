@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Neo's New Tab</title>
+    <title>New Tab</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
 </head>
@@ -34,6 +34,48 @@
                     <label><input type="checkbox" id="show-minutes" checked> Show Minutes</label>
                     <label><input type="checkbox" id="show-seconds"> Show Seconds</label>
                     <label><input type="checkbox" id="use-24hour"> 24-Hour Protocol</label>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h4 class="sub-menu-title">ZION Network</h4>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="rss-toggle"> Enable RSS Feed</label>
+                </div>
+                <div class="setting-item">
+                    <label>Favourite Subreddits (+ separated)</label>
+                    <input type="text" id="rss-input" placeholder="matrix+cyberpunk+tech">
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h4 class="sub-menu-title">Intelligence</h4>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="chat-toggle" checked> Secure Chat Terminal</label>
+                    <label><input type="checkbox" id="oracle-toggle"> Enable Oracle Link <span style="opacity: 0.6; font-size: 0.8em;">(Real AI)</span></label>
+                    <label><input type="checkbox" id="phone-toggle" checked> Enable Rotary Link</label>
+                </div>
+                <div class="setting-item" style="margin-top: 5px;">
+                    <label>Signal Frequency: <span id="phone-freq-value">3</span> Minutes</label>
+                    <input type="range" id="phone-freq-slider" min="1" max="30" step="1" value="3">
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h4 class="sub-menu-title">Visuals</h4>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="matrix-green"> Matrix Green UI</label>
+                    <label><input type="checkbox" id="snow-toggle"> Sentinel Swarm</label>
+                    <label><input type="checkbox" id="font-toggle"> Cyberpunk Font</label>
+                    <label><input type="checkbox" id="glow-toggle"> Digital Glow Effect</label>
+                    <label><input type="checkbox" id="glitch-toggle"> Glitch on Hover</label>
+                    <div class="setting-item" style="margin-top: 10px;">
+                        <label>Glitch Intensity</label>
+                        <input type="range" id="glitch-slider" min="1" max="20" step="1" value="5">
+                    </div>
+                    <label><input type="checkbox" id="scanline-toggle"> Scanline CRT Overlay</label>
+                    <label><input type="checkbox" id="bg-filter-toggle"> Green Backdrop Filter</label>
+                    <label><input type="checkbox" id="bg-toggle"> Transparent UI</label>
                 </div>
             </div>
 
@@ -87,44 +129,20 @@
             </div>
 
             <div class="setting-group">
-                <h4 class="sub-menu-title">Intelligence</h4>
+                <h4 class="sub-menu-title">Audio Environment</h4>
                 <div class="checkbox-group">
-                    <label><input type="checkbox" id="chat-toggle" checked> Secure Chat Terminal</label>
-                    <label><input type="checkbox" id="oracle-toggle"> Enable Oracle Link <span style="opacity: 0.6; font-size: 0.8em;">(Real AI)</span></label>
-                    <label><input type="checkbox" id="phone-toggle" checked> Enable Rotary Link</label>
-                </div>
-                <div class="setting-item" style="margin-top: 5px;">
-                    <label>Signal Frequency: <span id="phone-freq-value">3</span> Minutes</label>
-                    <input type="range" id="phone-freq-slider" min="1" max="30" step="1" value="3">
-                </div>
-            </div>
-
-            <div class="setting-group">
-                <h4 class="sub-menu-title">ZION Network</h4>
-                <div class="checkbox-group">
-                    <label><input type="checkbox" id="rss-toggle"> Enable RSS Feed</label>
-                </div>
-                <div class="setting-item">
-                    <label>Favourite Subreddits (+ separated)</label>
-                    <input type="text" id="rss-input" placeholder="matrix+cyberpunk+tech">
-                </div>
-            </div>
-
-            <div class="setting-group">
-                <h4 class="sub-menu-title">Visuals</h4>
-                <div class="checkbox-group">
-                    <label><input type="checkbox" id="matrix-green"> Matrix Green UI</label>
-                    <label><input type="checkbox" id="snow-toggle"> Sentinel Swarm</label>
-                    <label><input type="checkbox" id="font-toggle"> Cyberpunk Font</label>
-                    <label><input type="checkbox" id="glow-toggle"> Digital Glow Effect</label>
-                    <label><input type="checkbox" id="glitch-toggle"> Glitch on Hover</label>
-                    <div class="setting-item" style="margin-top: 10px;">
-                        <label>Glitch Intensity</label>
-                        <input type="range" id="glitch-slider" min="1" max="20" step="1" value="5">
+                    <label><input type="checkbox" id="rain-ambience-toggle"> Rain Ambience (Window)</label>
+                    <label><input type="checkbox" id="hum-toggle"> Nebuchadnezzar Hum</label>
+                    <label><input type="checkbox" id="matrix-sfx-toggle"> Matrix Stream Audio</label>
+                    <div class="setting-item" style="margin-top: 5px;">
+                        <label>Environment Volume</label>
+                        <input type="range" id="env-volume-slider" min="0" max="1" step="0.1" value="0.5">
                     </div>
-                    <label><input type="checkbox" id="scanline-toggle"> Scanline CRT Overlay</label>
-                    <label><input type="checkbox" id="bg-filter-toggle"> Green Backdrop Filter</label>
-                    <label><input type="checkbox" id="bg-toggle"> Transparent UI</label>
+                </div>
+                <div class="button-group" style="margin-top: 10px;">
+                    <button id="upload-custom-sfx-btn">Upload Custom SFX</button>
+                    <button id="clear-custom-sfx" style="background: #333; color: #999;">Purge Custom SFX</button>
+                    <input type="file" id="custom-sfx-input" accept="audio/mpeg" class="hidden">
                 </div>
             </div>
 
@@ -144,24 +162,6 @@
                     <button id="clear-backdrop" style="background: #333; color: #999;">Purge Backdrop</button>
                     <input type="file" id="image-input" accept="image/*" class="hidden">
                     <input type="file" id="video-input" accept="video/*" class="hidden">
-                </div>
-            </div>
-
-            <div class="setting-group">
-                <h4 class="sub-menu-title">Audio Environment</h4>
-                <div class="checkbox-group">
-                    <label><input type="checkbox" id="rain-ambience-toggle"> Rain Ambience (Window)</label>
-                    <label><input type="checkbox" id="hum-toggle"> Nebuchadnezzar Hum</label>
-                    <label><input type="checkbox" id="matrix-sfx-toggle"> Matrix Stream Audio</label>
-                    <div class="setting-item" style="margin-top: 5px;">
-                        <label>Environment Volume</label>
-                        <input type="range" id="env-volume-slider" min="0" max="1" step="0.1" value="0.5">
-                    </div>
-                </div>
-                <div class="button-group" style="margin-top: 10px;">
-                    <button id="upload-custom-sfx-btn">Upload Custom SFX</button>
-                    <button id="clear-custom-sfx" style="background: #333; color: #999;">Purge Custom SFX</button>
-                    <input type="file" id="custom-sfx-input" accept="audio/mpeg" class="hidden">
                 </div>
             </div>
 
@@ -280,18 +280,20 @@
 
         <div id="zion-rss-container" class="hidden">
             <div id="rss-header">ZION NETWORK FEED</div>
+            <div id="rss-loading-bar-container">
+                <div id="rss-loading-bar"></div>
+            </div>
             <div id="rss-feed-list"></div>
         </div>
 
-        <!-- MATRIX CALENDAR POPUP -->
         <div id="calendar-popup" class="hidden">
-    <div class="calendar-header">
-    <button id="calendar-prev" class="matrix-btn">◀</button>
-    <h3 id="calendar-month-year"></h3>
-    <button id="calendar-next" class="matrix-btn">▶</button>
-</div>
-    <div id="calendar-grid"></div>
-</div>
+            <div class="calendar-header">
+                <button id="calendar-prev" class="matrix-btn">◀</button>
+                <h3 id="calendar-month-year"></h3>
+                <button id="calendar-next" class="matrix-btn">▶</button>
+            </div>
+            <div id="calendar-grid"></div>
+        </div>
 
         <div id="settings-icon-container"><div id="settings-icon"></div></div>
         <div id="clock" data-text="00:00:00">00:00:00</div>
@@ -329,6 +331,7 @@
     <audio id="ambience-hum" loop src="hum.mp3"></audio>
     <audio id="matrix-code-sfx" loop src="matrix_code.mp3"></audio>
     <audio id="custom-background-sfx" loop></audio>
+    <audio id="sentinel-swarm-sfx" loop src="sentinel_swarm.mp3"></audio>
 
     <script src="script.js"></script>
 </body>
