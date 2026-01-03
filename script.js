@@ -11,7 +11,7 @@ const MATH_SYMBOLS_ALPHABET = "∀∁∂∃∄∅∆∇∈∉∊∋∌∍∎∏�
 const MATRIX_QUOTES = ["There is no spoon.", "Free your mind.", "I know kung fu.", "Follow the white rabbit.", "The answer is out there.", "Welcome to the desert of the real.", "Ignorance is bliss.", "Choice is an illusion."];
 
 const DEFAULTS = { 
-    rainColor: "#00f2ff", rainSpeed: 35, uiScale: "1", textScale: "1.2", 
+    rainColor: "#00f2ff", themeColor: "#00f2ff", rainSpeed: 35, uiScale: "1", textScale: "1.2", 
     showMinutes: true, showSeconds: false, use24Hour: false, isMatrixGreen: false, 
     isBinary: false, isHex: false, isAscii: false, isBamum: false, isMathSymbols: false, isEmoji: false,
     isCyberpunkFont: false, isFlashing: false, 
@@ -25,7 +25,7 @@ const DEFAULTS = {
     isOracleEnabled: false
 };
 
-let rainColor = DEFAULTS.rainColor, rainSpeed = DEFAULTS.rainSpeed, rainInterval, 
+let rainColor = DEFAULTS.rainColor, themeColor = DEFAULTS.themeColor, rainSpeed = DEFAULTS.rainSpeed, rainInterval, 
     rainDrops = [], showMinutes = DEFAULTS.showMinutes, showSeconds = DEFAULTS.showSeconds, 
     use24Hour = DEFAULTS.use24Hour, isMatrixGreen = DEFAULTS.isMatrixGreen, 
     isBinary = DEFAULTS.isBinary, isHex = DEFAULTS.isHex, isAscii = DEFAULTS.isAscii, 
@@ -131,23 +131,16 @@ function initCalendar() {
     });
     
     if (!calendarIcon || !calendarPopup) {
-        console.error("Calendar initialization failed: Missing essential elements");
-        console.error("calendarIcon:", calendarIcon);
-        console.error("calendarPopup:", calendarPopup);
         return;
     }
     
-    // Initial render
     renderCalendar();
     
-    // Event listener for calendar icon
     calendarIcon.addEventListener('click', function(e) {
-        console.log("Calendar icon clicked");
         e.stopPropagation();
         toggleCalendar();
     });
     
-    // Event listeners for navigation buttons
     if (calendarPrev) {
         calendarPrev.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -162,21 +155,18 @@ function initCalendar() {
         });
     }
     
-    // Close calendar when clicking outside
     document.addEventListener('click', function(e) {
         if (isCalendarOpen && !calendarPopup.contains(e.target) && !calendarIcon.contains(e.target)) {
             closeCalendar();
         }
     });
     
-    // Close calendar with Escape key
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && isCalendarOpen) {
             closeCalendar();
         }
     });
     
-    console.log("Calendar initialized successfully");
     window.calendarInitialized = true;
 }
 
@@ -198,7 +188,6 @@ function openCalendar() {
     calendarPopup.classList.add('active');
     isCalendarOpen = true;
     
-    // Try to play sound if available
     try {
         const clickSound = document.getElementById('signal-beep') || new Audio();
         if (clickSound.src) {
@@ -206,11 +195,8 @@ function openCalendar() {
             clickSound.volume = 0.3;
             clickSound.play().catch(() => {});
         }
-    } catch (e) {
-        // Sound error, ignore
-    }
+    } catch (e) {}
     
-    // Re-render calendar to ensure it shows current month
     renderCalendar();
 }
 
@@ -226,7 +212,6 @@ function navigateCalendar(direction) {
     currentCalDate.setMonth(currentCalDate.getMonth() + direction);
     renderCalendar();
     
-    // Try to play navigation sound if available
     try {
         const navSound = document.getElementById('signal-beep') || new Audio();
         if (navSound.src) {
@@ -234,9 +219,7 @@ function navigateCalendar(direction) {
             navSound.volume = 0.2;
             navSound.play().catch(() => {});
         }
-    } catch (e) {
-        // Sound error, ignore
-    }
+    } catch (e) {}
 }
 
 function renderCalendar() {
@@ -245,10 +228,8 @@ function renderCalendar() {
     
     if (!calendarGrid || !calendarMonthYear) return;
     
-    // Clear existing grid
     calendarGrid.innerHTML = '';
     
-    // 1. ADD WEEKDAY LABELS (Fixes the vertical stacking issue)
     const daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
     daysOfWeek.forEach(dayName => {
         const dayHeader = document.createElement('div');
@@ -257,52 +238,41 @@ function renderCalendar() {
         calendarGrid.appendChild(dayHeader);
     });
     
-    // 2. Set month/year display
     const monthNames = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
                        "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
     const month = monthNames[currentCalDate.getMonth()];
     const year = currentCalDate.getFullYear();
     calendarMonthYear.textContent = `${month} ${year}`;
     
-    // 3. Get today's date for highlighting
     const today = new Date();
     const isCurrentMonth = today.getMonth() === currentCalDate.getMonth() && 
                           today.getFullYear() === currentCalDate.getFullYear();
     
-    // 4. Get first day of month and total days
     const firstDay = new Date(currentCalDate.getFullYear(), currentCalDate.getMonth(), 1);
     const lastDay = new Date(currentCalDate.getFullYear(), currentCalDate.getMonth() + 1, 0);
     const totalDays = lastDay.getDate();
-    const startingDay = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const startingDay = firstDay.getDay(); 
     
-    // 5. Add empty cells for days before the first day of the month
     for (let i = 0; i < startingDay; i++) {
         const emptyCell = document.createElement('div');
         emptyCell.className = 'calendar-day empty';
         calendarGrid.appendChild(emptyCell);
     }
     
-    // 6. Add cells for each day of the month
     for (let day = 1; day <= totalDays; day++) {
         const dayCell = document.createElement('div');
         dayCell.className = 'calendar-day';
         dayCell.textContent = day;
-        
-        // Set custom property for staggered animation
         dayCell.style.setProperty('--day-index', day - 1);
         
-        // Add random matrix character data for hover effect (using the alphabet from your script)
         const randomChar = MATRIX_ALPHABET.charAt(Math.floor(Math.random() * MATRIX_ALPHABET.length));
         dayCell.setAttribute('data-char', randomChar);
         
-        // Check if this is today
         if (isCurrentMonth && day === today.getDate()) {
             dayCell.classList.add('today');
         }
         
-        // Add click event
         dayCell.addEventListener('click', function() {
-            // Ensure selectDate is defined in your script
             if (typeof selectDate === "function") selectDate(day);
         });
         
@@ -315,13 +285,11 @@ function selectDate(day) {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     const dateString = selectedDate.toLocaleDateString('en-US', options);
     
-    // Update the main date display
     const dateDisplay = document.getElementById('date');
     if (dateDisplay) {
         dateDisplay.textContent = dateString;
     }
     
-    // Try to play selection sound
     try {
         const selectSound = document.getElementById('signal-beep') || new Audio();
         if (selectSound.src) {
@@ -329,14 +297,10 @@ function selectDate(day) {
             selectSound.volume = 0.3;
             selectSound.play().catch(() => {});
         }
-    } catch (e) {
-        // Sound error, ignore
-    }
+    } catch (e) {}
     
-    // Close calendar after selection
     closeCalendar();
     
-    // Add to chat log if chat is enabled
     if (isChatEnabled) {
         const chatLog = document.getElementById('chat-log');
         if (chatLog) {
@@ -345,12 +309,9 @@ function selectDate(day) {
             dateMsg.innerHTML = `<b class="morpheus">SYSTEM:</b> Temporal interface updated: ${dateString}`;
             chatLog.appendChild(dateMsg);
             
-            // Keep chat log manageable
             if (chatLog.children.length > 50) {
                 chatLog.removeChild(chatLog.firstChild);
             }
-            
-            // Scroll to bottom
             chatLog.scrollTop = chatLog.scrollHeight;
         }
     }
@@ -390,10 +351,8 @@ function resizeVerticalRainCanvas() {
 function initVerticalRainStreams() {
     verticalRainStreams = [];
     const width = window.innerWidth;
-    
     const baseStreamCount = Math.floor(width / 12);
     const streamCount = baseStreamCount * 2;
-
     for (let i = 0; i < streamCount; i++) {
         createVerticalRainStream();
     }
@@ -550,7 +509,6 @@ function stopVerticalRainEffect() {
     }
 }
 
-// --- TAB VISIBILITY HANDLER ---
 function handleTabVisibilityChange() {
     const now = Date.now();
     const wasVisible = isTabVisible;
@@ -572,7 +530,6 @@ function handleTabVisibilityChange() {
 
 document.addEventListener('visibilitychange', handleTabVisibilityChange);
 
-// --- BACKGROUND VIDEO FUNCTIONS ---
 function logVideoStatus(message) {
     console.log(`[Background Video] ${message}`);
 }
@@ -783,7 +740,6 @@ function handleVideoBackgroundToggle(videoType, isChecked) {
     }
 }
 
-// --- ANIMATION LOOPS ---
 let sentinelAnimationId = null;
 
 function animateSentinels() {
@@ -839,11 +795,9 @@ function startAllAnimations() {
     }
 }
 
-// --- DIAGNOSTICS STATE ---
 let lastCpuInfo = null;
 let networkData = { sent: 0, received: 0, lastUpdate: Date.now() };
 
-// --- CLI OVERLAY & COMMANDS ---
 const showZionMessage = (msg) => {
     const overlay = document.createElement('div');
     overlay.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; align-items:center; justify-content:center; z-index:10000; font-family:'Orbitron', sans-serif; color:var(--theme-color); text-align:center; padding:40px; border: 2px solid var(--theme-color); box-shadow: inset 0 0 20px var(--theme-color), 0 0 20px var(--theme-color); box-sizing: border-box;";
@@ -853,7 +807,7 @@ const showZionMessage = (msg) => {
 };
 
 const CLI_COMMANDS = {
-    '/help': () => showZionMessage("SYSTEM COMMANDS:\n/weather [city] - Satellite Uplink\n/ghost [0-1] - UI Transparency\n/speed [10-100] - Rain Velocity\n/color [hex] - Theme Update\n/alphabet [matrix|binary|hex] - Character Swap\n/font [cyber|classic] - Change Typography\n/glitch - Trigger System Distortion\n/night - Toggle Stealth Mode\n/quote [text] - Broadcast Custom Mantra\n/whoami - Advanced Identity Trace\n/jackin - Overclock Stream\n/clear - Flush Terminal\n/white-rabbit - Random Mantra\n/nodes - Link Count\n/reset - Factory Reset"),
+    '/help': () => showZionMessage("SYSTEM COMMANDS:\n/weather [city] - Satellite Uplink\n/ghost [0-1] - UI Transparency\n/speed [10-100] - Rain Velocity\n/color [hex] - System/Rain Color Update\n/alphabet [matrix|binary|hex] - Character Swap\n/font [cyber|classic] - Change Typography\n/glitch - Trigger System Distortion\n/night - Toggle Stealth Mode\n/quote [text] - Broadcast Custom Mantra\n/whoami - Advanced Identity Trace\n/jackin - Overclock Stream\n/clear - Flush Terminal\n/white-rabbit - Random Mantra\n/nodes - Link Count\n/reset - Factory Reset"),
     '/font': (type) => {
         const mode = type.toLowerCase().trim();
         const fontT = document.getElementById('font-toggle');
@@ -896,7 +850,7 @@ const CLI_COMMANDS = {
         const body = document.body;
         const root = document.documentElement;
         const oldIntensity = root.style.getPropertyValue('--glitch-intensity');
-        const oldColor = rainColor;
+        const oldColor = themeColor; 
 
         const glitchAudio = new Audio('glitch.mp3');
         
@@ -972,7 +926,14 @@ const CLI_COMMANDS = {
             chrome.storage.sync.set({ rainSpeed }); 
         }
     },
-    '/color': (v) => { if(v) { document.getElementById('color-picker').value = v; syncThemeColor(); chrome.storage.sync.set({ rainColor: v }); }},
+    '/color': (v) => { 
+        if(v) { 
+            document.getElementById('color-picker').value = v; 
+            document.getElementById('theme-color-picker').value = v; 
+            syncThemeColor(); 
+            chrome.storage.sync.set({ rainColor: v, themeColor: v }); 
+        }
+    },
     '/whoami': async () => {
         const isBrave = (navigator.brave && await navigator.brave.isBrave()) || false;
         const platform = navigator.userAgentData ? navigator.userAgentData.platform : navigator.platform;
@@ -1007,11 +968,9 @@ const CLI_COMMANDS = {
     '/reset': () => { if(confirm("Hard Reset?")) { chrome.storage.sync.clear(); location.reload(); }}
 };
 
-// --- ORACLE AI SYSTEM (NOW WITH LOCAL PUTER.JS) ---
-// Global variable to track typing animations
+// --- ORACLE AI SYSTEM ---
 const matrixTypingAnimations = new Map();
 
-// Oracle cursor management
 let oracleCursor = null;
 let oracleMeasure = null;
 
@@ -1022,199 +981,28 @@ function initOracleCursor() {
     document.body.appendChild(oracleMeasure);
 }
 
-function syncOracleCursor() {
-    if (!oracleCursor || !oracleMeasure) return;
-    const oracleInput = document.getElementById('oracle-input');
-    oracleMeasure.textContent = oracleInput.value || "";
-    const textWidth = oracleMeasure.getBoundingClientRect().width;
-    oracleCursor.style.transform = `translateX(${textWidth}px)`;
-}
-
-function updateOracleCursorVisibility() {
-    if (!oracleCursor) return;
-    const oracleInput = document.getElementById('oracle-input');
-    oracleCursor.style.opacity = (document.activeElement === oracleInput) ? "1" : "0";
-    if (oracleCursor.style.opacity === "1") syncOracleCursor();
-}
-
-// Function to create a dynamic system prompt with current time
-function getOracleSystemPrompt() {
-    const now = new Date();
-    
-    // Format the current date and time
-    const currentDate = now.toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-    });
-    
-    const currentTime = now.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        timeZoneName: 'short'
-    });
-    
-    const utcTime = now.toISOString();
-    
-    // Major cities current times
-    const cities = {
-        'London': 'Europe/London',
-        'Tokyo': 'Asia/Tokyo', 
-        'New York': 'America/New_York',
-        'Los Angeles': 'America/Los_Angeles',
-        'Paris': 'Europe/Paris',
-        'Berlin': 'Europe/Berlin',
-        'Sydney': 'Australia/Sydney',
-        'Beijing': 'Asia/Shanghai',
-        'Mumbai': 'Asia/Kolkata',
-        'Dubai': 'Asia/Dubai'
-    };
-    
-    let cityTimes = [];
-    for (const [city, timezone] of Object.entries(cities)) {
-        try {
-            const cityTime = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
-            const hours = cityTime.getHours().toString().padStart(2, '0');
-            const minutes = cityTime.getMinutes().toString().padStart(2, '0');
-            cityTimes.push(`${city}: ${hours}:${minutes}`);
-        } catch (e) {
-            // Skip if timezone calculation fails
-        }
-    }
-    
-    return `You are The Oracle from The Matrix. You have access to CURRENT REAL-TIME INFORMATION.
-
-CURRENT DATE AND TIME:
-- Today is: ${currentDate}
-- Current time: ${currentTime}
-- UTC timestamp: ${utcTime}
-- Major city times: ${cityTimes.join(', ')}
-
-RULES:
-1. You KNOW the current time and date. Use this information when answering time-related questions.
-2. For factual questions, give direct, accurate information first.
-3. Add a brief Oracle-style philosophical comment after factual answers.
-4. For philosophical questions, be cryptic and wise.
-5. You can calculate time differences based on the current time provided.
-
-EXAMPLES:
-User: What time is it in London?
-Oracle: Right now in London it's ${getCityTime('London')}. Time is the quiet rumor of the universe, kid.
-
-User: What day is it?
-Oracle: Today is ${currentDate}. In the Matrix, every day feels the same. What makes this one different?
-
-User: What's 15 * 27?
-Oracle: 405. Numbers are just another system of control, but at least this one adds up.
-
-User: Who created the Matrix?
-Oracle: The Architect designed it, but humans built their own prison. We can never see past the choices we don't understand.
-
-IMPORTANT: You have real-time information. Never say you don't know the current time or date.`;
-}
-
-// Helper function to get current time for a city
-function getCityTime(cityName) {
-    const cityTimezones = {
-        'London': 'Europe/London',
-        'Tokyo': 'Asia/Tokyo',
-        'New York': 'America/New_York',
-        'Los Angeles': 'America/Los_Angeles',
-        'Paris': 'Europe/Paris',
-        'Berlin': 'Europe/Berlin',
-        'Sydney': 'Australia/Sydney',
-        'Beijing': 'Asia/Shanghai',
-        'Mumbai': 'Asia/Kolkata',
-        'Dubai': 'Asia/Dubai',
-        'Singapore': 'Asia/Singapore',
-        'Hong Kong': 'Asia/Hong_Kong',
-        'Seoul': 'Asia/Seoul',
-        'Moscow': 'Europe/Moscow',
-        'Rome': 'Europe/Rome',
-        'Madrid': 'Europe/Madrid',
-        'Toronto': 'America/Toronto',
-        'Chicago': 'America/Chicago',
-        'Miami': 'America/New_York',
-        'Houston': 'America/Chicago',
-        'Phoenix': 'America/Phoenix',
-        'Philadelphia': 'America/New_York',
-        'San Francisco': 'America/Los_Angeles',
-        'Boston': 'America/New_York',
-        'Atlanta': 'America/New_York',
-        'Detroit': 'America/New_York',
-        'Seattle': 'America/Los_Angeles',
-        'Denver': 'America/Denver',
-        'Washington DC': 'America/New_York',
-        'Austin': 'America/Chicago',
-        'Dallas': 'America/Chicago',
-        'San Diego': 'America/Los_Angeles',
-        'Minneapolis': 'America/Chicago',
-        'Portland': 'America/Los_Angeles',
-        'Las Vegas': 'America/Los_Angeles',
-        'Orlando': 'America/New_York',
-        'Charlotte': 'America/New_York',
-        'Nashville': 'America/Chicago',
-        'Kansas City': 'America/Chicago',
-        'Indianapolis': 'America/New_York',
-        'Columbus': 'America/New_York',
-        'Milwaukee': 'America/Chicago',
-        'Salt Lake City': 'America/Denver',
-        'Albuquerque': 'America/Denver',
-        'Tucson': 'America/Phoenix',
-        'Fresno': 'America/Los_Angeles',
-        'Sacramento': 'America/Los_Angeles',
-        'Honolulu': 'Pacific/Honolulu',
-        'Anchorage': 'America/Anchorage'
-    };
-    
-    const timezone = cityTimezones[cityName];
-    if (!timezone) return "unknown time";
-    
-    try {
-        const now = new Date();
-        const cityTime = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
-        const hours = cityTime.getHours().toString().padStart(2, '0');
-        const minutes = cityTime.getMinutes().toString().padStart(2, '0');
-        return `${hours}:${minutes}`;
-    } catch (e) {
-        return "unknown time";
-    }
-}
-
 async function initOracleChat() {
     const container = document.getElementById('oracle-chat-container');
     const input = document.getElementById('oracle-input');
     const history = document.getElementById('oracle-chat-history');
     const oracleCursor = document.getElementById('oracle-cursor');
 
-    // --- CURSOR FIX: MEASUREMENT SPAN ---
     const oracleMeasure = document.createElement('span');
     oracleMeasure.style.cssText = "position:absolute; visibility:hidden; white-space:pre; pointer-events:none;";
     document.body.appendChild(oracleMeasure);
 
     function syncOracleCursor() {
         if (!input || !oracleCursor) return;
-
-        // 1. Sync exact computed styles
         const style = window.getComputedStyle(input);
         oracleMeasure.style.fontFamily = style.fontFamily;
         oracleMeasure.style.fontSize = style.fontSize;
         oracleMeasure.style.fontWeight = style.fontWeight;
         oracleMeasure.style.letterSpacing = style.letterSpacing;
         oracleMeasure.style.textTransform = style.textTransform;
-
-        // 2. Mirror text and measure width
         oracleMeasure.textContent = input.value || "";
         const textWidth = oracleMeasure.getBoundingClientRect().width;
-
-        // 3. CORRECTING THE OVERLAP: Account for padding and scroll
-        // This ensures the cursor starts exactly where the text starts
         const paddingLeft = parseFloat(style.paddingLeft) || 0;
         const scrollOffset = input.scrollLeft;
-        
-        // Use translateX for smooth movement; ensure base 'left' matches padding
         oracleCursor.style.left = `${paddingLeft}px`;
         oracleCursor.style.transform = `translateX(${textWidth - scrollOffset}px)`;
     }
@@ -1223,19 +1011,15 @@ async function initOracleChat() {
         oracleCursor.style.opacity = (document.activeElement === input) ? "1" : "0";
         if (oracleCursor.style.opacity === "1") syncOracleCursor();
     }
-    // ------------------------------------
 
-    // Initialize Visibility
     updateOracleCursorVisibility();
 
-    // Toggle visibility based on settings
     if (!isOracleEnabled) {
         container.classList.add('hidden');
         return;
     }
     container.classList.remove('hidden');
 
-    // Initialize Puter.js SDK
     try {
         await loadPuterSDK();
         const now = new Date();
@@ -1246,13 +1030,11 @@ async function initOracleChat() {
         addOracleResponse("The connection's fuzzy... must be interference from the machines.");
     }
 
-    // Event Listeners
     input.addEventListener('input', syncOracleCursor);
     input.addEventListener('scroll', syncOracleCursor);
     input.addEventListener('focus', updateOracleCursorVisibility);
     input.addEventListener('blur', updateOracleCursorVisibility);
 
-    // Initial Styles (Ensure caret-color is transparent to hide default browser cursor)
     input.style.cssText = "background: transparent; border: none; color: #fff; font-family: 'Courier New', monospace; flex: 1; outline: none; font-size: 0.8rem; width: 100%; caret-color: transparent; white-space: nowrap; overflow: hidden;";
 
     input.onkeydown = async (e) => {
@@ -1302,11 +1084,9 @@ function startMatrixTypingAnimation(elementId) {
     const element = document.getElementById(elementId);
     if (!element) return;
     
-    // Initial scrambled text
     const initialText = getRandomMatrixChars(15);
     element.textContent = initialText;
     
-    // Start animation interval
     const intervalId = setInterval(() => {
         if (!document.getElementById(elementId)) {
             clearInterval(intervalId);
@@ -1314,18 +1094,13 @@ function startMatrixTypingAnimation(elementId) {
             return;
         }
         
-        // Generate new random matrix characters
         const newText = getRandomMatrixChars(15);
         element.textContent = newText;
-        
-        // Add pulsing effect
         element.style.opacity = (0.7 + Math.random() * 0.3).toString();
         
-    }, 100); // Update every 100ms
+    }, 100); 
     
     matrixTypingAnimations.set(elementId, intervalId);
-    
-    // Add CSS class for glow effect
     element.classList.add('matrix-typing-active');
 }
 
@@ -1349,7 +1124,6 @@ function getRandomMatrixChars(length = 20) {
     ).join('');
 }
 
-// Add CSS for the typing animation
 function addMatrixTypingStyles() {
     if (document.getElementById('matrix-typing-styles')) return;
     
@@ -1361,316 +1135,103 @@ function addMatrixTypingStyles() {
             font-family: 'Courier New', monospace;
             letter-spacing: 1px;
         }
-        
         .matrix-typing-active {
             animation: matrixPulse 0.8s infinite alternate;
             text-shadow: 0 0 5px var(--theme-color), 0 0 10px var(--theme-color);
         }
-        
         @keyframes matrixPulse {
-            0% {
-                opacity: 0.7;
-                text-shadow: 0 0 5px var(--theme-color);
-            }
-            100% {
-                opacity: 1;
-                text-shadow: 0 0 10px var(--theme-color), 0 0 15px var(--theme-color);
-            }
+            0% { opacity: 0.7; text-shadow: 0 0 5px var(--theme-color); }
+            100% { opacity: 1; text-shadow: 0 0 10px var(--theme-color), 0 0 15px var(--theme-color); }
         }
-        
-        .oracle-entry .matrix-typing {
-            min-height: 1.2em;
-            min-width: 100px;
-            display: inline-block;
-        }
+        .oracle-entry .matrix-typing { min-height: 1.2em; min-width: 100px; display: inline-block; }
     `;
-    
     document.head.appendChild(style);
 }
 
-// Call this when initializing
 addMatrixTypingStyles();
 
 async function loadPuterSDK() {
     if (window.puter) {
-        console.log("Puter.js already loaded");
         return;
     }
-    
     return new Promise((resolve, reject) => {
         const script = document.createElement('script');
         script.src = chrome.runtime.getURL('puter.js');
         script.onload = () => {
-            console.log("Puter.js script loaded, checking API...");
-            
-            // Check if puter.ai exists and has the right methods
-            if (typeof puter === 'undefined') {
-                reject(new Error("Puter object not defined"));
-                return;
-            }
-            
-            // Try to initialize if needed
+            if (typeof puter === 'undefined') { reject(new Error("Puter object not defined")); return; }
             if (typeof puter.init === 'function') {
-                puter.init().then(() => {
-                    console.log("Puter initialized successfully");
-                    resolve();
-                }).catch(reject);
-            } else {
-                console.log("Puter.init not available, proceeding anyway");
-                resolve();
-            }
+                puter.init().then(() => { resolve(); }).catch(reject);
+            } else { resolve(); }
         };
-        script.onerror = (error) => {
-            console.error('Failed to load local puter.js:', error);
-            reject(error);
-        };
+        script.onerror = (error) => { reject(error); };
         document.head.appendChild(script);
     });
 }
 
+function getOracleSystemPrompt() {
+    const now = new Date();
+    const currentDate = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const currentTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short' });
+    return `You are The Oracle from The Matrix. Current Date: ${currentDate}, Time: ${currentTime}. Answer briefly and cryptically.`;
+}
+
 async function getOracleAIResponse(userInput) {
-    console.log("Getting Oracle response for:", userInput);
-    
-    // Add to conversation history
     oracleChatHistory.push({ role: 'user', content: userInput });
-    
-    // Keep history manageable (last 10 exchanges)
-    if (oracleChatHistory.length > 20) {
-        oracleChatHistory = oracleChatHistory.slice(-20);
-    }
+    if (oracleChatHistory.length > 20) oracleChatHistory = oracleChatHistory.slice(-20);
     
     try {
-        // Check if puter.js is loaded
-        if (typeof puter === 'undefined' || typeof puter.ai === 'undefined') {
-            console.log("Puter not loaded, attempting to load...");
-            await loadPuterSDK();
-        }
-        
-        // Get fresh system prompt with current time
+        if (typeof puter === 'undefined' || typeof puter.ai === 'undefined') await loadPuterSDK();
         const systemPrompt = getOracleSystemPrompt();
+        const messages = [{ role: 'system', content: systemPrompt }, ...oracleChatHistory];
         
-        // Format conversation for the prompt
-        const messages = [
-            { role: 'system', content: systemPrompt },
-            ...oracleChatHistory
-        ];
-        
-        // Create a simple text prompt from messages
-        const fullPrompt = messages.map(msg => {
-            if (msg.role === 'system') return `System: ${msg.content}`;
-            if (msg.role === 'user') return `User: ${msg.content}`;
-            if (msg.role === 'assistant') return `Oracle: ${msg.content}`;
-            return `${msg.role}: ${msg.content}`;
-        }).join('\n') + '\nOracle:';
-        
-        console.log("Full prompt (first 500 chars):", fullPrompt.substring(0, 500));
+        const fullPrompt = messages.map(msg => `${msg.role}: ${msg.content}`).join('\n') + '\nOracle:';
         
         let rawResponse;
-        
-        // SIMPLIFIED: Just try puter.ai.chat with the prompt string
         if (typeof puter.ai.chat === 'function') {
-            console.log("Calling puter.ai.chat with prompt...");
             rawResponse = await puter.ai.chat(fullPrompt);
-            console.log("Raw response from puter.ai.chat:", rawResponse);
         } else {
             throw new Error("puter.ai.chat is not available");
         }
         
-        // SIMPLIFIED RESPONSE EXTRACTION
         let responseText = '';
-        
-        // If it's already a string, use it
         if (typeof rawResponse === 'string') {
             responseText = rawResponse;
-        }
-        // If it's an object, try to extract text
-        else if (rawResponse && typeof rawResponse === 'object') {
-            console.log("Response is an object, trying to extract text...");
-            
-            // Debug: log the entire object structure
-            console.log("Response object keys:", Object.keys(rawResponse));
-            
-            // Try common patterns
-            if (rawResponse.message && typeof rawResponse.message === 'string') {
-                responseText = rawResponse.message;
-            } 
-            else if (rawResponse.content && typeof rawResponse.content === 'string') {
-                responseText = rawResponse.content;
-            }
-            else if (rawResponse.text && typeof rawResponse.text === 'string') {
-                responseText = rawResponse.text;
-            }
-            else if (rawResponse.result && typeof rawResponse.result === 'string') {
-                responseText = rawResponse.result;
-            }
-            else if (rawResponse.data) {
-                if (typeof rawResponse.data === 'string') {
-                    responseText = rawResponse.data;
-                } else if (rawResponse.data.text && typeof rawResponse.data.text === 'string') {
-                    responseText = rawResponse.data.text;
-                } else if (rawResponse.data.content && typeof rawResponse.data.content === 'string') {
-                    responseText = rawResponse.data.content;
-                }
-            }
-            // Check if it has a choices array (OpenAI format)
-            else if (rawResponse.choices && Array.isArray(rawResponse.choices) && rawResponse.choices.length > 0) {
-                const choice = rawResponse.choices[0];
-                if (choice.message && choice.message.content) {
-                    responseText = choice.message.content;
-                } else if (choice.text) {
-                    responseText = choice.text;
-                }
-            }
-            // Last resort: convert to string and clean up
-            else {
-                console.log("Could not find text in object, converting to string...");
-                const stringified = JSON.stringify(rawResponse);
-                
-                // Try to extract text from JSON string
-                const textMatch = stringified.match(/"text":"([^"]+)"/) || 
-                                 stringified.match(/"content":"([^"]+)"/) ||
-                                 stringified.match(/"message":"([^"]+)"/) ||
-                                 stringified.match(/"result":"([^"]+)"/);
-                
-                if (textMatch) {
-                    responseText = textMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n');
-                } else {
-                    // Use the stringified version
-                    responseText = stringified;
-                }
-            }
-        }
-        // If it's something else, convert to string
-        else {
+        } else if (rawResponse && typeof rawResponse === 'object') {
+            if (rawResponse.message) responseText = rawResponse.message;
+            else if (rawResponse.content) responseText = rawResponse.content;
+            else if (rawResponse.text) responseText = rawResponse.text;
+            else responseText = JSON.stringify(rawResponse);
+        } else {
             responseText = String(rawResponse);
         }
         
-        // Final cleanup
-        if (typeof responseText !== 'string') {
-            responseText = String(responseText);
-        }
+        responseText = responseText.replace(/^(Oracle|Assistant|System):\s*/i, '').trim();
         
-        responseText = responseText.trim();
-        
-        // Remove any leading "Oracle:" or "Assistant:" prefixes
-        responseText = responseText.replace(/^(Oracle|Assistant|System):\s*/i, '');
-        
-        // If we still have [object Object], use fallback
-        if (responseText.includes('[object Object]') || responseText.includes('[object ') || responseText.length < 2) {
-            console.log("Response still contains [object Object], using fallback");
+        if (responseText.includes('[object Object]') || responseText.length < 2) {
             return getLocalOracleResponse(userInput);
         }
         
-        console.log("Final response text:", responseText);
-        
-        // Add to conversation history
         oracleChatHistory.push({ role: 'assistant', content: responseText });
-        
         return responseText;
         
     } catch (error) {
-        console.error("Error getting Oracle response:", error);
-        console.log("Error details:", error.name, error.message);
-        
-        // Use local fallback
         return getLocalOracleResponse(userInput);
     }
 }
 
 function getLocalOracleResponse(userInput) {
-    console.log("Using local Oracle fallback for:", userInput);
-    
-    const input = userInput.toLowerCase();
-    const now = new Date();
-    
-    // Check for time questions
-    if (input.includes('time') && (input.includes('what') || input.includes('current'))) {
-        if (input.includes('london')) {
-            const londonTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/London' }));
-            const hours = londonTime.getHours().toString().padStart(2, '0');
-            const minutes = londonTime.getMinutes().toString().padStart(2, '0');
-            return `In London, it's ${hours}:${minutes} right now. Time is the quiet rumor of the universe, kid.`;
-        }
-        else if (input.includes('tokyo') || input.includes('japan')) {
-            const tokyoTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
-            const hours = tokyoTime.getHours().toString().padStart(2, '0');
-            const minutes = tokyoTime.getMinutes().toString().padStart(2, '0');
-            return `In Tokyo, it's ${hours}:${minutes} right now. The machines track every second perfectly.`;
-        }
-        else if (input.includes('new york')) {
-            const nyTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-            const hours = nyTime.getHours().toString().padStart(2, '0');
-            const minutes = nyTime.getMinutes().toString().padStart(2, '0');
-            return `In New York, it's ${hours}:${minutes} right now. Time zones are just another system, kid.`;
-        }
-    }
-    
-    // Check for date questions
-    if (input.includes('date') || input.includes('today') || input.includes('day is it')) {
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        const dateStr = now.toLocaleDateString('en-US', options);
-        return `Today is ${dateStr}. In the Matrix, every day feels the same. What makes this one different, kid?`;
-    }
-    
-    // Check for math questions
-    const mathMatch = input.match(/(\d+)\s*([+\-*/x])\s*(\d+)/);
-    if (mathMatch) {
-        const [_, num1, op, num2] = mathMatch;
-        const n1 = parseInt(num1);
-        const n2 = parseInt(num2);
-        let result;
-        
-        switch(op) {
-            case '+': result = n1 + n2; break;
-            case '-': result = n1 - n2; break;
-            case '*': case 'x': result = n1 * n2; break;
-            case '/': result = n2 !== 0 ? (n1 / n2).toFixed(2) : 'undefined (cannot divide by zero)'; break;
-            default: result = '?';
-        }
-        
-        return `${result}. Numbers are the machine's language, kid. But some answers are simpler than they seem.`;
-    }
-    
-    // Check for "who are you" questions
-    if (input.includes('who are you') || input.includes('what are you')) {
-        return "I'm the Oracle, kid. I bake cookies and know things. Some people think I can see the future. Sit down, have a cookie, ask me something.";
-    }
-    
-    // Check for Matrix questions
-    if (input.includes('matrix') || input.includes('neo') || input.includes('morpheus') || input.includes('trinity')) {
-        const matrixResponses = [
-            "The Matrix is a system, Neo. That system is our enemy.",
-            "I'd ask you to sit down, but you're not going to anyway, are you?",
-            "You didn't come here to make the choice, you've already made it.",
-            "Being The One is like being in love. No one can tell you you're in love, you just know it.",
-            "We can never see past the choices we don't understand.",
-            "Would you like a cookie? They're almost done baking.",
-            "The Architect designed every choice. Even this one.",
-            "There's a difference between knowing the path and walking the path."
-        ];
-        return matrixResponses[Math.floor(Math.random() * matrixResponses.length)];
-    }
-    
-    // Check for simple greetings
-    if (input.includes('hello') || input.includes('hi ') || input === 'hi' || input === 'hey') {
-        const currentTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-        return `Hello, kid. It's ${currentTime} now. The cookies are baking. What brings you to my kitchen?`;
-    }
-    
-    // Default Oracle responses
     const responses = [
         "The cookies are almost done. What do you really want to know?",
-        "You're asking the right questions, but maybe the wrong ones. Try again.",
-        "The answer isn't in the code, it's in you. What does your gut tell you?",
-        "Sometimes you have to unplug to see the truth. What's really on your mind?",
-        "Would you like a cookie? They're almost done baking.",
-        "The machines are listening. Ask me something real.",
-        "I see you're searching. The answer might surprise you.",
-        "In the Matrix, some questions have no answers. Others have too many.",
-        "You remind me of Neo. Always questioning. What's next?",
-        "The Architect designed the questions too. What do you really want?"
+        "You're asking the right questions, but maybe the wrong ones.",
+        "The answer isn't in the code, it's in you.",
+        "Sometimes you have to unplug to see the truth.",
+        "Would you like a cookie?",
+        "The machines are listening.",
+        "I see you're searching.",
+        "In the Matrix, some questions have no answers.",
+        "You remind me of Neo.",
+        "The Architect designed the questions too."
     ];
-    
     return responses[Math.floor(Math.random() * responses.length)];
 }
 
@@ -1679,10 +1240,7 @@ function addOracleResponse(text) {
     const entry = document.createElement('div');
     entry.className = "oracle-entry";
     
-    // Create a unique ID for this response to track its state
     const responseId = 'oracle-response-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-    
-    // Initially fully encrypted/scrambled text
     const scrambled = text.split('').map(() => MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]).join('');
     
     entry.innerHTML = `
@@ -1701,28 +1259,22 @@ function addOracleResponse(text) {
     let isCurrentlyEncrypted = true;
     let typewriterInterval = null;
     let typewriterProgress = 0;
-    const typewriterSpeed = 30; // ms per character
+    const typewriterSpeed = 30; 
     const totalCharacters = text.length;
     
-    // Clear any existing intervals for this element
     if (oracleIntervals.has(textEl)) {
         clearInterval(oracleIntervals.get(textEl));
         oracleIntervals.delete(textEl);
     }
     
-    // Start the typewriter reveal
     function startTypewriterReveal() {
-        if (typewriterInterval) {
-            clearInterval(typewriterInterval);
-        }
-        
+        if (typewriterInterval) clearInterval(typewriterInterval);
         typewriterProgress = 0;
         isCurrentlyEncrypted = true;
         textEl.classList.add('encrypted');
         textEl.setAttribute('data-state', 'revealing');
         
         typewriterInterval = setInterval(() => {
-            // Show partially revealed text with random characters for the rest
             const revealedPart = text.substring(0, typewriterProgress);
             const remainingLength = text.length - typewriterProgress;
             const randomPart = Array(remainingLength).fill(0).map(() => 
@@ -1730,10 +1282,8 @@ function addOracleResponse(text) {
             ).join('');
             
             textEl.innerText = revealedPart + randomPart;
-            
             typewriterProgress++;
             
-            // When fully revealed
             if (typewriterProgress > totalCharacters) {
                 clearInterval(typewriterInterval);
                 typewriterInterval = null;
@@ -1741,67 +1291,43 @@ function addOracleResponse(text) {
                 isCurrentlyEncrypted = false;
                 textEl.classList.remove('encrypted');
                 textEl.setAttribute('data-state', 'decrypted');
-                
-                // Set a timeout to re-encrypt after a delay
                 setTimeout(() => {
-                    // Only re-encrypt if not currently being hovered
                     if (!textEl.matches(':hover') && isCurrentlyEncrypted === false && !typewriterInterval) {
                         encryptText();
                     }
-                }, 2000); // Wait 2 seconds before auto-re-encrypting
+                }, 2000); 
             }
         }, typewriterSpeed);
     }
     
-    // Function to encrypt text
     const encryptText = () => {
         if (isCurrentlyEncrypted || typewriterInterval) return;
-        
         isCurrentlyEncrypted = true;
         textEl.classList.add('encrypted');
         textEl.setAttribute('data-state', 'encrypted');
-        
-        // Use the existing decryptOracleText function for encryption (reverse direction)
-        if (oracleIntervals.has(textEl)) {
-            clearInterval(oracleIntervals.get(textEl));
-        }
-        
-        decryptOracleText(textEl, text, false); // false = encrypt mode
+        if (oracleIntervals.has(textEl)) clearInterval(oracleIntervals.get(textEl));
+        decryptOracleText(textEl, text, false); 
     };
     
-    // Function to decrypt text
     const decryptText = () => {
         if (!isCurrentlyEncrypted || typewriterInterval) return;
-        
         isCurrentlyEncrypted = false;
         textEl.classList.remove('encrypted');
         textEl.setAttribute('data-state', 'decrypted');
-        
-        // Use the existing decryptOracleText function
-        if (oracleIntervals.has(textEl)) {
-            clearInterval(oracleIntervals.get(textEl));
-        }
-        
-        decryptOracleText(textEl, text, true); // true = decrypt mode
+        if (oracleIntervals.has(textEl)) clearInterval(oracleIntervals.get(textEl));
+        decryptOracleText(textEl, text, true); 
     };
     
-    // Start the typewriter effect immediately
     setTimeout(() => {
         startTypewriterReveal();
-    }, 100); // Small delay to ensure DOM is ready
+    }, 100); 
     
-    // Setup Hover Logic
     textEl.onmouseenter = () => {
-        // If text is encrypted and not currently revealing via typewriter
-        if (isCurrentlyEncrypted && !typewriterInterval) {
-            decryptText();
-        }
+        if (isCurrentlyEncrypted && !typewriterInterval) decryptText();
     };
     
     textEl.onmouseleave = () => {
-        // If text is decrypted and not currently revealing via typewriter
         if (!isCurrentlyEncrypted && !typewriterInterval) {
-            // Wait a bit before re-encrypting to give user time to read
             setTimeout(() => {
                 if (!textEl.matches(':hover') && !isCurrentlyEncrypted && !typewriterInterval) {
                     encryptText();
@@ -1815,20 +1341,11 @@ const oracleIntervals = new Map();
 const oracleIterations = new Map();
 
 function decryptOracleText(element, targetText, isDecrypting) {
-    // Clear any existing interval for this element
-    if (oracleIntervals.has(element)) {
-        clearInterval(oracleIntervals.get(element));
-    }
-    
+    if (oracleIntervals.has(element)) clearInterval(oracleIntervals.get(element));
     let iteration = oracleIterations.get(element) || 0;
-    
-    // If we're encrypting, start from the end
-    if (!isDecrypting && iteration === 0) {
-        iteration = targetText.length;
-    }
+    if (!isDecrypting && iteration === 0) iteration = targetText.length;
     
     const interval = setInterval(() => {
-        // Handle case where element might have been removed
         if (!document.contains(element)) {
             clearInterval(interval);
             oracleIntervals.delete(element);
@@ -1837,18 +1354,16 @@ function decryptOracleText(element, targetText, isDecrypting) {
         
         element.innerText = targetText.split("").map((letter, index) => {
             if (isDecrypting) {
-                // Decrypting: show real text from start to iteration
                 if (index < iteration) return targetText[index];
                 return MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)];
             } else {
-                // Encrypting: show real text from start to iteration, random after
                 if (index < iteration) return targetText[index];
                 return MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)];
             }
         }).join("");
         
         if (isDecrypting) {
-            iteration += 1/2; // Speed of reveal
+            iteration += 1/2; 
             if (iteration >= targetText.length) { 
                 iteration = targetText.length; 
                 element.innerText = targetText; 
@@ -1857,7 +1372,7 @@ function decryptOracleText(element, targetText, isDecrypting) {
                 oracleIterations.delete(element);
             }
         } else {
-            iteration -= 1/2; // Speed of encryption
+            iteration -= 1/2; 
             if (iteration <= 0) { 
                 iteration = 0; 
                 element.innerText = targetText.replace(/./g, () => MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]); 
@@ -1868,7 +1383,6 @@ function decryptOracleText(element, targetText, isDecrypting) {
         }
         oracleIterations.set(element, iteration);
     }, 30);
-    
     oracleIntervals.set(element, interval);
 }
 
@@ -1951,7 +1465,6 @@ const MAX_NETWORK_HISTORY = 60;
 
 function updateNetworkStats() {
     const now = Date.now();
-    
     let netActivity = 0;
     if (navigator.onLine) {
         const randomPattern = Math.random();
@@ -1959,7 +1472,6 @@ function updateNetworkStats() {
         else if (randomPattern < 0.3) netActivity = 10 + Math.random() * 20;
         else netActivity = 2 + Math.random() * 8;
     }
-    
     const bytesPerUpdate = netActivity * 1024;
     networkData.sent += bytesPerUpdate * 0.4 / 1024;
     networkData.received += bytesPerUpdate * 0.6 / 1024;
@@ -1994,7 +1506,6 @@ function updateNetworkStats() {
             }
         }
     }
-    
     const ioFill = get('io-fill');
     if (ioFill) {
         const ioPercent = Math.min(netActivity * 0.7 + Math.random() * 15, 100);
@@ -2028,7 +1539,6 @@ function initSnow() {
     }
 }
 
-// --- FULL SCREEN 2D RAIN FIX ---
 function resize() { 
     const dpr = window.devicePixelRatio || 1;
     [canvas, sCanvas].forEach(c => {
@@ -2056,10 +1566,8 @@ function resize() {
 
 function drawMatrix() {
     if (videoBackground) return;
-    
     const fullWidth = Math.max(window.innerWidth, document.documentElement.clientWidth);
     const fullHeight = Math.max(window.innerHeight, document.documentElement.clientHeight);
-    
     ctx.fillStyle = "rgba(0, 0, 0, 0.05)"; 
     ctx.fillRect(0, 0, fullWidth, fullHeight);
     
@@ -2073,11 +1581,9 @@ function drawMatrix() {
     for (let i = 0; i < rainDrops.length; i++) {
         if (isFlashing) ctx.fillStyle = `hsl(${Math.random() * 360}, 100%, 50%)`;
         const text = currentAlphabet.charAt(Math.floor(Math.random() * currentAlphabet.length));
-        
         const x = i * fontSize;
         const y = rainDrops[i] * fontSize;
         ctx.fillText(text, x, y);
-        
         rainDrops[i]++;
         if (rainDrops[i] * fontSize > fullHeight + 100) {
             rainDrops[i] = -Math.floor(Math.random() * 20);
@@ -2122,26 +1628,24 @@ function updateUI() {
             lastCpuInfo = info;
         });
     }
-
     if (chrome.system && chrome.system.memory) {
         chrome.system.memory.getInfo((info) => {
             const memPercent = Math.round(((info.capacity - info.availableCapacity) / info.capacity) * 100);
             if (memFill) memFill.style.height = `${memPercent}%`;
         });
     }
-
     if (navigator.getBattery) {
         navigator.getBattery().then(battery => {
             const pwrPercent = Math.round(battery.level * 100);
             if (pwrFill) pwrFill.style.height = `${pwrPercent}%`;
         });
     }
-    
     if (Date.now() - networkData.lastUpdate > 2000) updateNetworkStats();
 }
 
-// --- ZION NETWORK RSS ---
+// --- ZION NETWORK RSS (INTERCEPTED & RESTORED) ---
 const matrixTextIntervals = new Map(), matrixTextIterations = new Map();
+
 function decryptRssText(element, targetText, isHovering) {
     if (matrixTextIntervals.has(element)) clearInterval(matrixTextIntervals.get(element));
     let iteration = matrixTextIterations.get(element) || 0;
@@ -2164,8 +1668,10 @@ function decryptRssText(element, targetText, isHovering) {
 
 async function updateZionFeed(isSilent = false) {
     const data = await chrome.storage.sync.get(['isRssEnabled', 'rssSubs']);
-    const container = get('zion-rss-container'), list = get('rss-feed-list');
-    const barCont = get('rss-loading-bar-container'), bar = get('rss-loading-bar');
+    const container = document.getElementById('zion-rss-container');
+    const list = document.getElementById('rss-feed-list');
+    const barCont = document.getElementById('rss-loading-bar-container');
+    const bar = document.getElementById('rss-loading-bar');
     
     if (!data.isRssEnabled) { container.classList.add('hidden'); return; }
     container.classList.remove('hidden');
@@ -2175,19 +1681,27 @@ async function updateZionFeed(isSilent = false) {
         list.innerHTML = '<div class="rss-meta">Establishing Uplink...</div>';
         if (barCont && bar) {
             barCont.style.display = 'block';
-            bar.style.width = '30%'; // Handshake phase
+            bar.style.width = '30%'; 
         }
     }
     
     try {
         const subs = data.rssSubs || "matrix+cyberpunk";
-        const response = await fetch(`https://www.reddit.com/r/${subs}/hot.json?limit=50`);
+        const response = await fetch(`https://www.reddit.com/r/${subs}/hot.json?limit=50&raw_json=1`);
         
-        if (!isSilent && bar) bar.style.width = '70%'; // Data Transfer phase
+        if (!isSilent && bar) bar.style.width = '70%'; 
+        
+        // --- FIX: Check for JSON Content Type ---
+        const contentType = response.headers.get("content-type");
+        if (!response.ok || !contentType || contentType.indexOf("application/json") === -1) {
+            // If Reddit returns HTML (often a 429/403 error page), throw a clear error to avoid syntax crashes
+            throw new Error("Reddit Uplink Failed: Received HTML/Error instead of JSON");
+        }
+        // ----------------------------------------
         
         const json = await response.json();
         
-        if (!isSilent && bar) bar.style.width = '100%'; // Processing phase
+        if (!isSilent && bar) bar.style.width = '100%'; 
         
         list.innerHTML = "";
 
@@ -2196,7 +1710,21 @@ async function updateZionFeed(isSilent = false) {
             const link = document.createElement('a');
             link.className = 'rss-item'; 
             link.href = `https://reddit.com${item.permalink}`; 
-            link.target = "_blank";
+            
+            // --- INTERCEPT CLICK FOR TERMINAL ---
+            link.onclick = (e) => {
+                // Do not open terminal if user clicked a control button (fullscreen/volume)
+                if (e.target.tagName !== 'BUTTON' && e.target.parentElement.tagName !== 'BUTTON') {
+                    e.preventDefault();
+                    if (typeof openTerminalModal === "function") {
+                        openTerminalModal(item.permalink);
+                    } else {
+                        // Fallback if modal function is missing
+                        window.open(link.href, '_blank');
+                    }
+                }
+            };
+            // ------------------------------------
 
             // 1. Create Title (Matrix Cipher Effect)
             const title = document.createElement('div');
@@ -2220,7 +1748,7 @@ async function updateZionFeed(isSilent = false) {
             link.appendChild(title);
             link.appendChild(meta);
 
-            // 3. Media Wrapper (Image or Audio-Enabled Video)
+            // 3. Media Wrapper (RESTORED)
             if (item.post_hint === 'image' || (item.url && item.url.match(/\.(jpg|jpeg|png|gif)$/))) {
                 const wrap = document.createElement('div');
                 wrap.className = 'rss-media-wrapper';
@@ -2231,12 +1759,12 @@ async function updateZionFeed(isSilent = false) {
 
                 // --- IMAGE FULLSCREEN BUTTON ---
                 const imgFsBtn = document.createElement('button');
-                imgFsBtn.className = 'video-fullscreen-btn'; // Same class as video for styling
+                imgFsBtn.className = 'video-fullscreen-btn'; 
                 imgFsBtn.innerHTML = '⛶';
                 imgFsBtn.title = "Maximize Visual";
                 imgFsBtn.onclick = (e) => {
                     e.preventDefault();
-                    e.stopPropagation();
+                    e.stopPropagation(); // Stop click from bubbling to the link/terminal
                     if (img.requestFullscreen) img.requestFullscreen();
                     else if (img.webkitRequestFullscreen) img.webkitRequestFullscreen();
                     else if (img.msRequestFullscreen) img.msRequestFullscreen();
@@ -2264,7 +1792,7 @@ async function updateZionFeed(isSilent = false) {
                 fsBtn.title = "Maximize Transmission";
                 fsBtn.onclick = (e) => {
                     e.preventDefault();
-                    e.stopPropagation();
+                    e.stopPropagation(); // Stop click from bubbling
                     if (video.requestFullscreen) video.requestFullscreen();
                     else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
                     else if (video.msRequestFullscreen) video.msRequestFullscreen();
@@ -2277,7 +1805,7 @@ async function updateZionFeed(isSilent = false) {
                 volBtn.title = "Toggle Audio";
                 volBtn.onclick = (e) => {
                     e.preventDefault();
-                    e.stopPropagation();
+                    e.stopPropagation(); // Stop click from bubbling
                     video.muted = !video.muted;
                     if (!video.muted) video.play().catch(() => {});
                     volBtn.innerHTML = video.muted ? '🔇' : '🔊';
@@ -2290,7 +1818,7 @@ async function updateZionFeed(isSilent = false) {
                 link.appendChild(wrap);
             }
 
-            // 4. Stats Row
+            // 4. Stats Row (RESTORED)
             const statsRow = document.createElement('div');
             statsRow.className = 'rss-stats-row';
             const format = (n) => (n > 999 ? (n/1000).toFixed(1) + 'k' : Math.floor(n) || 0);
@@ -2298,16 +1826,17 @@ async function updateZionFeed(isSilent = false) {
             // Upvote
             const upDiv = document.createElement('div');
             upDiv.className = 'rss-stat-item upvote-item';
-            upDiv.innerHTML = `<span class="rss-stat-icon"><svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M12.833 16V9h3.334L10 2 3.833 9h3.334v7h5.666z"></path></svg></span> ${format(item.ups)}`;
+            // Using standard arrow character if SVG fails, but SVG is preferred if CSS supports it
+            upDiv.innerHTML = `<span class="rss-stat-icon">▲</span> ${format(item.ups)}`;
             statsRow.appendChild(upDiv);
 
-            // Downvote
+            // Downvote (RESTORED LOGIC)
             const ratio = item.upvote_ratio || 1;
             const estimatedDowns = ratio < 1 ? Math.round((item.ups / ratio) - item.ups) : 0;
             if (estimatedDowns > 0) {
                 const downDiv = document.createElement('div');
                 downDiv.className = 'rss-stat-item downvote-item';
-                downDiv.innerHTML = `<span class="rss-stat-icon"><svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M7.167 4v7H3.833L10 18l6.167-7h-3.334V4H7.167z"></path></svg></span> ${format(estimatedDowns)}`;
+                downDiv.innerHTML = `<span class="rss-stat-icon">▼</span> ${format(estimatedDowns)}`;
                 statsRow.appendChild(downDiv);
             }
 
@@ -2384,35 +1913,22 @@ async function runChatTerminal() {
     setTimeout(runChatTerminal, 10000 + Math.random() * 10000);
 }
 
-// --- SEARCH & CURSOR ---
 const searchInput = document.getElementById('search-input');
 const cursor = document.getElementById('terminal-cursor');
-
-// Create a hidden span to measure text width
 const measure = document.createElement('span');
 measure.style.cssText = "position:absolute; visibility:hidden; white-space:pre; pointer-events:none;";
 document.body.appendChild(measure);
 
 function syncCursor() {
-    // 1. Get the actual computed style of the input (accounts for your UI scale and CSS)
     const style = window.getComputedStyle(searchInput);
     measure.style.fontFamily = style.fontFamily;
     measure.style.fontSize = style.fontSize;
     measure.style.fontWeight = style.fontWeight;
     measure.style.letterSpacing = style.letterSpacing;
     measure.style.textTransform = style.textTransform;
-
-    // 2. Mirror the text
     measure.textContent = searchInput.value || "";
-
-    // 3. Calculate text width
     const textWidth = measure.getBoundingClientRect().width;
-
-    // 4. Subtract scrollLeft! 
-    // This stops the cursor from jumping ahead when the text scrolls horizontally.
     const scrollOffset = searchInput.scrollLeft;
-    
-    // 5. Apply position (adding 2px or similar if you have a slight padding-left)
     cursor.style.transform = `translateX(${textWidth - scrollOffset}px)`;
 }
 
@@ -2421,7 +1937,6 @@ function updateCursorVisibility() {
     if (cursor.style.opacity === "1") syncCursor();
 }
 
-// Add scroll listener so cursor follows text during manual scrolling/overflow
 searchInput.addEventListener('scroll', syncCursor);
 searchInput.addEventListener('input', syncCursor);
 searchInput.addEventListener('focus', updateCursorVisibility);
@@ -2448,7 +1963,10 @@ searchInput.addEventListener('keydown', (e) => {
 
 // --- SETTINGS CONTROLS ---
 const get = (id) => document.getElementById(id);
-const modal = get('settings-modal'), sizeS = get('size-slider'), textScaleS = get('text-scale-slider'), speedS = get('speed-slider'), colorP = get('color-picker');
+const modal = get('settings-modal'), sizeS = get('size-slider'), textScaleS = get('text-scale-slider'), speedS = get('speed-slider');
+const colorP = get('color-picker'); 
+const themeColorP = get('theme-color-picker'); 
+
 const minT = get('show-minutes'), secT = get('show-seconds'), hour24T = get('use-24hour'), greenT = get('matrix-green'), binaryT = get('binary-mode'), hexT = get('hex-mode'), asciiT = get('ascii-mode'), bamumT = get('bamum-mode'), mathT = get('math-mode'), emojiT = get('emoji-mode'), snowT = get('snow-toggle'), fontT = get('font-toggle'), rainbowT = get('rainbow-toggle'), glowT = get('glow-toggle'), glitchT = get('glitch-toggle'), glitchS = get('glitch-slider'), scanlineT = get('scanline-toggle'), bgFilterT = get('bg-filter-toggle'), bgT = get('bg-toggle'), quoteI = get('quote-input'), saveB = get('save-settings'), scaleS = get('scale-mode'), cycleT = get('cycle-quotes'), resetB = get('restore-defaults');
 const imgI = get('image-input'), vidI = get('video-input'), upImgB = get('upload-image-btn'), upVidB = get('upload-video-btn'), clearB = get('clear-backdrop');
 const phoneT = get('phone-toggle'), phoneFreqS = get('phone-freq-slider'), phoneFreqVal = get('phone-freq-value'), chatT = get('chat-toggle');
@@ -2459,10 +1977,14 @@ const upSfxB = get('upload-custom-sfx-btn'), sfxI = get('custom-sfx-input'), cle
 const journey2T = get('journey2-toggle'), binaryTunnelT = get('binary-toggle'), matrixRoomT = get('room-toggle');
 const movieTunnelT = get('movie-tunnel-toggle'), matrixRoomNewT = get('matrix-room-toggle'), combatTrainingT = get('combat-training-toggle'), meditationT = get('meditation-toggle');
 const verticalRainT = get('vertical-rain-toggle');
-const verticalRainBinaryT = get('vertical-rain-binary-mode'), verticalRainHexT = get('vertical-rain-hex-mode');
-const verticalRainAsciiT = get('vertical-rain-ascii-mode'), verticalRainMathT = get('vertical-rain-math-mode'), verticalRainRainbowT = get('vertical-rain-rainbow-toggle');
 
-// Oracle Toggle
+// --- VERTICAL RAIN CONTROLS ---
+const verticalRainBinaryT = get('vertical-rain-binary-mode');
+const verticalRainHexT = get('vertical-rain-hex-mode');
+const verticalRainAsciiT = get('vertical-rain-ascii-mode');
+const verticalRainMathT = get('vertical-rain-math-mode');
+const verticalRainRainbowT = get('vertical-rain-rainbow-toggle');
+
 const oracleT = get('oracle-toggle');
 
 function applyImg(s) { removeM(); const i = document.createElement('img'); i.id = 'bg-image-layer'; i.src = s; mainContainer.prepend(i); }
@@ -2470,15 +1992,41 @@ function applyVid(file) { removeM(); const v = document.createElement('video'); 
 function removeM() { const v = get('bg-video'), i = get('bg-image-layer'); if(v) { URL.revokeObjectURL(v.src); v.remove(); } if(i) i.remove(); }
 
 function syncThemeColor() {
-    rainColor = isMatrixGreen ? CLASSIC_GREEN : colorP.value;
-    colorP.disabled = isMatrixGreen;
-    document.documentElement.style.setProperty('--theme-color', rainColor);
+    if (isMatrixGreen) {
+        document.documentElement.style.setProperty('--theme-color', CLASSIC_GREEN);
+        rainColor = CLASSIC_GREEN;
+        themeColor = CLASSIC_GREEN;
+        colorP.value = CLASSIC_GREEN;
+        themeColorP.value = CLASSIC_GREEN;
+        colorP.disabled = true;
+        themeColorP.disabled = true;
+    } else {
+        document.documentElement.style.setProperty('--theme-color', themeColorP.value);
+        rainColor = colorP.value;
+        themeColor = themeColorP.value;
+        colorP.disabled = false;
+        themeColorP.disabled = false;
+    }
     if (!videoBackground) startRain();
 }
 
 get('settings-icon-container').onclick = () => modal.classList.toggle('hidden');
 greenT.onchange = (e) => { isMatrixGreen = e.target.checked; syncThemeColor(); };
-colorP.oninput = () => { if (!isMatrixGreen) syncThemeColor(); };
+
+colorP.oninput = (e) => { 
+    if (!isMatrixGreen) {
+        rainColor = e.target.value;
+        if (!videoBackground) startRain();
+    }
+};
+
+themeColorP.oninput = (e) => {
+    if (!isMatrixGreen) {
+        themeColor = e.target.value;
+        document.documentElement.style.setProperty('--theme-color', themeColor);
+    }
+};
+
 quoteI.oninput = (e) => { const val = e.target.value; if (val.trim() !== "") { stopQuoteCycling(); cycleT.checked = false; get('display-quote').textContent = `"${val}"`; } else if (!cycleT.checked) { get('display-quote').textContent = '"There is no spoon."'; } };
 minT.onchange = (e) => { showMinutes = e.target.checked; updateUI(); };
 secT.onchange = (e) => { showSeconds = e.target.checked; updateUI(); };
@@ -2545,32 +2093,21 @@ document.addEventListener('DOMContentLoaded', function() {
     if (verticalRainEmojiToggle) { verticalRainEmojiToggle.disabled = true; verticalRainEmojiToggle.checked = false; }
 });
 
-// --- UPDATED SENTINEL SWARM TOGGLE WITH AUDIO ---
 snowT.onchange = (e) => { 
     isSnowing = e.target.checked; 
-    chrome.storage.sync.set({ isSnowing }); // Save state immediately
-    
+    chrome.storage.sync.set({ isSnowing }); 
     const swarmAudio = document.getElementById('sentinel-swarm-sfx');
-    
     if(isSnowing) { 
         initSnow(); 
         sCanvas.style.display = 'block';
-        // Play audio if element exists
         if (swarmAudio) {
             swarmAudio.volume = 0.4;
-            swarmAudio.play().catch(err => {
-                console.log("Audio waiting for user interaction");
-            });
+            swarmAudio.play().catch(err => { console.log("Audio waiting for user interaction"); });
         }
     } else {
-        // Stop visuals
         sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
         sCanvas.style.display = 'none';
-        // Stop audio
-        if (swarmAudio) {
-            swarmAudio.pause();
-            swarmAudio.currentTime = 0;
-        }
+        if (swarmAudio) { swarmAudio.pause(); swarmAudio.currentTime = 0; }
     }
 };
 
@@ -2634,7 +2171,7 @@ clearSfxB.onclick = () => { if(confirm("Purge custom SFX?")) { clearSfxFromDB();
 
 saveB.onclick = () => {
     const s = { 
-        rainColor: colorP.value, rainSpeed, uiScale: sizeS.value, textScale: textScaleS.value, 
+        rainColor: colorP.value, themeColor: themeColorP.value, rainSpeed, uiScale: sizeS.value, textScale: textScaleS.value, 
         showMinutes, showSeconds, use24Hour, isMatrixGreen, isBinary, isHex, isAscii, isMathSymbols, videoBackground,
         isSnowing, isCyberpunkFont: fontT.checked, isFlashing, isGlow: glowT.checked, isGlitch: glitchT.checked, 
         glitchIntensity: glitchS.value, isScanline: scanlineT.checked, isBgFilter: bgFilterT.checked, 
@@ -2704,7 +2241,6 @@ function initPhoneSystem() {
     setupPhoneInterval();
 }
 
-// --- DRAG AND DROP NAVIGATION LINKS ---
 const navWrapper = get('dynamic-links-wrapper'), addLinkBtn = get('add-link-btn');
 
 let draggedItem = null;
@@ -2810,7 +2346,6 @@ addLinkBtn.onclick = () => {
     }); 
 };
 
-// --- INITIAL LOAD ---
 chrome.storage.sync.get(null, (d) => {
     const data = { ...DEFAULTS, ...d };
     
@@ -2818,7 +2353,11 @@ chrome.storage.sync.get(null, (d) => {
     
     rainSpeed = data.rainSpeed; speedS.value = rainSpeed; 
     isMatrixGreen = data.isMatrixGreen; greenT.checked = isMatrixGreen; 
-    colorP.value = data.rainColor; syncThemeColor();
+    
+    colorP.value = data.rainColor; 
+    themeColorP.value = data.themeColor || DEFAULTS.themeColor;
+    
+    syncThemeColor(); 
     
     isBinary = data.isBinary; binaryT.checked = isBinary;
     isHex = data.isHex; hexT.checked = isHex;
@@ -2835,12 +2374,10 @@ chrome.storage.sync.get(null, (d) => {
         startRain();
     }
 
-    // --- UPDATED INIT FOR SENTINEL AUDIO ---
     isSnowing = data.isSnowing; 
     snowT.checked = isSnowing; 
     if(isSnowing) {
         initSnow();
-        // Check for audio element and play if exists
         const swarmAudio = document.getElementById('sentinel-swarm-sfx');
         if (swarmAudio) {
             swarmAudio.volume = 0.4;
@@ -2875,7 +2412,6 @@ chrome.storage.sync.get(null, (d) => {
     
     rssT.checked = data.isRssEnabled; rssI.value = data.rssSubs; updateZionFeed();
     
-    // ORACLE INIT
     isOracleEnabled = data.isOracleEnabled;
     if(oracleT) oracleT.checked = isOracleEnabled;
     
@@ -2891,7 +2427,6 @@ chrome.storage.sync.get(null, (d) => {
     
     statsT.checked = data.isStatsEnabled; get('operator-console').classList.toggle('stats-hidden', !data.isStatsEnabled);
     
-    // Initialize Oracle AFTER all DOM elements are ready
     setTimeout(() => {
         initOracleChat();
     }, 100);
@@ -2899,7 +2434,6 @@ chrome.storage.sync.get(null, (d) => {
     loadNavLinks(); resize(); animateSentinels(); updateUI(); 
     initPhoneSystem(); runChatTerminal(); 
     
-    // Initialize calendar - moved to ensure DOM is ready
     setTimeout(() => {
         console.log("Initializing calendar...");
         initCalendar();
@@ -2908,9 +2442,7 @@ chrome.storage.sync.get(null, (d) => {
     mainContainer.style.opacity = "1";
 });
 
-// Add a DOMContentLoaded listener as a backup
 document.addEventListener('DOMContentLoaded', function() {
-    // If calendar wasn't initialized by the storage callback, initialize it now
     setTimeout(() => {
         if (!isCalendarOpen && !window.calendarInitialized) {
             console.log("DOM loaded, initializing calendar...");
@@ -2925,3 +2457,398 @@ chrome.storage.local.get(['customImg'], (res) => { if(res.customImg) applyImg(re
 window.onresize = resize;
 setInterval(updateUI, 1000);
 setInterval(updateNetworkStats, 2000);
+
+// --- MATRIX TERMINAL MODAL LOGIC ---
+
+let terminalCurrentData = null;
+let isTerminalTyping = false;
+
+// 1. OPEN THE MODAL
+async function openTerminalModal(permalink) {
+    const modal = document.getElementById('matrix-modal');
+    const output = document.getElementById('terminal-output');
+    const input = document.getElementById('terminal-cmd-input');
+    
+    // Reset State
+    modal.classList.remove('hidden');
+    output.innerHTML = "";
+    input.value = "";
+    terminalCurrentData = null; 
+
+    // Initialize the Matrix Block Cursor
+    initTerminalCursor();
+
+    // Focus input immediately
+    setTimeout(() => { input.focus(); }, 50);
+
+    // Initial Status Message
+    await streamText(output, `> INITIALIZING SECURE CONNECTION TO NODE: ${permalink}\n> ESTABLISHING UPLINK...\n`);
+
+    try {
+        // Fetch Data from Reddit
+        const response = await fetch(`https://www.reddit.com${permalink}.json`);
+        const json = await response.json();
+        
+        terminalCurrentData = json; 
+        const post = json[0].data.children[0].data;
+        
+        // Build Text Header
+        let content = `\n> SUBJECT: ${post.title.toUpperCase()}\n`;
+        content += `> AUTHOR:  ${post.author}\n`;
+        content += `> SUBREQ:  r/${post.subreddit}\n`;
+        content += `> SCORE:   ${post.ups} UNITS\n`;
+        content += `----------------------------------------\n\n`;
+        
+        await streamText(output, content);
+
+        if (post.selftext) {
+            await streamText(output, post.selftext + "\n\n");
+        }
+
+        // --- MEDIA HANDLING ---
+        const mediaContainer = document.createElement('div');
+        output.appendChild(mediaContainer);
+        
+        // 1. IMAGE HANDLING
+        if (post.post_hint === 'image' || (post.url && post.url.match(/\.(jpg|jpeg|png|gif)$/i))) {
+            const frame = createMediaFrame();
+            const wrapper = document.createElement('div');
+            wrapper.className = 'media-wrapper';
+
+            const img = document.createElement('img');
+            img.src = post.url;
+            img.className = 'terminal-media';
+            
+            // Fullscreen Button
+            const controls = document.createElement('div');
+            controls.className = 'media-controls';
+            const btnFull = createButton('⛶', () => toggleFullscreen(img)); 
+
+            controls.appendChild(btnFull);
+            wrapper.appendChild(img);
+            wrapper.appendChild(controls);
+            frame.appendChild(wrapper);
+            mediaContainer.appendChild(frame);
+
+            await streamText(output, "\n> VISUAL DATA LOADED.\n");
+        } 
+        // 2. VIDEO HANDLING
+        else if (post.is_video && post.media && post.media.reddit_video) {
+            const frame = createMediaFrame();
+            const wrapper = document.createElement('div');
+            wrapper.className = 'media-wrapper';
+
+            const vid = document.createElement('video');
+            vid.src = post.media.reddit_video.hls_url || post.media.reddit_video.fallback_url;
+            vid.className = 'terminal-media';
+            vid.autoplay = true;
+            vid.loop = true;
+            vid.muted = true; // Must start muted
+            vid.playsInline = true;
+            
+            const controls = document.createElement('div');
+            controls.className = 'media-controls';
+
+            const btnVol = createButton('🔇', () => {
+                vid.muted = !vid.muted;
+                if (!vid.muted) vid.play().catch(() => {}); 
+                btnVol.textContent = vid.muted ? '🔇' : '🔊';
+                // UPDATED: Glow uses theme color
+                btnVol.style.boxShadow = vid.muted ? 'none' : '0 0 10px var(--theme-color)';
+            });
+
+            // Fullscreen Button
+            const btnFull = createButton('⛶', () => toggleFullscreen(vid));
+
+            controls.appendChild(btnVol);
+            controls.appendChild(btnFull);
+            wrapper.appendChild(vid);
+            wrapper.appendChild(controls);
+            frame.appendChild(wrapper);
+            mediaContainer.appendChild(frame);
+
+            await streamText(output, "\n> VIDEO STREAM BUFFERED.\n");
+        }
+
+        await streamText(output, `\n> END OF FILE.\n> TYPE 'com' TO LOAD COMMENTS OR 'exit' TO DISCONNECT.\n`);
+        
+    } catch (e) {
+        await streamText(output, `\n> ERROR: DATA CORRUPTION DETECTED. LINK SEVERED.\n`);
+        console.error(e);
+    }
+}
+
+// --- HELPER FUNCTIONS ---
+
+function createMediaFrame() {
+    const frame = document.createElement('div');
+    frame.className = 'ascii-media-frame';
+    return frame;
+}
+
+function createButton(text, onClick) {
+    const btn = document.createElement('button');
+    btn.textContent = text;
+    btn.className = 'terminal-btn';
+    btn.onclick = (e) => {
+        e.stopPropagation(); 
+        onClick();
+    };
+    return btn;
+}
+
+function toggleFullscreen(element) {
+    if (!document.fullscreenElement) {
+        if (element.requestFullscreen) element.requestFullscreen();
+        else if (element.webkitRequestFullscreen) element.webkitRequestFullscreen();
+    } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+    }
+}
+
+function closeTerminalModal() {
+    const modal = document.getElementById('matrix-modal');
+    modal.classList.add('hidden');
+    document.getElementById('terminal-output').innerHTML = "";
+    isTerminalTyping = false; 
+}
+
+function streamText(container, text) {
+    return new Promise(resolve => {
+        isTerminalTyping = true;
+        const span = document.createElement('span');
+        container.appendChild(span);
+        container.scrollTop = container.scrollHeight;
+
+        let i = 0;
+        const speed = 5; 
+
+        function type() {
+            if (!isTerminalTyping) { resolve(); return; }
+            if (i < text.length) {
+                span.textContent += text.charAt(i);
+                i++;
+                if (i % 10 === 0) container.scrollTop = container.scrollHeight; 
+                setTimeout(type, speed);
+            } else {
+                isTerminalTyping = false;
+                container.scrollTop = container.scrollHeight;
+                resolve();
+            }
+        }
+        type();
+    });
+}
+
+// --- CURSOR LOGIC ---
+
+function initTerminalCursor() {
+    const input = document.getElementById('terminal-cmd-input');
+    const inputArea = document.querySelector('.terminal-input-area'); 
+    
+    if (!input || !inputArea) return;
+
+    // 1. Hide the native thin cursor
+    input.style.caretColor = 'transparent';
+
+    // 2. Create the Custom Block Cursor
+    let cursor = document.getElementById('modal-terminal-cursor');
+    if (!cursor) {
+        cursor = document.createElement('div');
+        cursor.id = 'modal-terminal-cursor';
+        
+        cursor.style.cssText = `
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 8px;
+            height: 1.2em;
+            /* UPDATED: Cursor uses theme color */
+            background-color: var(--theme-color);
+            transform: translateY(-50%);
+            pointer-events: none;
+            z-index: 10;
+            display: none; 
+            animation: terminal-blink 1s step-end infinite;
+        `;
+        
+        if (getComputedStyle(inputArea).position === 'static') {
+            inputArea.style.position = 'relative';
+        }
+        
+        inputArea.appendChild(cursor);
+        
+        if (!document.getElementById('cursor-blink-style')) {
+            const style = document.createElement('style');
+            style.id = 'cursor-blink-style';
+            style.textContent = `@keyframes terminal-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }`;
+            document.head.appendChild(style);
+        }
+    }
+
+    // 3. Create Measurement Span
+    let measure = document.getElementById('modal-measure');
+    if (!measure) {
+        measure = document.createElement('span');
+        measure.id = 'modal-measure';
+        measure.style.cssText = "position:absolute; visibility:hidden; white-space:pre; pointer-events:none; font-family: 'Courier New', monospace; font-size: 1.1rem;";
+        document.body.appendChild(measure);
+    }
+
+    // 4. Sync Function
+    function sync() {
+        const style = window.getComputedStyle(input);
+        measure.style.fontFamily = style.fontFamily;
+        measure.style.fontSize = style.fontSize;
+        measure.style.fontWeight = style.fontWeight;
+        measure.style.letterSpacing = style.letterSpacing;
+        measure.textContent = input.value || "";
+        
+        const textWidth = measure.getBoundingClientRect().width;
+        const startPos = input.offsetLeft; 
+        const paddingLeft = parseFloat(style.paddingLeft) || 0;
+        const scrollOffset = input.scrollLeft;
+        
+        cursor.style.left = `${startPos + paddingLeft + textWidth - scrollOffset}px`; 
+        cursor.style.transform = `translateY(-50%)`;
+    }
+
+    // 5. Attach Listeners
+    input.removeEventListener('input', sync);
+    input.removeEventListener('scroll', sync);
+    
+    input.addEventListener('input', sync);
+    input.addEventListener('scroll', sync);
+    input.addEventListener('focus', () => { 
+        cursor.style.display = 'block'; 
+        sync(); 
+    });
+    input.addEventListener('blur', () => { 
+        cursor.style.display = 'none'; 
+    });
+
+    if (document.activeElement === input) {
+        cursor.style.display = 'block';
+        sync();
+    }
+}
+
+// --- COMMENTS LOGIC ---
+
+async function renderComments() {
+    const output = document.getElementById('terminal-output');
+    if (!terminalCurrentData || !terminalCurrentData[1]) {
+        await streamText(output, "\n> ERROR: NO COMMENT DATA AVAILABLE.\n");
+        return;
+    }
+    await streamText(output, "\n> DECRYPTING COMMENT STREAM...\n\n");
+    const comments = terminalCurrentData[1].data.children;
+    const maxDepth = 4; 
+    
+    function processComment(comment, depth) {
+        if (depth > maxDepth || !comment.data.body) return "";
+        const indent = "|   ".repeat(depth);
+        let treeStr = `${indent}|-- [${comment.data.author}]: ${comment.data.body.substring(0, 300).replace(/\n/g, ' ')}\n`;
+        if (comment.data.replies && comment.data.replies.data) {
+            comment.data.replies.data.children.forEach(reply => {
+                treeStr += processComment(reply, depth + 1);
+            });
+        }
+        return treeStr;
+    }
+    
+    let fullTree = "";
+    comments.slice(0, 15).forEach(c => { fullTree += processComment(c, 0); });
+    if (fullTree === "") fullTree = "> NO COMMENTS FOUND.\n";
+    
+    const pre = document.createElement('div');
+    pre.style.whiteSpace = "pre-wrap";
+    pre.style.marginBottom = "20px";
+    pre.textContent = fullTree;
+    output.appendChild(pre);
+    output.scrollTop = output.scrollHeight;
+}
+
+// --- EVENT LISTENERS (CRITICAL FOR COMMANDS) ---
+
+document.addEventListener('DOMContentLoaded', () => {
+    const cmdInput = document.getElementById('terminal-cmd-input');
+    const modal = document.getElementById('matrix-modal');
+    
+    initTerminalCursor();
+
+    if (cmdInput) {
+        cmdInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                const rawInput = this.value.trim();
+                const cmdParts = rawInput.split(' ');
+                const baseCmd = cmdParts[0].toLowerCase();
+                const args = cmdParts.slice(1).join(' ');
+                
+                this.value = "";
+                
+                const event = new Event('input');
+                this.dispatchEvent(event);
+
+                const output = document.getElementById('terminal-output');
+                const echo = document.createElement('div');
+                echo.textContent = `operator@zion:~$ ${rawInput}`;
+                echo.style.opacity = "0.7";
+                output.appendChild(echo);
+
+                // 1. Modal Specific Commands
+                if (baseCmd === 'exit') {
+                    closeTerminalModal();
+                } 
+                else if (baseCmd === 'com' || baseCmd === 'comments') {
+                    renderComments();
+                } 
+                else if (baseCmd === 'clear' || baseCmd === 'cls') {
+                    output.innerHTML = "";
+                } 
+                // 2. Global CLI Commands
+                else {
+                    const slashCmd = baseCmd.startsWith('/') ? baseCmd : `/${baseCmd}`;
+                    
+                    if (typeof CLI_COMMANDS !== 'undefined' && CLI_COMMANDS[slashCmd]) {
+                        CLI_COMMANDS[slashCmd](args);
+                        
+                        const successMsg = document.createElement('div');
+                        successMsg.textContent = `> SYSTEM COMMAND '${slashCmd}' EXECUTED.`;
+                        
+                        // UPDATED: Success message uses theme color
+                        successMsg.style.color = "var(--theme-color)"; 
+                        successMsg.style.textShadow = "0 0 5px var(--theme-color)";
+                        output.appendChild(successMsg);
+                    } 
+                    else if (rawInput !== "") {
+                        const errorMsg = document.createElement('div');
+                        errorMsg.textContent = `> COMMAND '${baseCmd}' NOT RECOGNIZED.`;
+                        errorMsg.style.color = "#ff3333";
+                        output.appendChild(errorMsg);
+                    }
+                }
+                
+                output.scrollTop = output.scrollHeight;
+            }
+            
+            if (e.key === 'Escape') {
+                closeTerminalModal();
+            }
+        });
+        
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target.tagName !== 'BUTTON') {
+                    cmdInput.focus();
+                }
+            });
+        }
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+            closeTerminalModal();
+        }
+    });
+});

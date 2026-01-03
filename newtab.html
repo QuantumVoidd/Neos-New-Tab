@@ -21,6 +21,11 @@
                 <input type="range" id="size-slider" min="0.5" max="1.5" step="0.01" value="1">
             </div>
 
+            <div class="setting-item">
+                <label>Global Theme Color</label>
+                <input type="color" id="theme-color-picker" value="#00f2ff">
+            </div>
+
             <div class="setting-group">
                 <h4 class="sub-menu-title">Operator Console</h4>
                 <div class="checkbox-group">
@@ -64,7 +69,7 @@
             <div class="setting-group">
                 <h4 class="sub-menu-title">Visuals</h4>
                 <div class="checkbox-group">
-                    <label><input type="checkbox" id="matrix-green"> Matrix Green UI</label>
+                    <label><input type="checkbox" id="matrix-green"> Matrix Green UI (Overrides Colors)</label>
                     <label><input type="checkbox" id="snow-toggle"> Sentinel Swarm</label>
                     <label><input type="checkbox" id="font-toggle"> Cyberpunk Font</label>
                     <label><input type="checkbox" id="glow-toggle"> Digital Glow Effect</label>
@@ -332,6 +337,18 @@
     <audio id="matrix-code-sfx" loop src="matrix_code.mp3"></audio>
     <audio id="custom-background-sfx" loop></audio>
     <audio id="sentinel-swarm-sfx" loop src="sentinel_swarm.mp3"></audio>
+
+    <script src="script.js"></script>
+<div id="matrix-modal" class="hidden">
+        <div class="modal-overlay"></div> <div class="terminal-frame">
+            <div id="terminal-output"></div>
+            <div class="terminal-input-area">
+                <span class="prompt">OPERATOR@ZION:~$</span>
+                <input type="text" id="terminal-cmd-input" placeholder="Type 'com' for comments, 'exit' to close..." autocomplete="off">
+                <div class="cursor-block"></div>
+            </div>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
