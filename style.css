@@ -66,7 +66,8 @@ body, html {
     border: 2px solid var(--theme-color);
     border-radius: 20px; 
     background: rgba(0, 0, 0, 0.9);
-    box-shadow: 0 0 20px var(--theme-color); 
+    /* Middle ground: 10px blur for a crisp neon edge */
+    box-shadow: 0 0 10px var(--theme-color); 
     text-align: center; 
     color: var(--theme-color); 
     opacity: 0; 
@@ -77,7 +78,8 @@ body, html {
 .main-container.transparent-bg { 
     background: rgba(0, 0, 0, 0) !important; 
     border: 2px solid var(--theme-color) !important;
-    box-shadow: 0 0 25px var(--theme-color), inset 0 0 10px var(--theme-color) !important;
+    /* 12px outer glow and 6px inner for depth without the bulk */
+    box-shadow: 0 0 12px var(--theme-color), inset 0 0 6px var(--theme-color) !important;
 }
 
 /* --- OPERATOR CONSOLE (NEBUCHADNEZZAR DECK) --- */
@@ -101,14 +103,14 @@ body, html {
     border: 1px solid var(--theme-color);
     border-radius: 10px;
     padding: 10px 20px;
-    box-shadow: 0 0 20px var(--theme-color), inset 0 0 30px rgba(0,0,0,0.8);
+    /* 10px outer glow, and a tighter 18px inner shadow to keep the deck looking solid */
+    box-shadow: 0 0 10px var(--theme-color), inset 0 0 18px rgba(0,0,0,0.8);
     display: flex;
     justify-content: space-between;
     align-items: center;
     pointer-events: auto;
     backdrop-filter: blur(4px);
 }
-
 .ship-plate {
     display: flex; flex-direction: column; align-items: flex-start;
     border-right: 1px solid rgba(0, 242, 255, 0.3);
@@ -176,10 +178,12 @@ body, html {
     border-radius: 5px;
     padding: 15px;
     overflow-y: auto;
-    box-shadow: 0 0 15px var(--theme-color);
+    /* Updated glow to 10px middle ground */
+    box-shadow: 0 0 10px var(--theme-color); 
     z-index: 100;
     text-align: left;
     box-sizing: border-box;
+    transition: box-shadow 0.3s ease, border 0.3s ease;
 }
 
 /* Zion RSS Header - Centered with separator */
@@ -195,7 +199,7 @@ body, html {
     border-bottom: 1px solid var(--theme-color);
 }
 
-/* ORACLE AI CHAT - Right side (Replaces YouTube/Twitter Feed) */
+/* ORACLE AI CHAT - Right side */
 #oracle-chat-container {
     position: absolute;
     right: calc(100% + 30px);
@@ -209,13 +213,16 @@ body, html {
     border-radius: 5px;
     padding: 15px;
     overflow: hidden;
-    box-shadow: 0 0 15px var(--theme-color);
+    /* Updated glow to 10px middle ground */
+    box-shadow: 0 0 10px var(--theme-color); 
     z-index: 100;
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
+    transition: box-shadow 0.3s ease, border 0.3s ease;
 }
 
+/* Secure Link Transmission Terminal */
 #transmission-terminal {
     position: absolute;
     right: calc(100% + 30px); 
@@ -227,7 +234,8 @@ body, html {
     border-radius: 5px;
     padding: 25px 15px 5px 15px;
     overflow-y: scroll;
-    box-shadow: 0 0 15px var(--theme-color);
+    /* Updated glow to 10px middle ground */
+    box-shadow: 0 0 10px var(--theme-color); 
     z-index: 101; 
     box-sizing: border-box;
     transition: box-shadow 0.3s ease, border 0.3s ease;
@@ -501,23 +509,59 @@ body, html {
 
 #rotary-phone {
     width: 60px; height: 60px; 
-    background-image: url('phone.png'); background-size: contain; background-repeat: no-repeat; background-position: center;
-    cursor: pointer; opacity: 0.5; transition: opacity 0.3s, transform 0.1s;
-    filter: drop-shadow(0 0 8px var(--theme-color));
+    background-image: url('phone.png'); 
+    background-size: contain; 
+    background-repeat: no-repeat; 
+    background-position: center;
+    cursor: pointer; 
+    opacity: 0.5; 
+    transition: opacity 0.3s, transform 0.1s, filter 0.3s ease;
+    /* REDUCED: Tightened glow from 8px to 5px */
+    filter: drop-shadow(0 0 5px var(--theme-color));
 }
 
-#transmission-text { font-size: 0.75rem; font-weight: bold; letter-spacing: 1px; opacity: 0; transition: opacity 0.3s; text-shadow: 0 0 10px var(--theme-color); white-space: nowrap; }
+#transmission-text { 
+    font-size: 0.75rem; 
+    font-weight: bold; 
+    letter-spacing: 1px; 
+    opacity: 0; 
+    transition: opacity 0.3s; 
+    /* REDUCED: Matching text shadow glow */
+    text-shadow: 0 0 6px var(--theme-color); 
+    white-space: nowrap; 
+}
 
-.ringing #rotary-phone { opacity: 1; animation: phone-shake 0.12s infinite linear; }
-.ringing #transmission-text { opacity: 1; }
-.receiving #rotary-phone { opacity: 1; filter: drop-shadow(0 0 20px var(--theme-color)) brightness(1.3); }
-.receiving #transmission-text { opacity: 1; animation: signal-glow 0.8s infinite alternate; }
+.ringing #rotary-phone { 
+    opacity: 1; 
+    animation: phone-shake 0.12s infinite linear; 
+}
 
-@keyframes msg-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+.ringing #transmission-text { 
+    opacity: 1; 
+}
+
+.receiving #rotary-phone { 
+    opacity: 1; 
+    /* REDUCED: Receiving glow tightened from 20px to 10px */
+    filter: drop-shadow(0 0 10px var(--theme-color)) brightness(1.2); 
+}
+
+.receiving #transmission-text { 
+    opacity: 1; 
+    animation: signal-glow 0.8s infinite alternate; 
+}
 
 @keyframes signal-glow {
-    from { text-shadow: 0 0 5px var(--theme-color); color: #fff; }
-    to { text-shadow: 0 0 20px var(--theme-color), 0 0 30px var(--theme-color); color: var(--theme-color); }
+    from { 
+        /* REDUCED: Start glow at 4px */
+        text-shadow: 0 0 4px var(--theme-color); 
+        color: #fff; 
+    }
+    to { 
+        /* REDUCED: Max pulse tightened from 20px/30px to 12px */
+        text-shadow: 0 0 12px var(--theme-color); 
+        color: var(--theme-color); 
+    }
 }
 
 @keyframes phone-shake {
@@ -685,14 +729,17 @@ input[type="text"], select {
     left: 50%;
     transform: translateX(-50%);
     display: flex;
+    flex-direction: row;
     align-items: center;
     gap: 20px;
     z-index: 2000;
     padding: 10px 20px;
+    pointer-events: auto;
 }
 
 #dynamic-links-wrapper {
     display: flex;
+    flex-direction: row;
     gap: 20px;
 }
 
@@ -701,8 +748,13 @@ input[type="text"], select {
     height: 48px;
     border: 2px solid var(--theme-color);
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.6);
-    box-shadow: 0 0 15px var(--theme-color), inset 0 0 8px var(--theme-color);
+    background: rgba(0, 0, 0, 0.95);
+    
+    /* SHARP STATIC GLOW: 5px core and 10px subtle wash */
+    box-shadow: 0 0 5px var(--theme-color), 
+                0 0 10px var(--theme-color), 
+                inset 0 0 4px var(--theme-color);
+    
     display: flex;
     align-items: center;
     justify-content: center;
@@ -710,12 +762,7 @@ input[type="text"], select {
     transition: all 0.3s ease;
     overflow: hidden;
     position: relative;
-}
-
-.nav-icon-circle img {
-    width: 26px;
-    height: 26px;
-    filter: drop-shadow(0 0 4px var(--theme-color));
+    opacity: 1 !important;
 }
 
 #add-link-btn {
@@ -723,13 +770,33 @@ input[type="text"], select {
     color: var(--theme-color);
     font-weight: bold;
     border-style: dashed;
-    opacity: 0.6;
+    background: rgba(0, 0, 0, 0.95);
+    box-shadow: 0 0 5px var(--theme-color), 
+                0 0 10px var(--theme-color), 
+                inset 0 0 4px var(--theme-color);
+    opacity: 1 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
 }
 
+.nav-icon-circle img {
+    width: 26px;
+    height: 26px;
+    display: block;
+    filter: drop-shadow(0 0 3px var(--theme-color));
+}
+
+/* --- UPDATED HOVER: Tightened from 18px down to 12px --- */
 .nav-icon-circle:hover {
-    transform: scale(1.15) translateY(-5px);
-    box-shadow: 0 0 30px var(--theme-color), inset 0 0 15px var(--theme-color);
-    opacity: 1;
+    transform: scale(1.1) translateY(-5px); /* Slightly reduced scale for precision */
+    /* Sharp core stays same, outer spread capped at 12px for a clean look */
+    box-shadow: 0 0 6px var(--theme-color), 
+                0 0 12px var(--theme-color), 
+                inset 0 0 6px var(--theme-color);
 }
 
 /* DRAG AND DROP STYLES */
@@ -1011,6 +1078,45 @@ input[type="password"] {
     transition: all 0.4s ease;
 }
 
+/* --- ZION FEED OVERLAY BUTTONS (CIRCULAR) --- */
+.video-fullscreen-btn, 
+.video-vol-btn {
+    position: absolute;
+    bottom: 10px;
+    width: 28px;
+    height: 28px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid var(--theme-color);
+    color: var(--theme-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 20; 
+    font-size: 14px;
+    border-radius: 50%; /* CIRCULAR SHAPE APPLIED */
+    transition: all 0.2s ease;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+    opacity: 0.7;
+}
+
+.video-fullscreen-btn {
+    right: 10px;
+}
+
+.video-vol-btn {
+    right: 45px;
+}
+
+.video-fullscreen-btn:hover, 
+.video-vol-btn:hover {
+    background: var(--theme-color);
+    color: #000;
+    opacity: 1;
+    box-shadow: 0 0 10px var(--theme-color);
+    transform: scale(1.1);
+}
+
 /* Scanline Overlay - NOW ONLY ON THE WRAPPER */
 .rss-media-wrapper::after {
     content: "";
@@ -1093,6 +1199,172 @@ input[type="password"] {
     margin-top: 0;
     padding-bottom: 10px;
     color: var(--theme-color);
+    border-bottom: 1px solid rgba(0, 242, 255, 0.15);
+}
+
+#rss-feed-list {
+    overflow-y: auto; 
+    flex-grow: 1;
+    padding-top: 15px; 
+    
+    -webkit-mask-image: linear-gradient(
+        to bottom, 
+        transparent 0%, 
+        rgba(0,0,0,1) 20%
+    );
+    mask-image: linear-gradient(
+        to bottom, 
+        transparent 0%, 
+        rgba(0,0,0,1) 20%
+    );
+}
+/* --- ORACLE CHAT HOVER FIX --- */
+.oracle-response-text:hover {
+    color: var(--theme-color) !important;
+    text-shadow: 0 0 5px var(--theme-color); 
+    cursor: default;
+}
+
+.oracle-response-text.encrypted:hover, 
+.oracle-response-text.matrix-typing:hover {
+    color: var(--theme-color) !important;
+}
+
+/* --- UPDATED: Sticky Header with Digital Dissolve --- */
+#zion-rss-container {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; 
+}
+
+.zion-rss-header {
+    position: sticky;
+    top: 0;
+    background-color: black; 
+    z-index: 100;
+    padding-top: 10px;
+    margin-bottom: 0;
+}
+
+.zion-rss-separator {
+    position: sticky;
+    top: 1.2rem; 
+    background-color: black;
+    z-index: 100;
+    margin-top: 0;
+    padding-bottom: 10px;
+    color: var(--theme-color);
+    border-bottom: 1px solid rgba(0, 242, 255, 0.15);
+}
+
+#rss-feed-list {
+    overflow-y: auto; 
+    flex-grow: 1;
+    padding-top: 15px; 
+    
+    -webkit-mask-image: linear-gradient(
+        to bottom, 
+        transparent 0%, 
+        rgba(0,0,0,1) 20%
+    );
+    mask-image: linear-gradient(
+        to bottom, 
+        transparent 0%, 
+        rgba(0,0,0,1) 20%
+    );
+}
+/* --- ORACLE CHAT HOVER FIX --- */
+.oracle-response-text:hover {
+    color: var(--theme-color) !important;
+    text-shadow: 0 0 5px var(--theme-color); 
+    cursor: default;
+}
+
+.oracle-response-text.encrypted:hover, 
+.oracle-response-text.matrix-typing:hover {
+    color: var(--theme-color) !important;
+}
+
+/* --- UPDATED: Sticky Header with Digital Dissolve --- */
+#zion-rss-container {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; 
+}
+
+.zion-rss-header {
+    position: sticky;
+    top: 0;
+    background-color: black; 
+    z-index: 100;
+    padding-top: 10px;
+    margin-bottom: 0;
+}
+
+.zion-rss-separator {
+    position: sticky;
+    top: 1.2rem; 
+    background-color: black;
+    z-index: 100;
+    margin-top: 0;
+    padding-bottom: 10px;
+    color: var(--theme-color);
+    border-bottom: 1px solid rgba(0, 242, 255, 0.15);
+}
+
+#rss-feed-list {
+    overflow-y: auto; 
+    flex-grow: 1;
+    padding-top: 15px; 
+    
+    -webkit-mask-image: linear-gradient(
+        to bottom, 
+        transparent 0%, 
+        rgba(0,0,0,1) 20%
+    );
+    mask-image: linear-gradient(
+        to bottom, 
+        transparent 0%, 
+        rgba(0,0,0,1) 20%
+    );
+}
+
+/* --- ORACLE CHAT HOVER FIX --- */
+.oracle-response-text:hover {
+    color: var(--theme-color) !important;
+    text-shadow: 0 0 5px var(--theme-color); 
+    cursor: default;
+}
+
+.oracle-response-text.encrypted:hover, 
+.oracle-response-text.matrix-typing:hover {
+    color: var(--theme-color) !important;
+}
+
+/* --- UPDATED: Sticky Header with Digital Dissolve --- */
+#zion-rss-container {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; 
+}
+
+.zion-rss-header {
+    position: sticky;
+    top: 0;
+    background-color: black; 
+    z-index: 100;
+    padding-top: 10px;
+    margin-bottom: 0;
+}
+
+.zion-rss-separator {
+    position: sticky;
+    top: 1.2rem; 
+    background-color: black;
+    z-index: 100;
+    margin-top: 0;
+    padding-bottom: 10px;
+    color: var(--theme-color);
     /* This creates a glow line that acts as the "threshold" for the dissolve */
     border-bottom: 1px solid rgba(0, 242, 255, 0.15);
 }
@@ -1115,6 +1387,7 @@ input[type="password"] {
         transparent 0%, 
         rgba(0,0,0,1) 20%
     );
+
 }
 
 /* --- MATRIX TERMINAL MODAL CSS --- */
@@ -1176,14 +1449,14 @@ input[type="password"] {
     
     border: 2px solid var(--theme-color);
     
-    /* UPDATED: Increased to 10px (Balanced Glow) */
+    /* Updated: 10px Middle Ground Glow */
     box-shadow: 0 0 10px var(--theme-color);
     
     padding: 25px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    background: rgba(0, 0, 0, 0.9); 
+    background: rgba(0, 0, 0, 0.85) !important; 
     position: relative;
     z-index: 10002;
     border-radius: 4px;
@@ -1274,6 +1547,8 @@ input[type="password"] {
 .media-wrapper {
     position: relative;
     display: inline-block;
+    width: fit-content;
+    max-width: 100%;
 }
 
 .terminal-media {
@@ -1288,13 +1563,16 @@ input[type="password"] {
 
 .media-controls {
     position: absolute;
-    bottom: 10px;
-    right: 10px;
+    bottom: 15px;
+    right: 15px;
     display: flex;
-    gap: 8px;
+    gap: 10px; 
     opacity: 0;
-    transition: opacity 0.2s ease;
-    z-index: 10;
+    transition: opacity 0.3s ease;
+    z-index: 50;
+    background: rgba(0, 0, 0, 0.6); 
+    padding: 5px;
+    border-radius: 20px; /* Slight roundness to container to match buttons */
 }
 
 .media-wrapper:hover .media-controls {
@@ -1306,19 +1584,37 @@ input[type="password"] {
     border: 1px solid var(--theme-color);
     color: var(--theme-color);
     font-family: 'Courier New', monospace;
-    font-size: 0.8rem;
-    padding: 6px 10px;
+    font-size: 1rem;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
-    border-radius: 4px;
-    text-transform: uppercase;
+    border-radius: 50%; /* CIRCULAR SHAPE APPLIED */
     font-weight: bold;
-    
-    /* UPDATED: Slightly increased button glow to 4px */
-    box-shadow: 0 0 4px var(--theme-color);
+    box-shadow: 0 0 5px var(--theme-color);
+    transition: all 0.2s ease;
 }
 
 .terminal-btn:hover {
     background: var(--theme-color);
     color: #000;
+    box-shadow: 0 0 15px var(--theme-color); 
+    transform: translateY(-2px);
 }
 
+.terminal-frame {
+    position: relative;
+    background: rgba(0, 0, 0, 0.85) !important; /* Make sure this is semi-transparent */
+    border: 2px solid var(--theme-color);
+    box-shadow: 0 0 10px var(--theme-color);
+    overflow: hidden;
+    z-index: 10002;
+}
+
+#terminal-rain-canvas {
+    display: block;
+    image-rendering: pixelated; /* Keeps the matrix characters sharp */
+}

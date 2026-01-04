@@ -1,3 +1,5 @@
+let terminalRainInterval = null; 
+let termDrops = [];
 // Base Matrix Config
 const canvas = document.getElementById('matrix'), ctx = canvas.getContext('2d');
 const sCanvas = document.getElementById('sentinel-layer'), sCtx = sCanvas.getContext('2d');
@@ -1562,35 +1564,65 @@ function resize() {
     const fullHeight = Math.max(window.innerHeight, document.documentElement.clientHeight);
     const columns = Math.floor(fullWidth / fontSize); 
     rainDrops = Array(columns).fill(0).map(() => -Math.floor(Math.random() * (fullHeight / fontSize))); 
-}
+     }
+            // --- MAIN CANVAS 2D RAIN LOGIC ---
 
+/**
+ * Optimized Draw Function for Main Canvas
+ * Fixes the "solid grid" by increasing trail fade speed and alpha management.
+ */
 function drawMatrix() {
     if (videoBackground) return;
+    
     const fullWidth = Math.max(window.innerWidth, document.documentElement.clientWidth);
     const fullHeight = Math.max(window.innerHeight, document.documentElement.clientHeight);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.05)"; 
+    
+    // FIX: Increased opacity from 0.05 to 0.15. 
+    // This ensures old characters are "painted over" fast enough to prevent grid buildup.
+    ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
     ctx.fillRect(0, 0, fullWidth, fullHeight);
     
     const fontFamily = getFontFamilyForAlphabet(isMathSymbols);
     
-    if (!isFlashing) ctx.fillStyle = rainColor; 
+    if (!isFlashing) ctx.fillStyle = rainColor;
     ctx.font = fontSize + "px " + fontFamily;
     ctx.textBaseline = 'top';
     ctx.textAlign = 'left';
     
     for (let i = 0; i < rainDrops.length; i++) {
         if (isFlashing) ctx.fillStyle = `hsl(${Math.random() * 360}, 100%, 50%)`;
+        
         const text = currentAlphabet.charAt(Math.floor(Math.random() * currentAlphabet.length));
         const x = i * fontSize;
         const y = rainDrops[i] * fontSize;
+        
+        // Slight randomization of alpha for digital depth
+        ctx.globalAlpha = 0.8 + (Math.random() * 0.2);
         ctx.fillText(text, x, y);
+        
         rainDrops[i]++;
+        
         if (rainDrops[i] * fontSize > fullHeight + 100) {
             rainDrops[i] = -Math.floor(Math.random() * 20);
         }
     }
+    ctx.globalAlpha = 1.0; // Reset alpha to prevent bleeding into other UI elements
 }
 
+/**
+ * Starts the rain loop.
+ * Fix: Explicitly clears the canvas buffer to remove any "stuck" frames.
+ */
+function startRain() { 
+    clearInterval(rainInterval); 
+    if (!videoBackground) {
+        // HARD CLEAR: Wipe the canvas buffer before starting a new session
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        if (!rainDrops || rainDrops.length === 0) resize();
+        rainInterval = setInterval(drawMatrix, rainSpeed); 
+    }
+}
 function startRain() { 
     clearInterval(rainInterval); 
     if (!videoBackground) {
@@ -1818,26 +1850,38 @@ async function updateZionFeed(isSilent = false) {
                 link.appendChild(wrap);
             }
 
-            // 4. Stats Row (RESTORED)
+            // 4. Stats Row (RESTORED WITH REDDIT ARROWS)
             const statsRow = document.createElement('div');
             statsRow.className = 'rss-stats-row';
             const format = (n) => (n > 999 ? (n/1000).toFixed(1) + 'k' : Math.floor(n) || 0);
 
-            // Upvote
+            // Upvote (Reddit Style SVG)
             const upDiv = document.createElement('div');
             upDiv.className = 'rss-stat-item upvote-item';
-            // Using standard arrow character if SVG fails, but SVG is preferred if CSS supports it
-            upDiv.innerHTML = `<span class="rss-stat-icon">▲</span> ${format(item.ups)}`;
+            upDiv.innerHTML = `
+                <span class="rss-stat-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 4L3 15H9V20H15V15H21L12 4Z" />
+                    </svg>
+                </span> 
+                ${format(item.ups)}`;
             statsRow.appendChild(upDiv);
 
-            // Downvote (RESTORED LOGIC)
+            // Downvote (RESTORED LOGIC WITH REDDIT ARROWS)
             const ratio = item.upvote_ratio || 1;
             const estimatedDowns = ratio < 1 ? Math.round((item.ups / ratio) - item.ups) : 0;
             if (estimatedDowns > 0) {
                 const downDiv = document.createElement('div');
                 downDiv.className = 'rss-stat-item downvote-item';
-                downDiv.innerHTML = `<span class="rss-stat-icon">▼</span> ${format(estimatedDowns)}`;
+                downDiv.innerHTML = `
+                    <span class="rss-stat-icon">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="transform: rotate(180deg);">
+                            <path d="M12 4L3 15H9V20H15V15H21L12 4Z" />
+                        </svg>
+                    </span> 
+                    ${format(estimatedDowns)}`;
                 statsRow.appendChild(downDiv);
+            
             }
 
             // Comments
@@ -2221,23 +2265,85 @@ function triggerRinging() {
 }
 
 function initPhoneSystem() {
-    const phoneCont = get('phone-container'), transText = get('transmission-text'), transAudio = get('transmission-audio'), ringAudio = get('ring-audio');
-    const pool = [["ESTABLISHING LINK...", "CONNECTION SECURED.", "THEY'RE WATCHING YOU, NEO.", "GOODBYE."], ["SYSTEM BREACH...", "KNOCK, KNOCK, NEO.", "FOLLOW THE WHITE RABBIT.", "RUN."]];
-    const speak = (t) => { const u = new SpeechSynthesisUtterance(t.toLowerCase().replace(/[^a-zA-Z ,.?!]/g, "")); u.rate = 0.8; u.pitch = 0.1; window.speechSynthesis.speak(u); };
+    const phoneCont = get('phone-container'), 
+          transText = get('transmission-text'), 
+          transAudio = get('transmission-audio'), 
+          ringAudio = get('ring-audio');
+
+    // --- REPLACEMENT STARTS HERE ---
+    
+    // 1. Define your local files here. 
+    // Ensure these files exist in your extension folder!
+    const localPhoneFiles = [
+        "phone_msg_1.mp3",
+        "phone_msg_2.mp3",
+        "phone_msg_3.mp3",
+        "phone_msg_4.mp3",
+        "phone_msg_5.mp3",
+        "phone_msg_6.mp3",
+        "phone_msg_7.mp3",
+        "phone_msg_8.mp3",
+        "phone_msg_9.mp3",
+        "phone_msg_10.mp3",
+   "phone_msg_11.mp3"
+    ];
+
     phoneCont.onclick = async () => {
         if (phoneCont.classList.contains('ringing') && !isProcessingPhone) {
-            isProcessingPhone = true; phoneCont.classList.remove('ringing'); ringAudio.pause(); ringAudio.src = ""; phoneCont.classList.add('receiving');
+            isProcessingPhone = true; 
+            phoneCont.classList.remove('ringing'); 
+            ringAudio.pause(); 
+            ringAudio.src = ""; 
+            phoneCont.classList.add('receiving');
+
+            // Try to get user-uploaded audios first (from Settings)
             const userAudios = await getAudiosFromDB();
+
             if (userAudios.length > 0) {
-                const b = userAudios[Math.floor(Math.random() * userAudios.length)]; transAudio.src = URL.createObjectURL(b); transText.textContent = "ENCRYPTED TRANSMISSION..."; transAudio.play().catch(() => {});
-                transAudio.onended = () => { URL.revokeObjectURL(transAudio.src); transAudio.src = ""; finishCall(); };
+                // Priority: Play user-uploaded custom audio
+                const b = userAudios[Math.floor(Math.random() * userAudios.length)]; 
+                transAudio.src = URL.createObjectURL(b); 
+                transText.textContent = "ENCRYPTED TRANSMISSION..."; 
+                transAudio.play().catch(() => {});
+                
+                transAudio.onended = () => { 
+                    URL.revokeObjectURL(transAudio.src); 
+                    transAudio.src = ""; 
+                    finishCall(); 
+                };
             } else {
-                const seq = pool[Math.floor(Math.random() * pool.length)]; let step = 0;
-                const timer = setInterval(() => { if (step >= seq.length) { clearInterval(timer); setTimeout(finishCall, 2500); return; } const line = seq[step++]; transText.textContent = line; speak(line); }, 1800);
+                // Fallback: Play random local MP3 from folder
+                const randomFile = localPhoneFiles[Math.floor(Math.random() * localPhoneFiles.length)];
+                
+                transText.textContent = "INCOMING VOICE TRANSMISSION...";
+                transAudio.src = randomFile;
+                
+                transAudio.play().catch((e) => {
+                    console.warn(`Could not play local file: ${randomFile}. Check if file exists.`, e);
+                    // Optional: If file fails, finish call immediately to avoid getting stuck
+                    finishCall();
+                });
+
+                transAudio.onended = () => {
+                    transAudio.src = "";
+                    finishCall();
+                };
             }
         }
     };
-    function finishCall() { const h = get('hangup-audio'); h.src = "hangup.mp3"; h.play(); h.onended = () => h.src = ""; setTimeout(() => { phoneCont.classList.remove('receiving'); transText.textContent = "INCOMING SIGNAL..."; isProcessingPhone = false; }, 1200); }
+
+    function finishCall() { 
+        const h = get('hangup-audio'); 
+        h.src = "hangup.mp3"; 
+        h.play(); 
+        h.onended = () => h.src = ""; 
+        setTimeout(() => { 
+            phoneCont.classList.remove('receiving'); 
+            transText.textContent = "INCOMING SIGNAL..."; 
+            isProcessingPhone = false; 
+        }, 1200); 
+    }
+    
     setupPhoneInterval();
 }
 
@@ -2460,8 +2566,82 @@ setInterval(updateNetworkStats, 2000);
 
 // --- MATRIX TERMINAL MODAL LOGIC ---
 
-let terminalCurrentData = null;
-let isTerminalTyping = false;
+// REPAIR: Updating existing variables without 'let' to avoid "Already Declared" crashes.
+terminalCurrentData = null;
+isTerminalTyping = false;
+terminalRainInterval = null; 
+termDrops = [];
+
+/**
+ * Initializes the rain effect for the terminal modal.
+ * Updated: Increased density for a richer look.
+ * Updated: Synchronized with global rainSpeed slider.
+ * Fix: Explicitly clears the canvas buffer to prevent the "static grid" bug.
+ */
+function initTerminalRain() {
+    const termCanvas = document.getElementById('terminal-rain-canvas');
+    if (!termCanvas) {
+        console.warn("Terminal canvas not found.");
+        return;
+    }
+    
+    const termCtx = termCanvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    
+    // Set internal resolution based on modal size
+    termCanvas.width = termCanvas.offsetWidth * dpr;
+    termCanvas.height = termCanvas.offsetHeight * dpr;
+    termCtx.scale(dpr, dpr);
+
+    // FIX: Hard clear of the canvas buffer to remove any "stuck" frames/grids
+    termCtx.clearRect(0, 0, termCanvas.width, termCanvas.height);
+
+    // DENSITY ADJUSTMENT: Denser columns for a richer "digital" look.
+    const columnSpacing = fontSize * 0.6;
+    const columns = Math.floor(termCanvas.offsetWidth / columnSpacing);
+    
+    // Start drops at random vertical positions so the screen is full immediately
+    termDrops = Array(columns).fill(0).map(() => Math.floor(Math.random() * (termCanvas.height / fontSize)));
+    
+    if (terminalRainInterval) clearInterval(terminalRainInterval);
+    
+    drawTerminalRain(); 
+    // Synchronized with global rainSpeed
+    terminalRainInterval = setInterval(drawTerminalRain, rainSpeed); 
+}
+
+function drawTerminalRain() {
+    const termCanvas = document.getElementById('terminal-rain-canvas');
+    if (!termCanvas) return;
+    const termCtx = termCanvas.getContext('2d');
+    
+    // TRAIL FIX: Using 0.15 opacity ensures old characters fade out properly
+    // This prevents the symbols from stacking into a permanent grid.
+    termCtx.fillStyle = "rgba(0, 0, 0, 0.15)"; 
+    termCtx.fillRect(0, 0, termCanvas.width, termCanvas.height);
+
+    // Uses global rainColor and fontSize from your settings
+    termCtx.fillStyle = rainColor; 
+    termCtx.font = fontSize + "px 'Courier New', monospace";
+
+    const columnSpacing = fontSize * 0.6;
+
+    for (let i = 0; i < termDrops.length; i++) {
+        const text = MATRIX_ALPHABET.charAt(Math.floor(Math.random() * MATRIX_ALPHABET.length));
+        
+        // Randomize opacity slightly per column to add depth
+        termCtx.globalAlpha = 0.3 + (Math.random() * 0.7);
+        
+        termCtx.fillText(text, i * columnSpacing, termDrops[i] * fontSize);
+
+        // Reset drop to top once it hits the bottom
+        if (termDrops[i] * fontSize > termCanvas.height && Math.random() > 0.975) {
+            termDrops[i] = 0;
+        }
+        termDrops[i]++;
+    }
+    termCtx.globalAlpha = 1.0; // Reset alpha for next frame
+}
 
 // 1. OPEN THE MODAL
 async function openTerminalModal(permalink) {
@@ -2469,30 +2649,30 @@ async function openTerminalModal(permalink) {
     const output = document.getElementById('terminal-output');
     const input = document.getElementById('terminal-cmd-input');
     
-    // Reset State
+    if (!modal || !output || !input) return;
+
     modal.classList.remove('hidden');
     output.innerHTML = "";
     input.value = "";
     terminalCurrentData = null; 
 
-    // Initialize the Matrix Block Cursor
-    initTerminalCursor();
+    // Initialize rain immediately
+    initTerminalRain(); 
+    window.addEventListener('resize', initTerminalRain);
 
-    // Focus input immediately
+    initTerminalCursor();
     setTimeout(() => { input.focus(); }, 50);
 
-    // Initial Status Message
-    await streamText(output, `> INITIALIZING SECURE CONNECTION TO NODE: ${permalink}\n> ESTABLISHING UPLINK...\n`);
+    // NON-BLOCKING START: rain and text begin together
+    streamText(output, `> INITIALIZING SECURE CONNECTION TO NODE: ${permalink}\n> ESTABLISHING UPLINK...\n`);
 
     try {
-        // Fetch Data from Reddit
         const response = await fetch(`https://www.reddit.com${permalink}.json`);
         const json = await response.json();
         
         terminalCurrentData = json; 
         const post = json[0].data.children[0].data;
         
-        // Build Text Header
         let content = `\n> SUBJECT: ${post.title.toUpperCase()}\n`;
         content += `> AUTHOR:  ${post.author}\n`;
         content += `> SUBREQ:  r/${post.subreddit}\n`;
@@ -2505,80 +2685,69 @@ async function openTerminalModal(permalink) {
             await streamText(output, post.selftext + "\n\n");
         }
 
-        // --- MEDIA HANDLING ---
         const mediaContainer = document.createElement('div');
         output.appendChild(mediaContainer);
         
-        // 1. IMAGE HANDLING
         if (post.post_hint === 'image' || (post.url && post.url.match(/\.(jpg|jpeg|png|gif)$/i))) {
             const frame = createMediaFrame();
             const wrapper = document.createElement('div');
             wrapper.className = 'media-wrapper';
-
             const img = document.createElement('img');
             img.src = post.url;
             img.className = 'terminal-media';
-            
-            // Fullscreen Button
             const controls = document.createElement('div');
             controls.className = 'media-controls';
             const btnFull = createButton('⛶', () => toggleFullscreen(img)); 
-
             controls.appendChild(btnFull);
             wrapper.appendChild(img);
             wrapper.appendChild(controls);
             frame.appendChild(wrapper);
             mediaContainer.appendChild(frame);
-
             await streamText(output, "\n> VISUAL DATA LOADED.\n");
         } 
-        // 2. VIDEO HANDLING
         else if (post.is_video && post.media && post.media.reddit_video) {
             const frame = createMediaFrame();
             const wrapper = document.createElement('div');
             wrapper.className = 'media-wrapper';
-
             const vid = document.createElement('video');
             vid.src = post.media.reddit_video.hls_url || post.media.reddit_video.fallback_url;
             vid.className = 'terminal-media';
-            vid.autoplay = true;
-            vid.loop = true;
-            vid.muted = true; // Must start muted
-            vid.playsInline = true;
-            
+            vid.autoplay = true; vid.loop = true; vid.muted = true; vid.playsInline = true;
             const controls = document.createElement('div');
             controls.className = 'media-controls';
-
             const btnVol = createButton('🔇', () => {
                 vid.muted = !vid.muted;
                 if (!vid.muted) vid.play().catch(() => {}); 
                 btnVol.textContent = vid.muted ? '🔇' : '🔊';
-                // UPDATED: Glow uses theme color
                 btnVol.style.boxShadow = vid.muted ? 'none' : '0 0 10px var(--theme-color)';
             });
-
-            // Fullscreen Button
             const btnFull = createButton('⛶', () => toggleFullscreen(vid));
-
             controls.appendChild(btnVol);
             controls.appendChild(btnFull);
             wrapper.appendChild(vid);
             wrapper.appendChild(controls);
             frame.appendChild(wrapper);
             mediaContainer.appendChild(frame);
-
             await streamText(output, "\n> VIDEO STREAM BUFFERED.\n");
         }
-
         await streamText(output, `\n> END OF FILE.\n> TYPE 'com' TO LOAD COMMENTS OR 'exit' TO DISCONNECT.\n`);
-        
     } catch (e) {
         await streamText(output, `\n> ERROR: DATA CORRUPTION DETECTED. LINK SEVERED.\n`);
         console.error(e);
     }
 }
 
-// --- HELPER FUNCTIONS ---
+function closeTerminalModal() {
+    const modal = document.getElementById('matrix-modal');
+    if (!modal) return;
+    
+    modal.classList.add('hidden');
+    document.getElementById('terminal-output').innerHTML = "";
+    isTerminalTyping = false; 
+
+    if (terminalRainInterval) clearInterval(terminalRainInterval);
+    window.removeEventListener('resize', initTerminalRain);
+}
 
 function createMediaFrame() {
     const frame = document.createElement('div');
@@ -2606,23 +2775,14 @@ function toggleFullscreen(element) {
     }
 }
 
-function closeTerminalModal() {
-    const modal = document.getElementById('matrix-modal');
-    modal.classList.add('hidden');
-    document.getElementById('terminal-output').innerHTML = "";
-    isTerminalTyping = false; 
-}
-
 function streamText(container, text) {
     return new Promise(resolve => {
         isTerminalTyping = true;
         const span = document.createElement('span');
         container.appendChild(span);
         container.scrollTop = container.scrollHeight;
-
         let i = 0;
         const speed = 5; 
-
         function type() {
             if (!isTerminalTyping) { resolve(); return; }
             if (i < text.length) {
@@ -2640,18 +2800,14 @@ function streamText(container, text) {
     });
 }
 
-// --- CURSOR LOGIC ---
-
 function initTerminalCursor() {
     const input = document.getElementById('terminal-cmd-input');
     const inputArea = document.querySelector('.terminal-input-area'); 
     
     if (!input || !inputArea) return;
 
-    // 1. Hide the native thin cursor
     input.style.caretColor = 'transparent';
 
-    // 2. Create the Custom Block Cursor
     let cursor = document.getElementById('modal-terminal-cursor');
     if (!cursor) {
         cursor = document.createElement('div');
@@ -2663,7 +2819,6 @@ function initTerminalCursor() {
             left: 0;
             width: 8px;
             height: 1.2em;
-            /* UPDATED: Cursor uses theme color */
             background-color: var(--theme-color);
             transform: translateY(-50%);
             pointer-events: none;
@@ -2686,7 +2841,6 @@ function initTerminalCursor() {
         }
     }
 
-    // 3. Create Measurement Span
     let measure = document.getElementById('modal-measure');
     if (!measure) {
         measure = document.createElement('span');
@@ -2695,7 +2849,6 @@ function initTerminalCursor() {
         document.body.appendChild(measure);
     }
 
-    // 4. Sync Function
     function sync() {
         const style = window.getComputedStyle(input);
         measure.style.fontFamily = style.fontFamily;
@@ -2713,7 +2866,6 @@ function initTerminalCursor() {
         cursor.style.transform = `translateY(-50%)`;
     }
 
-    // 5. Attach Listeners
     input.removeEventListener('input', sync);
     input.removeEventListener('scroll', sync);
     
@@ -2733,8 +2885,6 @@ function initTerminalCursor() {
     }
 }
 
-// --- COMMENTS LOGIC ---
-
 async function renderComments() {
     const output = document.getElementById('terminal-output');
     if (!terminalCurrentData || !terminalCurrentData[1]) {
@@ -2748,7 +2898,7 @@ async function renderComments() {
     function processComment(comment, depth) {
         if (depth > maxDepth || !comment.data.body) return "";
         const indent = "|   ".repeat(depth);
-        let treeStr = `${indent}|-- [${comment.data.author}]: ${comment.data.body.substring(0, 300).replace(/\n/g, ' ')}\n`;
+        let treeStr = `${indent}|-- [${comment.data.author}]: ${comment.data.body.substring(0, 300).replace(/\\n/g, ' ')}\n`;
         if (comment.data.replies && comment.data.replies.data) {
             comment.data.replies.data.children.forEach(reply => {
                 treeStr += processComment(reply, depth + 1);
@@ -2768,8 +2918,6 @@ async function renderComments() {
     output.appendChild(pre);
     output.scrollTop = output.scrollHeight;
 }
-
-// --- EVENT LISTENERS (CRITICAL FOR COMMANDS) ---
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('terminal-cmd-input');
@@ -2796,7 +2944,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 echo.style.opacity = "0.7";
                 output.appendChild(echo);
 
-                // 1. Modal Specific Commands
                 if (baseCmd === 'exit') {
                     closeTerminalModal();
                 } 
@@ -2806,17 +2953,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 else if (baseCmd === 'clear' || baseCmd === 'cls') {
                     output.innerHTML = "";
                 } 
-                // 2. Global CLI Commands
                 else {
                     const slashCmd = baseCmd.startsWith('/') ? baseCmd : `/${baseCmd}`;
                     
                     if (typeof CLI_COMMANDS !== 'undefined' && CLI_COMMANDS[slashCmd]) {
                         CLI_COMMANDS[slashCmd](args);
-                        
                         const successMsg = document.createElement('div');
                         successMsg.textContent = `> SYSTEM COMMAND '${slashCmd}' EXECUTED.`;
-                        
-                        // UPDATED: Success message uses theme color
                         successMsg.style.color = "var(--theme-color)"; 
                         successMsg.style.textShadow = "0 0 5px var(--theme-color)";
                         output.appendChild(successMsg);
@@ -2828,7 +2971,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         output.appendChild(errorMsg);
                     }
                 }
-                
                 output.scrollTop = output.scrollHeight;
             }
             

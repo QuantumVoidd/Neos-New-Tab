@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Neo's New Tab",
-  "version": "3.16.0",
+  "version": "3.17.0",
   "description": "A high-performance Matrix-style new tab dashboard with customizable visuals and Sentinel Swarm.",
   "icons": {
     "16": "icon16.png",
@@ -31,7 +31,22 @@
         "glitch.mp3",
         "jackin.mp3",
         "ringing.mp3",
-        "hangup.mp3"
+        "hangup.mp3",
+        "phone_msg_1.mp3",
+        "phone_msg_2.mp3",
+        "phone_msg_3.mp3",
+        "phone_msg_4.mp3",
+        "phone_msg_5.mp3",
+        "phone_msg_6.mp3",
+        "phone_msg_7.mp3",
+        "phone_msg_8.mp3",
+        "phone_msg_9.mp3",
+        "phone_msg_10.mp3",
+        "phone_msg_11.mp3",
+        "rain_window.mp3",
+        "hum.mp3",
+        "matrix_code.mp3",
+        "sentinel_swarm.mp3"
       ],
       "matches": [ "<all_urls>" ]
     }
