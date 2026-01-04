@@ -633,7 +633,11 @@ body, html {
     display: flex; 
     flex-direction: column; 
     max-height: 85vh; 
-    overflow: hidden; 
+    overflow: hidden;
+    /* ADDED GLOW ONLY */
+    box-shadow: 0 0 5px var(--theme-color), 
+                0 0 10px var(--theme-color), 
+                inset 0 0 5px var(--theme-color);
 }
 .settings-scroll-area { 
     padding: 20px; 
@@ -722,35 +726,39 @@ input[type="text"], select {
     transform: rotate(90deg);
 }
 
-/* DYNAMIC NAV BAR STYLES */
+/* DYNAMIC NAV BAR STYLES - RESTORED FIXED SIZE */
 #nav-bar-container {
     position: fixed;
     bottom: 25px;
     left: 50%;
+    /* Removed scaling - back to standard centering */
     transform: translateX(-50%);
-    display: flex;
-    flex-direction: row;
+    
+    display: flex !important;
+    flex-direction: row !important; 
     align-items: center;
+    justify-content: center;
     gap: 20px;
+    
     z-index: 2000;
     padding: 10px 20px;
     pointer-events: auto;
 }
 
 #dynamic-links-wrapper {
-    display: flex;
-    flex-direction: row;
+    display: flex !important;
+    flex-direction: row !important;
     gap: 20px;
 }
 
 .nav-icon-circle {
-    width: 48px;
-    height: 48px;
+    width: 50px; /* Locked Size */
+    height: 50px;
     border: 2px solid var(--theme-color);
     border-radius: 50%;
     background: rgba(0, 0, 0, 0.95);
     
-    /* SHARP STATIC GLOW: 5px core and 10px subtle wash */
+    /* Perfected middle-ground glow */
     box-shadow: 0 0 5px var(--theme-color), 
                 0 0 10px var(--theme-color), 
                 inset 0 0 4px var(--theme-color);
@@ -778,28 +786,25 @@ input[type="text"], select {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 48px;
-    height: 48px;
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
 }
 
 .nav-icon-circle img {
-    width: 26px;
-    height: 26px;
+    width: 28px;
+    height: 28px;
     display: block;
     filter: drop-shadow(0 0 3px var(--theme-color));
 }
 
-/* --- UPDATED HOVER: Tightened from 18px down to 12px --- */
 .nav-icon-circle:hover {
-    transform: scale(1.1) translateY(-5px); /* Slightly reduced scale for precision */
-    /* Sharp core stays same, outer spread capped at 12px for a clean look */
+    transform: scale(1.1) translateY(-5px); 
     box-shadow: 0 0 6px var(--theme-color), 
                 0 0 12px var(--theme-color), 
                 inset 0 0 6px var(--theme-color);
 }
-
-/* DRAG AND DROP STYLES */
+/* DRAG AND DROP STYLES - Intact */
 .nav-icon-circle.dragging {
     opacity: 0.5;
     transform: scale(1.1) translateY(-5px);
@@ -821,7 +826,7 @@ input[type="text"], select {
 
 @keyframes pulse-glow {
     0%, 100% { box-shadow: 0 0 10px var(--theme-color); }
-    50% { box-shadow: 0 0 20px var(--theme-color), 0 0 30px var(--theme-color); }
+    50% { box-shadow: 0 0 15px var(--theme-color), 0 0 20px var(--theme-color); }
 }
 
 .pulse-glow {
@@ -829,17 +834,42 @@ input[type="text"], select {
 }
 
 #drag-hint {
-    position: absolute;
-    bottom: 80px;
+    position: fixed;
+    top: 82%; /* Positioned specifically below the main container */
     left: 50%;
     transform: translateX(-50%);
-    font-size: 0.7rem;
+    font-size: 0.8rem;
     color: var(--theme-color);
-    opacity: 0.7;
+    text-shadow: 0 0 8px var(--theme-color);
+    opacity: 0;
+    visibility: hidden; /* Added to ensure it fully disappears */
     white-space: nowrap;
     z-index: 2001;
     pointer-events: none;
-    transition: opacity 0.5s ease;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+/* We only animate when the 'active' class is added via JS */
+#drag-hint.active {
+    opacity: 1;
+    visibility: visible;
+    animation: hint-pulse 2s infinite ease-in-out;
+}
+
+@keyframes hint-pulse {
+    0%, 100% { 
+        filter: brightness(1);
+        transform: translateX(-50%) scale(1);
+    }
+    50% { 
+        filter: brightness(1.5) drop-shadow(0 0 5px var(--theme-color));
+        transform: translateX(-50%) scale(1.03);
+    }
+    98% { transform: translateX(-50%) skew(0deg); }
+    99% { transform: translateX(-48%) skew(10deg); }
 }
 
 /* 3D Rain Configuration Separator */
@@ -1617,4 +1647,344 @@ input[type="password"] {
 #terminal-rain-canvas {
     display: block;
     image-rendering: pixelated; /* Keeps the matrix characters sharp */
+}
+
+/* --- SETTINGS MODAL TYPOGRAPHY --- */
+#settings-modal {
+    color: var(--theme-color) !important; /* Forces text to theme color */
+    font-family: 'Courier New', monospace; /* Consistent terminal font */
+}
+
+#settings-modal h2, 
+#settings-modal h3 {
+    color: var(--theme-color);
+    text-shadow: 0 0 8px var(--theme-color);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-top: 15px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(0, 242, 255, 0.2); /* Faint divider */
+}
+
+/* Make labels slightly dimmer so they don't compete with headers */
+#settings-modal label {
+    filter: brightness(0.85);
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+/* Ensure sliders and checkboxes use the theme color */
+#settings-modal input[type="range"],
+#settings-modal input[type="checkbox"] {
+    accent-color: var(--theme-color);
+    cursor: pointer;
+}
+
+/* Style the text inputs (like the quote input) to match */
+#settings-modal input[type="text"] {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--theme-color);
+    color: var(--theme-color);
+    padding: 5px;
+    outline: none;
+}
+
+/* --- TAMED MATRIX CHECKBOXES --- */
+#settings-modal input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--theme-color);
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 2px;
+    cursor: pointer;
+    position: relative;
+    vertical-align: middle;
+    transition: all 0.2s ease;
+}
+
+#settings-modal input[type="checkbox"]:checked {
+    background: var(--theme-color);
+    /* Much tighter, sharper glow */
+    box-shadow: 0 0 6px var(--theme-color);
+    border-color: var(--theme-color); /* Removed white border to reduce "heat" */
+}
+
+#settings-modal input[type="checkbox"]:checked::after {
+    content: ''; 
+    position: absolute;
+    top: 25%;
+    left: 25%;
+    width: 50%;
+    height: 50%;
+    background: #000;
+    border-radius: 1px;
+}
+
+/* The Square Cursor "Bit" */
+#settings-modal input[type="checkbox"]:checked::after {
+    content: ''; 
+    position: absolute;
+    top: 20%;
+    left: 20%;
+    width: 60%;
+    height: 60%;
+    background: #000; /* Dark bit flip */
+    box-shadow: 0 0 2px #000;
+    border-radius: 1px;
+}
+
+/* --- MATRIX RANGE SLIDERS --- */
+#settings-modal input[type="range"] {
+    appearance: none;
+    background: rgba(0, 242, 255, 0.1); /* Faint track */
+    border: 1px solid rgba(0, 242, 255, 0.3);
+    height: 6px;
+    border-radius: 5px;
+    outline: none;
+}
+
+/* The Slider Handle (The Node) */
+#settings-modal input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 15px;
+    height: 15px;
+    background: var(--theme-color);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 10px var(--theme-color);
+    border: none;
+}
+
+/* --- THE FINAL ALIGNMENT & GLOW SYMMETRY FIX --- */
+#settings-modal button {
+    background: transparent;
+    border: 1px solid var(--theme-color);
+    color: var(--theme-color);
+    
+    /* 1. LAYOUT: Using Flex inside the button to force true center */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    width: 220px;
+    height: 40px; /* Fixed height ensures the glow is vertically centered too */
+    margin: 10px auto;
+    padding: 0; /* Remove padding so it can't push the text off-center */
+    
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 4px;
+    box-sizing: border-box;
+    transition: background 0.2s, box-shadow 0.2s, color 0.2s;
+
+    /* 2. TEXT SYMMETRY: 
+       We use text-indent to counter-act the 2px of letter-spacing 
+       that usually pushes the text to the right. 
+    */
+    letter-spacing: 2px;
+    text-indent: 2px; 
+}
+
+#settings-modal button:hover {
+    background: var(--theme-color);
+    color: #000;
+    
+    /* 3. THE GLOW: 
+       Spread (1px) forces the shadow to start 1px outside the border 
+       equally on all sides, masking any sub-pixel alignment issues.
+    */
+    box-shadow: 0px 0px 10px 1px var(--theme-color) !important;
+    border-color: #fff;
+}
+
+/* Ensure the Hard Reset button remains red but stays centered */
+#settings-modal button#restore-defaults:hover {
+    background: #ff0000;
+    box-shadow: 0px 0px 10px 1px #ff0000 !important;
+    border-color: #fff;
+    color: white;
+}
+
+/* --- STICKY SETTINGS HEADER --- */
+.settings-scroll-area {
+    position: relative;
+    padding-top: 0 !important; /* Managed by the sticky header now */
+}
+
+#settings-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.9); /* Solid background so text doesn't overlap */
+    margin: 0;
+    padding: 20px 0 10px 0;
+    text-align: center; /* Symmetrical centering */
+    width: 100%;
+    color: var(--theme-color);
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    font-family: 'Courier New', monospace;
+    text-shadow: 0 0 10px var(--theme-color);
+}
+
+/* The Separator (Matched to RSS Feed Style) */
+#settings-header::after {
+    content: '';
+    display: block;
+    width: 80%; /* Symmetrical width */
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--theme-color), transparent);
+    margin: 10px auto 0;
+    box-shadow: 0 0 8px var(--theme-color);
+}
+
+/* --- THE DISSOLVE EFFECT --- */
+/* This creates a fade zone so content disappears smoothly behind the header */
+.settings-scroll-area::before {
+    content: '';
+    position: sticky;
+    top: 55px; /* Sits right under the header */
+    left: 0;
+    width: 100%;
+    height: 30px;
+    background: linear-gradient(to bottom, rgba(0,0,0,1), transparent);
+    z-index: 99;
+    pointer-events: none;
+}
+
+/* --- FINAL FIX: TRANSPARENT HEADER + VISIBLE BORDER GLOW --- */
+
+/* 1. RESTORE BORDER GLOW: 2px padding on the modal reveals the inner glow */
+#settings-modal {
+    padding: 2px !important; 
+    overflow: hidden !important; /* Keeps corners clean */
+}
+
+/* 2. TRANSPARENT WRAPPER: Removes the "Black Block" effect */
+.settings-header-wrapper {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: transparent !important; /* Must be transparent to see rain/bg */
+    width: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+}
+
+/* 3. HEADER TEXT: Positioned with padding instead of margins */
+#settings-header {
+    background: transparent !important;
+    margin: 0 !important;
+    
+    /* Use padding to create space so the background remains transparent */
+    padding-top: 10px !important; 
+    padding-bottom: 5px !important;
+    
+    text-align: center;
+    color: var(--theme-color);
+    text-shadow: 0 0 10px var(--theme-color);
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    width: 100%;
+    border: none !important;
+}
+
+/* 5. SCROLL AREA: Pushes content down & fades it out */
+.settings-scroll-area {
+    position: relative;
+    
+    /* Pushes slider down so it clears the header */
+    padding-top: 40px !important; 
+    
+    /* Restores side padding for the toggles */
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+    
+    border-top: none !important;
+    
+    /* THE MASK: Fades text out exactly where the header sits (top 40px) */
+    mask-image: linear-gradient(to bottom, transparent 0%, transparent 40px, black 60px, black 100%) !important;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 40px, black 60px, black 100%) !important;
+}
+
+/* 6. CLEANUP: Delete any ghost lines */
+#settings-header::after,
+#settings-header::before {
+    content: none !important;
+}
+/* --- REMOVE BLACK GAP (PADDING FIX) --- */
+
+/* 1. STRIP PADDING FROM MAIN MODAL so header touches the top border */
+#settings-modal {
+    padding: 0 !important; 
+    /* Ensure the modal background itself doesn't bleed weirdly */
+    overflow: hidden; 
+}
+
+/* 2. HEADER WRAPPER (Transparent & Flush Top) */
+.settings-header-wrapper {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: transparent !important; /* No black box */
+    width: 100%;
+    padding: 10px 0 0 0 !important; /* Tiny space from the top border line */
+    border: none !important;
+}
+
+#settings-header {
+    margin: 0 !important;
+    text-align: center;
+    color: var(--theme-color);
+    text-shadow: 0 0 10px var(--theme-color);
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    position: relative;
+    z-index: 101;
+    border: none !important;
+}
+
+/* --- FINAL HEADER SEPARATOR (BLUNT EDGES) --- */
+.settings-separator {
+    width: 90% !important;
+    margin: 0 auto !important;
+    height: 1px !important;
+    
+    /* THE FIX: Solid color instead of gradient. 
+       This removes the "pointed" fade effect and makes the ends blunt/square. */
+    background: var(--theme-color) !important;
+    
+    box-shadow: none !important;
+    opacity: 1 !important;
+    border: none !important;
+}
+
+/* 4. SCROLL AREA (Restores the side padding we took from the modal) */
+.settings-scroll-area {
+    position: relative;
+    
+    /* RESTORE SIDE PADDING so content doesn't hit the edges */
+    padding: 50px 20px 20px 20px !important; 
+    
+    width: 100%;
+    box-sizing: border-box; /* Ensures padding doesn't break width */
+    border-top: none !important;
+    
+    /* Dissolve Mask */
+    mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 100%) !important;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 100%) !important;
+}
+
+/* Clean up ghost elements */
+#settings-header::after,
+#settings-header::before {
+    content: none !important;
 }

@@ -115,6 +115,68 @@ const VIDEO_CONFIGS = {
 };
 
 // --- MATRIX CALENDAR FUNCTIONS ---
+
+// Calendar Rain Variables
+let calendarRainInterval = null;
+let calendarDrops = [];
+
+function initCalendarRain() {
+    const canvas = document.getElementById('calendar-rain-canvas');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    
+    // Set resolution to match the physical pixel size
+    canvas.width = canvas.offsetWidth * dpr;
+    canvas.height = canvas.offsetHeight * dpr;
+    ctx.scale(dpr, dpr);
+
+    // Clear buffer to prevent "stuck" frames
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Dense columns (matches Zion/Terminal look)
+    const columnSpacing = fontSize * 0.6;
+    const columns = Math.floor(canvas.offsetWidth / columnSpacing);
+    
+    // Reset drops
+    calendarDrops = Array(columns).fill(0).map(() => Math.floor(Math.random() * (canvas.height / fontSize)));
+
+    // Start loop
+    if (calendarRainInterval) clearInterval(calendarRainInterval);
+    calendarRainInterval = setInterval(drawCalendarRain, rainSpeed);
+}
+
+function drawCalendarRain() {
+    const canvas = document.getElementById('calendar-rain-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    // Fade out trail
+    ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw characters
+    ctx.fillStyle = rainColor; // Uses your global rain color setting
+    ctx.font = fontSize + "px 'Courier New', monospace";
+    const columnSpacing = fontSize * 0.6;
+
+    for (let i = 0; i < calendarDrops.length; i++) {
+        const text = MATRIX_ALPHABET.charAt(Math.floor(Math.random() * MATRIX_ALPHABET.length));
+        
+        // Random alpha for depth
+        ctx.globalAlpha = 0.3 + (Math.random() * 0.7);
+        ctx.fillText(text, i * columnSpacing, calendarDrops[i] * fontSize);
+
+        // Reset drop
+        if (calendarDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+            calendarDrops[i] = 0;
+        }
+        calendarDrops[i]++;
+    }
+    ctx.globalAlpha = 1.0;
+}
+
 function initCalendar() {
     console.log("Attempting to initialize calendar...");
     
@@ -200,6 +262,17 @@ function openCalendar() {
     } catch (e) {}
     
     renderCalendar();
+
+    // Initialize rain immediately
+    initCalendarRain();
+    
+    // Resize observer handles height changes when switching months
+    if (!window.calendarResizeObserver) {
+        window.calendarResizeObserver = new ResizeObserver(() => {
+            initCalendarRain();
+        });
+        window.calendarResizeObserver.observe(calendarPopup);
+    }
 }
 
 function closeCalendar() {
@@ -208,6 +281,18 @@ function closeCalendar() {
     
     calendarPopup.classList.remove('active');
     isCalendarOpen = false;
+
+    // Cleanup rain animation
+    if (calendarRainInterval) {
+        clearInterval(calendarRainInterval);
+        calendarRainInterval = null;
+    }
+    
+    // Cleanup observer
+    if (window.calendarResizeObserver) {
+        window.calendarResizeObserver.disconnect();
+        window.calendarResizeObserver = null;
+    }
 }
 
 function navigateCalendar(direction) {
@@ -802,11 +887,104 @@ let networkData = { sent: 0, received: 0, lastUpdate: Date.now() };
 
 const showZionMessage = (msg) => {
     const overlay = document.createElement('div');
-    overlay.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; align-items:center; justify-content:center; z-index:10000; font-family:'Orbitron', sans-serif; color:var(--theme-color); text-align:center; padding:40px; border: 2px solid var(--theme-color); box-shadow: inset 0 0 20px var(--theme-color), 0 0 20px var(--theme-color); box-sizing: border-box;";
-    overlay.innerHTML = `<div><div style="font-size:1.5rem; margin-bottom:30px; white-space:pre-wrap; text-shadow: 0 0 10px var(--theme-color);">${msg}</div><button id="zion-close" style="background:transparent; color:var(--theme-color); border:1px solid var(--theme-color); padding:10px 30px; cursor:pointer; font-family:inherit; font-weight:bold; letter-spacing:2px; box-shadow: 0 0 10px var(--theme-color);">DISMISS</button></div>`;
+    // Main overlay container
+    overlay.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10000; font-family:'Orbitron', sans-serif; color:var(--theme-color); text-align:center; padding:20px; box-sizing: border-box;";
+    
+    // Inner Modal
+    overlay.innerHTML = `
+        <div id="zion-modal-inner" style="position: relative; max-height: 90vh; overflow-y: auto; width: 100%; max-width: 800px; padding: 20px; border: 2px solid var(--theme-color); box-shadow: 0 0 10px var(--theme-color); border-radius: 10px; background: rgba(0,0,0,0.85); overflow: hidden;">
+            
+            <canvas id="zion-rain-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none;"></canvas>
+            
+            <div style="position: relative; z-index: 1; font-size:1.2rem; margin-bottom:30px; white-space:pre-wrap; text-shadow: 0 0 10px var(--theme-color); line-height: 1.4;">${msg}</div>
+            
+            <button id="zion-close" style="position: relative; z-index: 1; background:transparent; color:var(--theme-color); border:1px solid var(--theme-color); padding:10px 30px; cursor:pointer; font-family:inherit; font-weight:bold; letter-spacing:2px; box-shadow: 0 0 10px var(--theme-color); margin-top: 10px;">DISMISS</button>
+        </div>`;
+    
     document.body.appendChild(overlay);
-    document.getElementById('zion-close').onclick = () => overlay.remove();
+    
+    // Initialize the rain effect
+    initZionRain();
+
+    // --- FIX START: Observe size changes (e.g. image loading) ---
+    const innerModal = document.getElementById('zion-modal-inner');
+    const resizeObserver = new ResizeObserver(() => {
+        // Re-init rain to match new dimensions
+        initZionRain();
+    });
+    resizeObserver.observe(innerModal);
+    // --- FIX END ---
+
+    // Handle Window Resize
+    const resizeHandler = () => initZionRain();
+    window.addEventListener('resize', resizeHandler);
+
+    // Cleanup
+    document.getElementById('zion-close').onclick = () => {
+        clearInterval(zionRainInterval);
+        window.removeEventListener('resize', resizeHandler);
+        resizeObserver.disconnect(); // Clean up observer
+        overlay.remove();
+    };
 };
+// --- ZION MODAL RAIN LOGIC ---
+let zionRainInterval = null;
+let zionDrops = [];
+
+function initZionRain() {
+    const canvas = document.getElementById('zion-rain-canvas');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    
+    // Set resolution matches the modal size
+    canvas.width = canvas.offsetWidth * dpr;
+    canvas.height = canvas.offsetHeight * dpr;
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, canvas.width, canvas.height); // Hard clear
+
+    // Dense columns (0.6 spacing)
+    const columnSpacing = fontSize * 0.6;
+    const columns = Math.floor(canvas.offsetWidth / columnSpacing);
+    zionDrops = Array(columns).fill(0).map(() => Math.floor(Math.random() * (canvas.height / fontSize)));
+
+    if (zionRainInterval) clearInterval(zionRainInterval);
+    
+    // Syncs with your global rainSpeed slider
+    zionRainInterval = setInterval(drawZionRain, rainSpeed);
+}
+
+function drawZionRain() {
+    const canvas = document.getElementById('zion-rain-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    // Fade out previous frame
+    ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Use global rainColor
+    ctx.fillStyle = rainColor;
+    ctx.font = fontSize + "px 'Courier New', monospace";
+    const columnSpacing = fontSize * 0.6;
+
+    for (let i = 0; i < zionDrops.length; i++) {
+        const text = MATRIX_ALPHABET.charAt(Math.floor(Math.random() * MATRIX_ALPHABET.length));
+        
+        // Random alpha for depth
+        ctx.globalAlpha = 0.3 + (Math.random() * 0.7);
+        ctx.fillText(text, i * columnSpacing, zionDrops[i] * fontSize);
+
+        if (zionDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+            zionDrops[i] = 0;
+        }
+        zionDrops[i]++;
+    }
+    ctx.globalAlpha = 1.0;
+   }
+// --- CALENDAR RAIN VARIABLES ---
+// (Replaced by new block below)
 
 const CLI_COMMANDS = {
     '/help': () => showZionMessage("SYSTEM COMMANDS:\n/weather [city] - Satellite Uplink\n/ghost [0-1] - UI Transparency\n/speed [10-100] - Rain Velocity\n/color [hex] - System/Rain Color Update\n/alphabet [matrix|binary|hex] - Character Swap\n/font [cyber|classic] - Change Typography\n/glitch - Trigger System Distortion\n/night - Toggle Stealth Mode\n/quote [text] - Broadcast Custom Mantra\n/whoami - Advanced Identity Trace\n/jackin - Overclock Stream\n/clear - Flush Terminal\n/white-rabbit - Random Mantra\n/nodes - Link Count\n/reset - Factory Reset"),
@@ -936,15 +1114,25 @@ const CLI_COMMANDS = {
             chrome.storage.sync.set({ rainColor: v, themeColor: v }); 
         }
     },
-    '/whoami': async () => {
+   '/whoami': async () => {
         const isBrave = (navigator.brave && await navigator.brave.isBrave()) || false;
         const platform = navigator.userAgentData ? navigator.userAgentData.platform : navigator.platform;
         const browserName = isBrave ? "Brave (Encrypted)" : (navigator.userAgent.includes("Edg") ? "Edge" : "Chrome/Chromium");
         const dpr = window.devicePixelRatio || 1;
         const physicalWidth = Math.round(window.screen.width * dpr);
         const physicalHeight = Math.round(window.screen.height * dpr);
-        const info = `IDENTITY TRACE: \nOS: ${platform}\nCORE: ${browserName}\nDPR: ${dpr.toFixed(2)}x (Scaling Factor)\nVIEWPORT: ${window.innerWidth}x${window.innerHeight}\nHARDWARE: ${physicalWidth}x${physicalHeight} (True Resolution)\nUPLINK: ${navigator.onLine ? "SECURE" : "DISCONNECTED"}\nNETWORK ACTIVITY: ${networkData.sent.toFixed(1)}KB sent, ${networkData.received.toFixed(1)}KB received\n\nSTATUS: YOU ARE THE ONE.`;
+        
+        const idImage = chrome.runtime.getURL("neo_id.png");
+
+        // CHANGES MADE:
+        // 1. Removed "\n" before the <div>
+        // 2. Changed margin from "20px 0" to "5px 0"
+        // 3. Removed "\n" after the </div> so the STATUS line sits right underneath
+        const info = `IDENTITY TRACE: \nOS: ${platform}\nCORE: ${browserName}\nDPR: ${dpr.toFixed(2)}x (Scaling Factor)\nVIEWPORT: ${window.innerWidth}x${window.innerHeight}\nHARDWARE: ${physicalWidth}x${physicalHeight} (True Resolution)\nUPLINK: ${navigator.onLine ? "SECURE" : "DISCONNECTED"}\nNETWORK ACTIVITY: ${networkData.sent.toFixed(1)}KB sent, ${networkData.received.toFixed(1)}KB received<div style="margin: 5px 0; text-align: center;"><img src="${idImage}" style="max-width: 300px; width: 100%; background: transparent; display: inline-block;"></div>STATUS: YOU ARE THE ONE.`;
+        
         showZionMessage(info);
+    
+    
     },
     '/clear': () => { const log = document.getElementById('chat-log'); if(log) log.innerHTML = ""; },
     '/jackin': () => {
@@ -1918,12 +2106,11 @@ async function updateZionFeed(isSilent = false) {
             }, 800);
         }
 
-    } catch (e) { 
-        console.error("Zion Feed Error:", e);
-        if (barCont) barCont.style.display = 'none';
-        if(!isSilent) list.innerHTML = `<div class="rss-meta" style="color:#f00;">Signal Lost: Protocol Error</div>`; 
-    }
-}
+            } catch (e) { 
+                                    console.error("Zion Feed Error:", e);
+                                    // ...
+                            }
+        }
 
 // --- EXPANDED CHAT SCRIPTS ---
 const CHAT_SCRIPTS = [
@@ -2164,7 +2351,10 @@ bgFilterT.onchange = (e) => document.body.classList.toggle('bg-filter-active', e
 bgT.onchange = (e) => mainContainer.classList.toggle('transparent-bg', e.target.checked);
 cycleT.onchange = (e) => { if (e.target.checked) { quoteI.value = ""; startQuoteCycling(); } else stopQuoteCycling(); };
 speedS.oninput = (e) => { rainSpeed = parseInt(e.target.value); if (!videoBackground) startRain(); };
-sizeS.oninput = (e) => mainContainer.style.transform = `translate(-50%, -50%) scale(${e.target.value})`;
+sizeS.oninput = (e) => {
+    // Only scales the main central container now
+    mainContainer.style.transform = `translate(-50%, -50%) scale(${e.target.value})`;
+};
 textScaleS.oninput = (e) => document.documentElement.style.setProperty('--text-scale', e.target.value);
 glitchS.oninput = (e) => document.documentElement.style.setProperty('--glitch-intensity', e.target.value + 'px');
 scaleS.onchange = (e) => document.documentElement.style.setProperty('--bg-scale', e.target.value);
@@ -2355,22 +2545,28 @@ let isDragging = false;
 let dragHintTimeout = null;
 
 function showDragHint(message) {
-    const hint = document.getElementById('drag-hint');
+    let hint = document.getElementById('drag-hint');
+    
+    // Create it if it doesn't exist yet
     if (!hint) {
-        const hintEl = document.createElement('div');
-        hintEl.id = 'drag-hint';
-        hintEl.textContent = message;
-        document.body.appendChild(hintEl);
-    } else {
-        hint.textContent = message;
-        hint.style.opacity = '0.7';
+        hint = document.createElement('div');
+        hint.id = 'drag-hint';
+        document.body.appendChild(hint);
     }
+    
+    // Set the message and trigger the CSS animation
+    hint.textContent = message;
+    hint.classList.add('active');
     
     clearTimeout(dragHintTimeout);
     dragHintTimeout = setTimeout(() => {
-        const hint = document.getElementById('drag-hint');
-        if (hint) hint.style.opacity = '0';
-    }, 2000);
+        // Remove the class so the CSS 'visibility: hidden' and 'opacity: 0' take over
+        hint.classList.remove('active');
+    }, 4000); // 4 seconds gives the user time to see the glitch effect
+}
+
+function updateLinkOrder(newOrder) {
+    chrome.storage.sync.set({ userNavLinks: newOrder }, loadNavLinks);
 }
 
 function updateLinkOrder(newOrder) {
@@ -2379,19 +2575,26 @@ function updateLinkOrder(newOrder) {
 
 function loadNavLinks() {
     chrome.storage.sync.get({ userNavLinks: [] }, (data) => {
+        // Clear existing icons
         navWrapper.innerHTML = '';
         const count = data.userNavLinks.length; 
-        addLinkBtn.style.display = count >= 10 ? 'none' : 'flex'; 
+        
+        // FIX 1: Initially hide the button to prevent the center-screen ghosting glitch
+        addLinkBtn.style.display = 'none';
         addLinkBtn.title = `Add Secure Node (${count}/10)`;
         
-        if (count > 0 && !sessionStorage.getItem('dragHintShown')) {
+        // FIX 2: Trigger hint on every refresh
+        if (count > 0) {
             setTimeout(() => showDragHint('Drag and drop links to reorder'), 1000);
-            sessionStorage.setItem('dragHintShown', 'true');
         }
         
         data.userNavLinks.forEach((url, idx) => {
             let domain;
-            try { domain = new URL(url).hostname; } catch (e) { domain = 'node'; }
+            try { 
+                domain = new URL(url).hostname; 
+            } catch (e) { 
+                domain = 'node'; 
+            }
             
             const node = document.createElement('div');
             node.className = 'nav-icon-circle';
@@ -2404,53 +2607,127 @@ function loadNavLinks() {
             img.draggable = false;
             node.appendChild(img);
             
-            node.onclick = (e) => { if (!isDragging) window.location.href = url; };
-            node.ondragstart = (e) => {
-                isDragging = true; draggedItem = node; dragStartIndex = idx; node.classList.add('dragging'); e.dataTransfer.setData('text/plain', idx.toString()); e.dataTransfer.effectAllowed = 'move';
-                const ghost = node.cloneNode(true); ghost.classList.add('drag-ghost'); ghost.style.position = 'absolute'; ghost.style.opacity = '0.7'; ghost.style.pointerEvents = 'none'; document.body.appendChild(ghost); e.dataTransfer.setDragImage(ghost, 24, 24); setTimeout(() => ghost.remove(), 0);
+            node.onclick = (e) => { 
+                if (!isDragging) window.location.href = url; 
             };
-            node.ondragover = (e) => { e.preventDefault(); if (draggedItem !== node) { node.classList.add('drag-over'); e.dataTransfer.dropEffect = 'move'; }};
-            node.ondragleave = () => { node.classList.remove('drag-over'); };
+
+            node.ondragstart = (e) => {
+                isDragging = true; 
+                draggedItem = node; 
+                dragStartIndex = idx; 
+                node.classList.add('dragging'); 
+                e.dataTransfer.setData('text/plain', idx.toString()); 
+                e.dataTransfer.effectAllowed = 'move';
+                
+                const ghost = node.cloneNode(true); 
+                ghost.classList.add('drag-ghost'); 
+                ghost.style.position = 'absolute'; 
+                ghost.style.opacity = '0.7'; 
+                ghost.style.pointerEvents = 'none'; 
+                document.body.appendChild(ghost); 
+                e.dataTransfer.setDragImage(ghost, 24, 24); 
+                setTimeout(() => ghost.remove(), 0);
+            };
+
+            node.ondragover = (e) => { 
+                e.preventDefault(); 
+                if (draggedItem !== node) { 
+                    node.classList.add('drag-over'); 
+                    e.dataTransfer.dropEffect = 'move'; 
+                }
+            };
+
+            node.ondragleave = () => { 
+                node.classList.remove('drag-over'); 
+            };
+
             node.ondrop = (e) => {
-                e.preventDefault(); node.classList.remove('drag-over');
+                e.preventDefault(); 
+                node.classList.remove('drag-over');
                 if (draggedItem === node) return;
                 const dragEndIndex = parseInt(node.getAttribute('data-index'));
                 if (dragStartIndex !== dragEndIndex) {
                     const newLinks = [...data.userNavLinks];
                     const [movedItem] = newLinks.splice(dragStartIndex, 1);
                     newLinks.splice(dragEndIndex, 0, movedItem);
-                    updateLinkOrder(newLinks); showDragHint('Link order updated');
+                    updateLinkOrder(newLinks); 
+                    showDragHint('Link order updated');
                 }
             };
-            node.ondragend = () => { isDragging = false; document.querySelectorAll('.nav-icon-circle').forEach(el => { el.classList.remove('dragging', 'drag-over'); }); draggedItem = null; };
+
+            node.ondragend = () => { 
+                isDragging = false; 
+                document.querySelectorAll('.nav-icon-circle').forEach(el => { 
+                    el.classList.remove('dragging', 'drag-over'); 
+                }); 
+                draggedItem = null; 
+            };
+
             node.oncontextmenu = (e) => {
-                e.preventDefault(); if (isDragging) return;
+                e.preventDefault(); 
+                if (isDragging) return;
                 node.classList.add('pulse-glow');
                 const confirmEl = document.createElement('div');
                 confirmEl.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 15, 15, 0.95); border: 2px solid var(--theme-color); border-radius: 10px; padding: 20px; z-index: 3000; color: var(--theme-color); text-align: center; box-shadow: 0 0 30px var(--theme-color); font-family: var(--main-font); min-width: 250px;`;
                 confirmEl.innerHTML = `<div style="margin-bottom: 15px; font-size: 0.9rem;">Purge <span style="color: #fff;">${domain}</span> from navigation?</div><div style="display: flex; gap: 10px; justify-content: center;"><button id="confirm-delete" style="background: #a00; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-family: inherit; font-weight: bold;">Purge</button><button id="cancel-delete" style="background: var(--theme-color); color: black; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-family: inherit; font-weight: bold;">Cancel</button></div>`;
                 document.body.appendChild(confirmEl);
-                const cleanup = () => { node.classList.remove('pulse-glow'); confirmEl.remove(); };
-                document.getElementById('confirm-delete').onclick = () => { data.userNavLinks.splice(idx, 1); chrome.storage.sync.set({ userNavLinks: data.userNavLinks }, () => { cleanup(); loadNavLinks(); showDragHint('Link purged'); }); };
+                
+                const cleanup = () => { 
+                    node.classList.remove('pulse-glow'); 
+                    confirmEl.remove(); 
+                };
+
+                document.getElementById('confirm-delete').onclick = () => { 
+                    data.userNavLinks.splice(idx, 1); 
+                    chrome.storage.sync.set({ userNavLinks: data.userNavLinks }, () => { 
+                        cleanup(); 
+                        loadNavLinks(); 
+                        showDragHint('Link purged'); 
+                    }); 
+                };
+
                 document.getElementById('cancel-delete').onclick = cleanup;
-                const closeOnOutside = (clickEvent) => { if (!confirmEl.contains(clickEvent.target) && !node.contains(clickEvent.target)) { cleanup(); document.removeEventListener('click', closeOnOutside); }};
+                const closeOnOutside = (clickEvent) => { 
+                    if (!confirmEl.contains(clickEvent.target) && !node.contains(clickEvent.target)) { 
+                        cleanup(); 
+                        document.removeEventListener('click', closeOnOutside); 
+                    }
+                };
                 setTimeout(() => { document.addEventListener('click', closeOnOutside); }, 100);
             };
             navWrapper.appendChild(node);
         });
-        addLinkBtn.ondragover = (e) => { e.preventDefault(); if (draggedItem) { addLinkBtn.classList.add('drag-over'); e.dataTransfer.dropEffect = 'move'; }};
-        addLinkBtn.ondragleave = () => { addLinkBtn.classList.remove('drag-over'); };
-        addLinkBtn.ondrop = (e) => { e.preventDefault(); addLinkBtn.classList.remove('drag-over'); if (dragStartIndex !== -1) { const newLinks = [...data.userNavLinks]; const [movedItem] = newLinks.splice(dragStartIndex, 1); newLinks.push(movedItem); updateLinkOrder(newLinks); showDragHint('Link moved to end'); }};
+
+        // FIX 3: Restore the "Add" button ONLY after icons have populated
+        if (count < 10) {
+            addLinkBtn.style.display = 'flex';
+        }
+
+        addLinkBtn.ondragover = (e) => { 
+            e.preventDefault(); 
+            if (draggedItem) { 
+                addLinkBtn.classList.add('drag-over'); 
+                e.dataTransfer.dropEffect = 'move'; 
+            }
+        };
+
+        addLinkBtn.ondragleave = () => { 
+            addLinkBtn.classList.remove('drag-over'); 
+        };
+
+        addLinkBtn.ondrop = (e) => { 
+            e.preventDefault(); 
+            addLinkBtn.classList.remove('drag-over'); 
+            if (dragStartIndex !== -1) { 
+                const newLinks = [...data.userNavLinks]; 
+                const [movedItem] = newLinks.splice(dragStartIndex, 1); 
+                newLinks.push(movedItem); 
+                updateLinkOrder(newLinks); 
+                showDragHint('Link moved to end'); 
+            }
+        };
     });
 }
-
-addLinkBtn.onclick = () => { 
-    chrome.storage.sync.get({ userNavLinks: [] }, (d) => { 
-        if (d.userNavLinks.length >= 10) return; 
-        const u = prompt("Input URL:"); 
-        if (u) { try { let f = u.trim(); if (!/^https?:\/\//i.test(f)) f = 'https://' + f; new URL(f); d.userNavLinks.push(f); chrome.storage.sync.set({ userNavLinks: d.userNavLinks }, loadNavLinks); } catch (e) {} } 
-    }); 
-};
 
 chrome.storage.sync.get(null, (d) => {
     const data = { ...DEFAULTS, ...d };
@@ -2994,3 +3271,86 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+// --- SETTINGS MODAL RAIN LOGIC ---
+let settingsRainInterval = null;
+let settingsDrops = [];
+
+/**
+ * Initializes the rain effect for the settings modal.
+ * Synchronized: Uses the global rainSpeed variable for velocity.
+ * Fix: Explicitly clears the canvas buffer to prevent the "static grid" bug.
+ */
+function initSettingsRain() {
+    const canvas = document.getElementById('settings-rain-canvas');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    
+    // Set internal resolution based on modal size
+    canvas.width = canvas.offsetWidth * dpr;
+    canvas.height = canvas.offsetHeight * dpr;
+    ctx.scale(dpr, dpr);
+
+    // Hard clear to prevent frame ghosting
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Match the dense column spacing used in the terminal (0.6 divisor)
+    const columnSpacing = fontSize * 0.6;
+    const columns = Math.floor(canvas.offsetWidth / columnSpacing);
+    
+    // Start drops at random vertical positions to fill the background instantly
+    settingsDrops = Array(columns).fill(0).map(() => Math.floor(Math.random() * (canvas.height / fontSize)));
+    
+    if (settingsRainInterval) clearInterval(settingsRainInterval);
+    
+    drawSettingsRain(); 
+    // Synchronized with global rainSpeed slider
+    settingsRainInterval = setInterval(drawSettingsRain, rainSpeed); 
+}
+
+function drawSettingsRain() {
+    const canvas = document.getElementById('settings-rain-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    // Trail persistence (matches terminal fade speed)
+    ctx.fillStyle = "rgba(0, 0, 0, 0.15)"; 
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = rainColor; 
+    ctx.font = fontSize + "px 'Courier New', monospace";
+
+    const columnSpacing = fontSize * 0.6;
+
+    for (let i = 0; i < settingsDrops.length; i++) {
+        const text = MATRIX_ALPHABET.charAt(Math.floor(Math.random() * MATRIX_ALPHABET.length));
+        
+        // Randomized alpha for depth
+        ctx.globalAlpha = 0.2 + (Math.random() * 0.5); // Lower alpha so it stays in the background
+        
+        ctx.fillText(text, i * columnSpacing, settingsDrops[i] * fontSize);
+
+        if (settingsDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+            settingsDrops[i] = 0;
+        }
+        settingsDrops[i]++;
+    }
+    ctx.globalAlpha = 1.0; 
+}
+
+// Update the settings icon click handler to trigger the rain
+const settingsIconContainer = document.getElementById('settings-icon-container');
+if (settingsIconContainer) {
+    settingsIconContainer.addEventListener('click', () => {
+        // Since the toggle happens in your existing code, we check visibility here
+        if (!modal.classList.contains('hidden')) {
+            initSettingsRain();
+            window.addEventListener('resize', initSettingsRain);
+        } else {
+            if (settingsRainInterval) clearInterval(settingsRainInterval);
+            window.removeEventListener('resize', initSettingsRain);
+        }
+    });
+}

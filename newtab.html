@@ -13,8 +13,14 @@
     <div id="scanline-overlay" class="hidden"></div>
 
     <div id="settings-modal" class="hidden">
-        <div class="settings-scroll-area">
+        <canvas id="settings-rain-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; opacity: 0.4;"></canvas>
+        
+        <div class="settings-header-wrapper">
             <h3 id="settings-header">System Settings</h3>
+            <div class="settings-separator"></div>
+        </div>
+        
+        <div class="settings-scroll-area">
             
             <div class="setting-item">
                 <label>UI Scale</label>
@@ -292,12 +298,14 @@
         </div>
 
         <div id="calendar-popup" class="hidden">
-            <div class="calendar-header">
+            <canvas id="calendar-rain-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; border-radius: 10px;"></canvas>
+            
+            <div class="calendar-header" style="position: relative; z-index: 1;">
                 <button id="calendar-prev" class="matrix-btn">◀</button>
                 <h3 id="calendar-month-year"></h3>
                 <button id="calendar-next" class="matrix-btn">▶</button>
             </div>
-            <div id="calendar-grid"></div>
+            <div id="calendar-grid" style="position: relative; z-index: 1;"></div>
         </div>
 
         <div id="settings-icon-container"><div id="settings-icon"></div></div>
@@ -322,10 +330,10 @@
         </div>
     </div>
 
-    <div id="nav-bar-container">
-        <div id="dynamic-links-wrapper"></div>
-        <div id="add-link-btn" class="nav-icon-circle" title="Add Secure Node">+</div>
-    </div>
+   <div id="nav-bar-container">
+    <div id="dynamic-links-wrapper"></div>
+    <div id="add-link-btn" class="nav-icon-circle" title="Add Secure Node" style="display: none;">+</div>
+</div>
 
     <div id="matrix-modal" class="hidden">
         <div class="modal-overlay"></div> 
