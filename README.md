@@ -1,7 +1,8 @@
 Neo's New Tab is a highly customizable, Matrix-themed browser extension that transforms your new tab page into a digital terminal.
 
+<img width="3838" height="1908" alt="Screenshot 2026-01-04 010146" src="https://github.com/user-attachments/assets/4018e1c3-7739-4c61-9fcc-6dd3538acc17" />
 
-<img width="3836" height="1911" alt="Screenshot 2026-01-02 094850" src="https://github.com/user-attachments/assets/f527ac3b-09a1-4b00-84a2-b53b47f872a3" />
+
 
 
 
@@ -69,6 +70,7 @@ Atmosphere & Customization
 \## ⚠️ Disclaimer
 
 This is a non-commercial fan project created for aesthetic purposes. It is not affiliated with, endorsed by, or sponsored by Warner Bros. or the creators of The Matrix franchise.
+
 
 
 
