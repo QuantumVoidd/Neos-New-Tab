@@ -4,7 +4,8 @@ let termDrops = [];
 const canvas = document.getElementById('matrix'), ctx = canvas.getContext('2d');
 const sCanvas = document.getElementById('sentinel-layer'), sCtx = sCanvas.getContext('2d');
 const mainContainer = document.querySelector('.main-container');
-const MATRIX_ALPHABET = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789", BINARY_ALPHABET = "01", CLASSIC_GREEN = "#00FF41", fontSize = 16;
+const MATRIX_ALPHABET = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789", BINARY_ALPHABET = "01", CLASSIC_GREEN = "#00FF41", 
+fontSize = 16;
 const HEX_ALPHABET = "0123456789ABCDEF";
 // New character sets - REMOVED BAMUM AND EMOJI due to Unicode support issues
 const ASCII_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?";
@@ -1160,422 +1161,702 @@ const CLI_COMMANDS = {
 
 // --- ORACLE AI SYSTEM ---
 const matrixTypingAnimations = new Map();
-
+const oracleStates = new Map(); 
 let oracleCursor = null;
-let oracleMeasure = null;
+let currentOracleModel = 'gpt-4o-mini'; // Default Model
+
+// --- DYNAMIC CSS INJECTION (Scanner + Integrated Model Menu) ---
+function injectOracleStyles() {
+    if (document.getElementById('oracle-dynamic-css')) return;
+    const style = document.createElement('style');
+    style.id = 'oracle-dynamic-css';
+    style.textContent = `
+        /* --- SCANNER OVERLAY (ZION RSS STYLE) --- */
+        .oracle-scan-container {
+            position: relative;
+            display: inline-block;
+            max-width: 100%;
+            box-sizing: border-box;
+            border: 1px solid var(--theme-color);
+            padding: 5px;
+            margin-bottom: 5px;
+            overflow: hidden;
+            vertical-align: top;
+        }
+        .oracle-scan-container::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%), 
+                        linear-gradient(to bottom, transparent 0%, rgba(0, 242, 255, 0.4) 50%, transparent 50.5%);
+            background-size: 100% 4px, 100% 200%;
+            pointer-events: none;
+            z-index: 2;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+            animation: media-scanner 4s linear infinite;
+        }
+        .oracle-scan-container:hover::after { opacity: 0; animation-play-state: paused; }
+        .oracle-scan-container img {
+            display: block; max-width: 100%; height: auto; border-radius: 2px;
+            filter: sepia(1) hue-rotate(180deg) saturate(2); transition: all 0.3s ease;
+        }
+        .oracle-scan-container:hover img { filter: none; opacity: 1; }
+
+        /* --- SMART INPUT INTEGRATION (MODEL MENU) --- */
+        #oracle-input {
+            /* FIX: Padding preserved to prevent text overlap */
+            padding-right: 110px !important; 
+        }
+        #oracle-model-trigger {
+            position: absolute;
+            bottom: 5px; /* EDGE ALIGNED */
+            right: 10px; /* EDGE ALIGNED */
+            font-size: 0.6rem;
+            color: var(--theme-color);
+            opacity: 0.6;
+            cursor: pointer;
+            z-index: 200;
+            font-family: 'Courier New', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0px; 
+            transition: all 0.3s ease;
+            user-select: none;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 2px 6px;
+            border: 1px solid transparent;
+            border-radius: 2px;
+        }
+        #oracle-model-trigger:hover { 
+            opacity: 1; 
+            text-shadow: 0 0 5px var(--theme-color);
+            border-color: var(--theme-color);
+            background: rgba(0, 0, 0, 0.9);
+        }
+        #oracle-model-menu {
+            position: absolute;
+            bottom: 35px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.95);
+            border: 1px solid var(--theme-color);
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            z-index: 201;
+            padding: 5px;
+            gap: 2px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+            pointer-events: none;
+            min-width: 180px;
+            max-height: 50vh; /* Scrollable for many models */
+            overflow-y: auto;
+            scrollbar-width: none;
+        }
+        #oracle-model-menu::-webkit-scrollbar { display: none; }
+        
+        #oracle-model-menu.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        .oracle-model-option {
+            padding: 6px 10px;
+            font-size: 0.7rem;
+            color: var(--theme-color);
+            cursor: pointer;
+            opacity: 0.7;
+            text-align: right;
+            border: 1px solid transparent;
+            font-family: 'Courier New', monospace;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .oracle-model-option:hover {
+            background: rgba(0, 242, 255, 0.15);
+            opacity: 1;
+            border-color: rgba(0, 242, 255, 0.4);
+            padding-right: 15px;
+        }
+        .oracle-model-option.selected {
+            background: var(--theme-color);
+            color: #000;
+            opacity: 1;
+            font-weight: bold;
+            box-shadow: 0 0 8px var(--theme-color);
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// --- CURSOR LOGIC ---
+function setupMatrixCursor(inputId, cursorId) {
+    const input = document.getElementById(inputId);
+    const cursor = document.getElementById(cursorId);
+    if (!input || !cursor) return;
+
+    input.style.color = "var(--theme-color)";
+    input.style.textShadow = "0 0 5px var(--theme-color)";
+
+    function updateCursorPos() {
+        const temp = document.createElement("span");
+        const style = window.getComputedStyle(input);
+        
+        temp.style.font = style.font;
+        temp.style.fontSize = style.fontSize;
+        temp.style.fontFamily = style.fontFamily;
+        temp.style.letterSpacing = style.letterSpacing;
+        temp.style.fontWeight = style.fontWeight;
+        temp.style.whiteSpace = "pre"; 
+        temp.style.visibility = "hidden";
+        temp.style.position = "absolute";
+        temp.textContent = input.value;
+        
+        document.body.appendChild(temp);
+        const textWidth = temp.getBoundingClientRect().width;
+        document.body.removeChild(temp);
+        
+        const paddingLeft = parseFloat(style.paddingLeft) || 0;
+        const borderLeft = parseFloat(style.borderLeftWidth) || 0;
+        
+        const finalX = (textWidth + paddingLeft + borderLeft) - input.scrollLeft;
+        
+        cursor.style.transform = `translateX(${finalX}px)`;
+        cursor.style.display = 'block';
+        cursor.style.opacity = '1';
+    }
+
+    input.addEventListener('input', updateCursorPos);
+    input.addEventListener('keydown', () => setTimeout(updateCursorPos, 0));
+    input.addEventListener('keyup', updateCursorPos); 
+    input.addEventListener('scroll', updateCursorPos);
+    input.addEventListener('focus', () => {
+        cursor.classList.add('active'); 
+        cursor.style.opacity = '1';
+        updateCursorPos();
+    });
+    input.addEventListener('blur', () => {
+        cursor.style.opacity = '0';
+    });
+    
+    updateCursorPos();
+}
 
 function initOracleCursor() {
-    oracleCursor = document.getElementById('oracle-cursor');
-    oracleMeasure = document.createElement('span');
-    oracleMeasure.style.cssText = "position:absolute; visibility:hidden; white-space:pre; font-family:'Courier New', monospace; font-size:0.8rem; letter-spacing: 0px;";
-    document.body.appendChild(oracleMeasure);
+    setupMatrixCursor('oracle-input', 'oracle-cursor');
+}
+
+// --- MODEL MENU LOGIC (INTEGRATED) ---
+function setupModelMenu() {
+    const container = document.getElementById('oracle-chat-container');
+    if (!container || document.getElementById('oracle-model-trigger')) return;
+
+    // Load saved model state
+    chrome.storage.sync.get(['oracleModel'], (res) => {
+        if (res.oracleModel) currentOracleModel = res.oracleModel;
+        updateModelTriggerText();
+    });
+
+    // Create Trigger (Bottom Right Status)
+    const trigger = document.createElement('div');
+    trigger.id = 'oracle-model-trigger';
+    trigger.innerHTML = `[ :: ${currentOracleModel.toUpperCase().replace('GPT-', 'GPT ')} :: ]`;
+    container.appendChild(trigger);
+
+    // Create Drop-Up Menu
+    const menu = document.createElement('div');
+    menu.id = 'oracle-model-menu';
+    
+    const models = [
+        // GPT Family
+        { id: 'gpt-4o-mini', label: 'GPT 4o MINI' },
+        { id: 'gpt-4o', label: 'GPT 4o' },
+        { id: 'gpt-4.1-nano', label: 'GPT 4.1 NANO' },
+        { id: 'o1-mini', label: 'O1 MINI' },
+        { id: 'o1-preview', label: 'O1 PREVIEW' },
+        
+        // Claude Family
+        { id: 'claude-3-5-sonnet', label: 'CLAUDE 3.5 SONNET' },
+        { id: 'claude-sonnet-4', label: 'CLAUDE SONNET 4' },
+        { id: 'claude-opus-4.5', label: 'CLAUDE OPUS 4.5' },
+        { id: 'claude-3-opus', label: 'CLAUDE 3 OPUS' },
+        { id: 'claude-3-haiku', label: 'CLAUDE 3 HAIKU' },
+        
+        // Google Family
+        { id: 'google/gemini-2.5', label: 'GEMINI 2.5' },
+        { id: 'google/gemini-2.5-flash', label: 'GEMINI 2.5 FLASH' },
+        { id: 'gemini-1.5-pro', label: 'GEMINI 1.5 PRO' },
+        { id: 'gemini-1.5-flash', label: 'GEMINI 1.5 FLASH' },
+        
+        // Llama & Open Source
+        { id: 'meta/llama-3.1-405b', label: 'LLAMA 3.1 405B' },
+        { id: 'llama-3-70b', label: 'LLAMA 3 70B' },
+        { id: 'deepseek/deepseek-r1', label: 'DEEPSEEK R1' },
+        { id: 'mistral-large', label: 'MISTRAL LARGE' },
+        { id: 'openrouter:essentialai/rnj-1-instruct', label: 'RNJ 1 INSTRUCT' },
+        
+        // Image Generation
+        { id: 'black-forest-labs/FLUX.1-pro', label: 'FLUX.1 PRO' },
+        { id: 'dall-e-3', label: 'DALL-E 3' },
+        { id: 'gpt-image-1.5', label: 'GPT IMAGE 1.5' },
+        { id: 'stabilityai/stable-diffusion-xl-base-1.0', label: 'SDXL 1.0' } // Shortened Name
+    ];
+
+    models.forEach(m => {
+        const opt = document.createElement('div');
+        opt.className = 'oracle-model-option';
+        opt.textContent = m.label;
+        opt.onclick = () => {
+            currentOracleModel = m.id;
+            chrome.storage.sync.set({ oracleModel: m.id });
+            updateModelTriggerText();
+            menu.classList.remove('active');
+            addOracleResponse(`Protocol switched to: ${m.label}`);
+        };
+        menu.appendChild(opt);
+    });
+
+    container.appendChild(menu);
+
+    // Toggle Logic
+    trigger.onclick = (e) => {
+        e.stopPropagation();
+        menu.classList.toggle('active');
+        updateMenuSelection();
+    };
+
+    // Close on click outside
+    document.addEventListener('click', (e) => {
+        if (!menu.contains(e.target) && e.target !== trigger) {
+            menu.classList.remove('active');
+        }
+    });
+}
+
+function updateModelTriggerText() {
+    const t = document.getElementById('oracle-model-trigger');
+    if (t) {
+        // Handle short names for display if needed, mainly formatting
+        let display = currentOracleModel.toUpperCase().replace('GPT-', 'GPT ');
+        
+        // Custom overrides for very long internal IDs if they leak into display
+        if(currentOracleModel === 'stabilityai/stable-diffusion-xl-base-1.0') display = 'SDXL 1.0';
+        
+        t.innerHTML = `[ :: ${display} :: ]`;
+    }
+}
+
+function updateMenuSelection() {
+    document.querySelectorAll('.oracle-model-option').forEach(opt => {
+        // Basic matching logic
+        const cleanModel = currentOracleModel.replace('-', ' ').toUpperCase();
+        
+        // Handle the specific shortened case for SDXL
+        if (currentOracleModel === 'stabilityai/stable-diffusion-xl-base-1.0' && opt.textContent === 'SDXL 1.0') {
+             opt.classList.add('selected');
+             return;
+        }
+
+        if (opt.textContent.toUpperCase().includes(cleanModel)) {
+            opt.classList.add('selected');
+        } else {
+            opt.classList.remove('selected');
+        }
+    });
 }
 
 async function initOracleChat() {
     const container = document.getElementById('oracle-chat-container');
     const input = document.getElementById('oracle-input');
     const history = document.getElementById('oracle-chat-history');
-    const oracleCursor = document.getElementById('oracle-cursor');
-
-    const oracleMeasure = document.createElement('span');
-    oracleMeasure.style.cssText = "position:absolute; visibility:hidden; white-space:pre; pointer-events:none;";
-    document.body.appendChild(oracleMeasure);
-
-    function syncOracleCursor() {
-        if (!input || !oracleCursor) return;
-        const style = window.getComputedStyle(input);
-        oracleMeasure.style.fontFamily = style.fontFamily;
-        oracleMeasure.style.fontSize = style.fontSize;
-        oracleMeasure.style.fontWeight = style.fontWeight;
-        oracleMeasure.style.letterSpacing = style.letterSpacing;
-        oracleMeasure.style.textTransform = style.textTransform;
-        oracleMeasure.textContent = input.value || "";
-        const textWidth = oracleMeasure.getBoundingClientRect().width;
-        const paddingLeft = parseFloat(style.paddingLeft) || 0;
-        const scrollOffset = input.scrollLeft;
-        oracleCursor.style.left = `${paddingLeft}px`;
-        oracleCursor.style.transform = `translateX(${textWidth - scrollOffset}px)`;
-    }
-
-    function updateOracleCursorVisibility() {
-        oracleCursor.style.opacity = (document.activeElement === input) ? "1" : "0";
-        if (oracleCursor.style.opacity === "1") syncOracleCursor();
-    }
-
-    updateOracleCursorVisibility();
-
-    if (!isOracleEnabled) {
-        container.classList.add('hidden');
-        return;
+    
+    if (!isOracleEnabled) { 
+        container.classList.add('hidden'); 
+        return; 
     }
     container.classList.remove('hidden');
 
+    injectOracleStyles();
+    initOracleCursor();
+    setupModelMenu();
+    
     try {
         await loadPuterSDK();
-        const now = new Date();
-        const currentTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-        addOracleResponse(`Sit down, kid. The cookies are baking. It's ${currentTime} now - ask me anything.`);
-    } catch (error) {
-        console.error("Failed to initialize Oracle AI:", error);
-        addOracleResponse("The connection's fuzzy... must be interference from the machines.");
+        addOracleResponse(`Sit down, kid. It's ${new Date().toLocaleTimeString()} now - ask me anything.`);
+    } catch (e) { 
+        console.error("Oracle Init Error:", e);
+        addOracleResponse("The connection's fuzzy... must be interference from the machines."); 
     }
-
-    input.addEventListener('input', syncOracleCursor);
-    input.addEventListener('scroll', syncOracleCursor);
-    input.addEventListener('focus', updateOracleCursorVisibility);
-    input.addEventListener('blur', updateOracleCursorVisibility);
-
-    input.style.cssText = "background: transparent; border: none; color: #fff; font-family: 'Courier New', monospace; flex: 1; outline: none; font-size: 0.8rem; width: 100%; caret-color: transparent; white-space: nowrap; overflow: hidden;";
 
     input.onkeydown = async (e) => {
         if (e.key === 'Enter' && input.value.trim() !== "") {
-            const userText = input.value.trim();
+            const txt = input.value.trim(); 
             input.value = "";
-            syncOracleCursor();
             
-            const userMsg = document.createElement('div');
-            userMsg.className = "oracle-entry";
-            userMsg.innerHTML = `<div class="user-query">${userText.length > 100 ? userText.substring(0, 100) + "..." : userText}</div>`;
-            history.appendChild(userMsg);
-            
+            const cursor = document.getElementById('oracle-cursor');
+            if(cursor) cursor.style.transform = 'translateX(0px)';
+
+            const um = document.createElement('div'); 
+            um.className = "oracle-entry";
+            um.innerHTML = `<div class="user-query">${txt}</div>`; 
+            history.appendChild(um);
             history.scrollTop = history.scrollHeight;
             
-            const typingIndicator = document.createElement('div');
-            typingIndicator.className = "oracle-entry";
-            const matrixTextContainer = document.createElement('div');
-            matrixTextContainer.className = "oracle-response-container";
-            const matrixText = document.createElement('div');
-            matrixText.className = "oracle-response-text encrypted matrix-typing";
-            matrixText.id = "typing-matrix-" + Date.now();
+            const ti = document.createElement('div'); 
+            ti.className = "oracle-entry";
+            const mc = document.createElement('div'); 
+            mc.className = "oracle-response-container";
+            const mt = document.createElement('div'); 
+            mt.className = "oracle-response-text encrypted matrix-typing";
+            mt.id = "typing-matrix-" + Date.now();
+            mc.appendChild(mt); 
+            ti.appendChild(mc); 
+            history.appendChild(ti);
             
-            matrixTextContainer.appendChild(matrixText);
-            typingIndicator.appendChild(matrixTextContainer);
-            history.appendChild(typingIndicator);
-            
-            const matrixTextId = matrixText.id;
-            startMatrixTypingAnimation(matrixTextId);
+            startMatrixTypingAnimation(mt.id);
             
             try {
-                const response = await getOracleAIResponse(userText);
-                stopMatrixTypingAnimation(matrixTextId);
-                typingIndicator.remove();
-                addOracleResponse(response);
-            } catch (error) {
-                stopMatrixTypingAnimation(matrixTextId);
-                typingIndicator.remove();
-                addOracleResponse("Hmm, the signal's weak. Must be those Agents.");
+                // --- IMAGE DETECTION ---
+                const lower = txt.toLowerCase();
+                const isSlashCmd = lower.startsWith('/image') || lower.startsWith('/img') || lower.startsWith('/draw');
+                const hasAction = /(draw|generate|create|make|visualize|show)/i.test(lower);
+                const hasObject = /(image|picture|photo|art|sketch|painting)/i.test(lower);
+                const isNaturalCmd = hasAction && hasObject;
+
+                if (isSlashCmd || isNaturalCmd) {
+                    let imgPrompt = txt
+                        .replace(/^\/(image|img|draw)/i, '')
+                        .replace(/^(can you|please|kindly)\s+/i, '')
+                        .replace(/^(draw|generate|create|make|visualize|show)\s+(me\s+)?(an?\s+)?(image|picture|photo|art|sketch|painting)\s+(of\s+)?/i, '')
+                        .trim();
+                        
+                    if(!imgPrompt) imgPrompt = txt; 
+
+                    const imgElement = await puter.ai.txt2img(imgPrompt, { model: 'black-forest-labs/FLUX.1-schnell' });
+                    const imgUrl = imgElement.src; 
+                    
+                    stopMatrixTypingAnimation(mt.id); 
+                    ti.remove();
+                    
+                    addOracleImageResponse(imgUrl, `Rendering construct: "${imgPrompt}"`);
+                } else {
+                    const resp = await getOracleAIResponse(txt);
+                    stopMatrixTypingAnimation(mt.id); 
+                    ti.remove(); 
+                    addOracleResponse(resp);
+                }
+            } catch (err) {
+                stopMatrixTypingAnimation(mt.id); 
+                ti.remove(); 
+                addOracleResponse("Signal lost. Construct loading failed.");
+                console.error(err);
             }
-            setTimeout(() => history.scrollTop = history.scrollHeight, 100);
         }
     };
+}
+
+function stopMatrixTypingAnimation(id) {
+    const i = matrixTypingAnimations.get(id);
+    if (i) { 
+        clearInterval(i); 
+        matrixTypingAnimations.delete(id); 
+    }
+}
+
+async function loadPuterSDK() {
+    if (window.puter) return;
+    return new Promise((res, rej) => {
+        const s = document.createElement('script'); 
+        s.src = chrome.runtime.getURL('puter.js');
+        s.onload = () => { 
+            if (window.puter && window.puter.init) window.puter.init().then(res); 
+            else res(); 
+        };
+        s.onerror = (e) => {
+            console.error("Failed to load puter.js", e);
+            rej(e);
+        };
+        document.head.appendChild(s);
+    });
 }
 
 function startMatrixTypingAnimation(elementId) {
     const element = document.getElementById(elementId);
     if (!element) return;
     
-    const initialText = getRandomMatrixChars(15);
-    element.textContent = initialText;
+    const history = document.getElementById('oracle-chat-history'); 
     
-    const intervalId = setInterval(() => {
-        if (!document.getElementById(elementId)) {
-            clearInterval(intervalId);
-            matrixTypingAnimations.delete(elementId);
-            return;
+    const generateSafeString = () => Array(15).fill(0).map(() => 
+        `<span style="display:inline-block; width:1ch; text-align:center;">${MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]}</span>`
+    ).join('');
+
+    element.innerHTML = generateSafeString();
+    
+    if(history) history.scrollTop = history.scrollHeight;
+    
+    const intId = setInterval(() => {
+        if (!document.getElementById(elementId)) { 
+            clearInterval(intId); 
+            matrixTypingAnimations.delete(elementId); 
+            return; 
         }
         
-        const newText = getRandomMatrixChars(15);
-        element.textContent = newText;
+        element.innerHTML = generateSafeString();
         element.style.opacity = (0.7 + Math.random() * 0.3).toString();
         
-    }, 100); 
+        if(history) history.scrollTop = history.scrollHeight;
+    }, 80);
     
-    matrixTypingAnimations.set(elementId, intervalId);
+    matrixTypingAnimations.set(elementId, intId);
     element.classList.add('matrix-typing-active');
-}
-
-function stopMatrixTypingAnimation(elementId) {
-    const intervalId = matrixTypingAnimations.get(elementId);
-    if (intervalId) {
-        clearInterval(intervalId);
-        matrixTypingAnimations.delete(elementId);
-    }
-    
-    const element = document.getElementById(elementId);
-    if (element) {
-        element.classList.remove('matrix-typing-active');
-        element.style.opacity = '1';
-    }
-}
-
-function getRandomMatrixChars(length = 20) {
-    return Array(length).fill(0).map(() => 
-        MATRIX_ALPHABET.charAt(Math.floor(Math.random() * MATRIX_ALPHABET.length))
-    ).join('');
-}
-
-function addMatrixTypingStyles() {
-    if (document.getElementById('matrix-typing-styles')) return;
-    
-    const style = document.createElement('style');
-    style.id = 'matrix-typing-styles';
-    style.textContent = `
-        .matrix-typing {
-            animation: matrixPulse 1.5s infinite alternate;
-            font-family: 'Courier New', monospace;
-            letter-spacing: 1px;
-        }
-        .matrix-typing-active {
-            animation: matrixPulse 0.8s infinite alternate;
-            text-shadow: 0 0 5px var(--theme-color), 0 0 10px var(--theme-color);
-        }
-        @keyframes matrixPulse {
-            0% { opacity: 0.7; text-shadow: 0 0 5px var(--theme-color); }
-            100% { opacity: 1; text-shadow: 0 0 10px var(--theme-color), 0 0 15px var(--theme-color); }
-        }
-        .oracle-entry .matrix-typing { min-height: 1.2em; min-width: 100px; display: inline-block; }
-    `;
-    document.head.appendChild(style);
-}
-
-addMatrixTypingStyles();
-
-async function loadPuterSDK() {
-    if (window.puter) {
-        return;
-    }
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = chrome.runtime.getURL('puter.js');
-        script.onload = () => {
-            if (typeof puter === 'undefined') { reject(new Error("Puter object not defined")); return; }
-            if (typeof puter.init === 'function') {
-                puter.init().then(() => { resolve(); }).catch(reject);
-            } else { resolve(); }
-        };
-        script.onerror = (error) => { reject(error); };
-        document.head.appendChild(script);
-    });
 }
 
 function getOracleSystemPrompt() {
     const now = new Date();
-    const currentDate = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    const currentTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short' });
-    return `You are The Oracle from The Matrix. Current Date: ${currentDate}, Time: ${currentTime}. Answer briefly and cryptically.`;
+    const timeString = now.toLocaleDateString('en-US', { 
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+    
+    return `You are The Oracle from The Matrix. Current Date & Time: ${timeString}. 
+    DIRECTIVES:
+    1. If asked facts/science/math, answer accurately first.
+    2. Then add a cryptic, philosophical Matrix-style comment.
+    3. Keep it brief.`;
 }
 
-async function getOracleAIResponse(userInput) {
-    oracleChatHistory.push({ role: 'user', content: userInput });
-    if (oracleChatHistory.length > 20) oracleChatHistory = oracleChatHistory.slice(-20);
-    
+// --- SMART WEATHER CONTEXT ---
+async function fetchWeatherContext(query) {
     try {
-        if (typeof puter === 'undefined' || typeof puter.ai === 'undefined') await loadPuterSDK();
-        const systemPrompt = getOracleSystemPrompt();
-        const messages = [{ role: 'system', content: systemPrompt }, ...oracleChatHistory];
+        if (!query.toLowerCase().includes('weather')) return "";
+
+        let city = "";
+        const match = query.match(/weather\s+(?:in|for|like in|at)\s+([a-zA-Z\s\.]+)/i);
         
-        const fullPrompt = messages.map(msg => `${msg.role}: ${msg.content}`).join('\n') + '\nOracle:';
-        
-        let rawResponse;
-        if (typeof puter.ai.chat === 'function') {
-            rawResponse = await puter.ai.chat(fullPrompt);
-        } else {
-            throw new Error("puter.ai.chat is not available");
+        if (match && match[1]) {
+            city = match[1].trim().replace(/[?!.,]+$/, ""); 
+        } else { 
+            const ipReq = await fetch('https://get.geojs.io/v1/ip/geo.json');
+            const ip = await ipReq.json(); 
+            city = ip.city; 
         }
         
-        let responseText = '';
-        if (typeof rawResponse === 'string') {
-            responseText = rawResponse;
-        } else if (rawResponse && typeof rawResponse === 'object') {
-            if (rawResponse.message) responseText = rawResponse.message;
-            else if (rawResponse.content) responseText = rawResponse.content;
-            else if (rawResponse.text) responseText = rawResponse.text;
-            else responseText = JSON.stringify(rawResponse);
-        } else {
-            responseText = String(rawResponse);
+        if (!city) return "";
+
+        const upperCity = city.toUpperCase();
+        if (upperCity === 'LA' || upperCity === 'L.A.') city = "Los Angeles";
+        if (upperCity === 'NYC' || upperCity === 'NY') city = "New York";
+        if (upperCity === 'UK') city = "London";
+        
+        const gR = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=5`);
+        const gD = await gR.json();
+        
+        if (!gD.results || gD.results.length === 0) return "";
+
+        let result = gD.results[0];
+        if (upperCity === 'LA') {
+             const laUS = gD.results.find(r => r.country_code === 'US' && r.name.includes('Los Angeles'));
+             if (laUS) result = laUS;
         }
+
+        const { latitude, longitude, name, country, admin1 } = result;
+        const wR = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
+        const wD = await wR.json();
         
-        responseText = responseText.replace(/^(Oracle|Assistant|System):\s*/i, '').trim();
-        
-        if (responseText.includes('[object Object]') || responseText.length < 2) {
-            return getLocalOracleResponse(userInput);
-        }
-        
-        oracleChatHistory.push({ role: 'assistant', content: responseText });
-        return responseText;
-        
-    } catch (error) {
-        return getLocalOracleResponse(userInput);
+        return `[SYSTEM DATA: Current weather in ${name}, ${admin1 || ""} (${country}): ${wD.current_weather.temperature}°C, Wind: ${wD.current_weather.windspeed} km/h]`;
+
+    } catch (e) { 
+        return ""; 
     }
 }
 
-function getLocalOracleResponse(userInput) {
-    const responses = [
-        "The cookies are almost done. What do you really want to know?",
-        "You're asking the right questions, but maybe the wrong ones.",
-        "The answer isn't in the code, it's in you.",
-        "Sometimes you have to unplug to see the truth.",
-        "Would you like a cookie?",
-        "The machines are listening.",
-        "I see you're searching.",
-        "In the Matrix, some questions have no answers.",
-        "You remind me of Neo.",
-        "The Architect designed the questions too."
-    ];
-    return responses[Math.floor(Math.random() * responses.length)];
+async function getOracleAIResponse(input) {
+    oracleChatHistory.push({ role: 'user', content: input });
+    if (oracleChatHistory.length > 20) oracleChatHistory = oracleChatHistory.slice(-20);
+    
+    try {
+        if (!window.puter || !window.puter.ai) await loadPuterSDK();
+        
+        const wCtx = await fetchWeatherContext(input);
+        let sys = getOracleSystemPrompt();
+        if (wCtx) sys += `\nCONTEXT: ${wCtx}\nState these facts clearly if asked.`;
+        
+        const msgs = [{ role: 'system', content: sys }, ...oracleChatHistory];
+        const prompt = msgs.map(m => `${m.role}: ${m.content}`).join('\n') + '\nOracle:';
+        
+        // --- USING SELECTED MODEL ---
+        const raw = await puter.ai.chat(prompt, { model: currentOracleModel });
+        
+        let txt = '';
+        if (typeof raw === 'string') txt = raw;
+        else if (raw && typeof raw === 'object') txt = raw.message?.content || raw.message || raw.text || JSON.stringify(raw);
+        else txt = String(raw);
+        
+        txt = String(txt || "").replace(/^(Oracle|System):\s*/i, '').trim();
+        
+        if (txt.includes('[object') || txt.length < 2) return getLocalOracleResponse(input);
+        
+        oracleChatHistory.push({ role: 'assistant', content: txt });
+        return txt;
+    } catch (e) { 
+        return getLocalOracleResponse(input); 
+    }
+}
+
+function getLocalOracleResponse(i) {
+    const r = ["Cookies are ready.", "Know thyself.", "You already know the answer.", "The choice is yours."];
+    return r[Math.floor(Math.random() * r.length)];
+}
+
+// --- STABILIZED ANIMATION ENGINE (Fixes the "Spinning Loop") ---
+function manageOracleAnimation(container, element, text, isImage = false) {
+    let state = oracleStates.get(element);
+    if (!state) {
+        state = {
+            text: text,
+            phase: isImage ? 'interactive' : 'typing', 
+            typingIdx: 0,
+            revealIter: 0,
+            lastRenderedIter: -99, // FIX: Tracks last render state to prevent loop
+            autoTimer: null,
+            interval: null,
+            isAutoSequence: true 
+        };
+        oracleStates.set(element, state);
+    }
+
+    if (state.interval) clearInterval(state.interval);
+
+    state.interval = setInterval(() => {
+        const len = state.text.length;
+        // POLLING: Always check hover
+        const isHovering = container.matches(':hover'); 
+
+        // 1. TYPING PHASE (Initial Growth)
+        if (state.phase === 'typing') {
+            state.typingIdx += 2; 
+            if (state.typingIdx >= len) {
+                state.typingIdx = len;
+                state.phase = 'interactive';
+                state.revealIter = 0; 
+                state.lastRenderedIter = -99; // Force re-render on phase switch
+            }
+        }
+
+        // 2. INTERACTIVE PHASE (Target Convergence)
+        if (state.phase === 'interactive') {
+            let targetIter = 0;
+
+            if (isHovering) {
+                targetIter = len;
+                state.isAutoSequence = false; // Hover breaks auto-sequence
+                if (state.autoTimer) { clearTimeout(state.autoTimer); state.autoTimer = null; }
+            } else {
+                if (state.isAutoSequence) {
+                    targetIter = len;
+                } else {
+                    targetIter = 0;
+                }
+            }
+
+            if (state.revealIter < targetIter) {
+                state.revealIter += 0.33; 
+            } else if (state.revealIter > targetIter) {
+                state.revealIter -= 0.5; 
+            }
+            
+            // Snap to bounds
+            if (Math.abs(state.revealIter - targetIter) < 0.6) state.revealIter = targetIter;
+
+            // AUTO-TIMER TRIGGER
+            if (state.isAutoSequence && state.revealIter >= len && !state.autoTimer) {
+                state.autoTimer = setTimeout(() => {
+                    state.isAutoSequence = false; 
+                    state.autoTimer = null;
+                }, 5000);
+            }
+        }
+
+        // 3. RENDER CHECK (The Fix for "Spinning Loop")
+        // We only update the DOM if the state has changed significantly.
+        // If revealIter is settled at 0 (encrypted) or len (revealed), we STOP RENDERING.
+        // This effectively "freezes" the Matrix characters so they don't spin.
+        const shouldRender = (state.phase === 'typing') || (Math.abs(state.revealIter - state.lastRenderedIter) > 0.01);
+
+        if (shouldRender) {
+            state.lastRenderedIter = state.revealIter; // Update tracker
+
+            if (state.phase === 'typing') {
+                const html = Array(state.typingIdx).fill(0).map(() => 
+                    `<span style="display:inline-block; width:1ch; text-align:center;">${MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]}</span>`
+                ).join("");
+                element.innerHTML = html;
+                element.classList.add('encrypted');
+            } else {
+                const currentIter = Math.floor(state.revealIter);
+                const html = state.text.split("").map((letter, index) => {
+                    if (index < currentIter) return letter === '<' ? '&lt;' : letter;
+                    // Only generate random chars when actively animating
+                    const char = MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)];
+                    return `<span style="display:inline-block; width:1ch; text-align:center;">${char}</span>`;
+                }).join("");
+                
+                element.innerHTML = html;
+                
+                if (currentIter >= len) element.classList.remove('encrypted');
+                else element.classList.add('encrypted');
+            }
+        }
+
+        const history = document.getElementById('oracle-chat-history');
+        if(history && shouldRender) history.scrollTop = history.scrollHeight;
+
+    }, 30);
 }
 
 function addOracleResponse(text) {
     const history = document.getElementById('oracle-chat-history');
+    const entry = document.createElement('div'); 
+    entry.className = "oracle-entry";
+    const id = 'oracle-res-' + Date.now();
+    
+    // Start empty container for typing
+    entry.innerHTML = `<div class="oracle-response-container"><div class="oracle-response-text encrypted" id="${id}"></div></div>`;
+    history.appendChild(entry); 
+    history.scrollTop = history.scrollHeight;
+    
+    const container = entry.querySelector('.oracle-response-container');
+    const el = entry.querySelector('.oracle-response-text');
+    
+    manageOracleAnimation(container, el, text, false);
+}
+
+function addOracleImageResponse(imgUrl, captionText) {
+    const history = document.getElementById('oracle-chat-history');
     const entry = document.createElement('div');
     entry.className = "oracle-entry";
-    
-    const responseId = 'oracle-response-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-    const scrambled = text.split('').map(() => MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]).join('');
-    
+    const id = 'oracle-res-' + Date.now();
+
     entry.innerHTML = `
-        <div class="oracle-response-container">
-            <div class="oracle-response-text encrypted" 
-                 id="${responseId}" 
-                 data-original="${text}"
-                 data-state="encrypted">${scrambled}</div>
+        <div class="oracle-response-container" style="border-left:none; background: transparent; padding-left: 0;">
+            <div class="oracle-scan-container">
+                <img src="${imgUrl}" />
+            </div>
+            <div class="oracle-response-text encrypted" id="${id}" style="font-size: 0.75rem; border-left: 2px solid var(--theme-color); padding-left: 8px;"></div>
         </div>
     `;
     
     history.appendChild(entry);
     history.scrollTop = history.scrollHeight;
-
-    const textEl = entry.querySelector('.oracle-response-text');
-    let isCurrentlyEncrypted = true;
-    let typewriterInterval = null;
-    let typewriterProgress = 0;
-    const typewriterSpeed = 30; 
-    const totalCharacters = text.length;
     
-    if (oracleIntervals.has(textEl)) {
-        clearInterval(oracleIntervals.get(textEl));
-        oracleIntervals.delete(textEl);
-    }
+    const container = entry.querySelector('.oracle-response-container');
+    const el = entry.querySelector('.oracle-response-text');
     
-    function startTypewriterReveal() {
-        if (typewriterInterval) clearInterval(typewriterInterval);
-        typewriterProgress = 0;
-        isCurrentlyEncrypted = true;
-        textEl.classList.add('encrypted');
-        textEl.setAttribute('data-state', 'revealing');
-        
-        typewriterInterval = setInterval(() => {
-            const revealedPart = text.substring(0, typewriterProgress);
-            const remainingLength = text.length - typewriterProgress;
-            const randomPart = Array(remainingLength).fill(0).map(() => 
-                MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]
-            ).join('');
-            
-            textEl.innerText = revealedPart + randomPart;
-            typewriterProgress++;
-            
-            if (typewriterProgress > totalCharacters) {
-                clearInterval(typewriterInterval);
-                typewriterInterval = null;
-                textEl.innerText = text;
-                isCurrentlyEncrypted = false;
-                textEl.classList.remove('encrypted');
-                textEl.setAttribute('data-state', 'decrypted');
-                setTimeout(() => {
-                    if (!textEl.matches(':hover') && isCurrentlyEncrypted === false && !typewriterInterval) {
-                        encryptText();
-                    }
-                }, 2000); 
-            }
-        }, typewriterSpeed);
-    }
-    
-    const encryptText = () => {
-        if (isCurrentlyEncrypted || typewriterInterval) return;
-        isCurrentlyEncrypted = true;
-        textEl.classList.add('encrypted');
-        textEl.setAttribute('data-state', 'encrypted');
-        if (oracleIntervals.has(textEl)) clearInterval(oracleIntervals.get(textEl));
-        decryptOracleText(textEl, text, false); 
-    };
-    
-    const decryptText = () => {
-        if (!isCurrentlyEncrypted || typewriterInterval) return;
-        isCurrentlyEncrypted = false;
-        textEl.classList.remove('encrypted');
-        textEl.setAttribute('data-state', 'decrypted');
-        if (oracleIntervals.has(textEl)) clearInterval(oracleIntervals.get(textEl));
-        decryptOracleText(textEl, text, true); 
-    };
-    
-    setTimeout(() => {
-        startTypewriterReveal();
-    }, 100); 
-    
-    textEl.onmouseenter = () => {
-        if (isCurrentlyEncrypted && !typewriterInterval) decryptText();
-    };
-    
-    textEl.onmouseleave = () => {
-        if (!isCurrentlyEncrypted && !typewriterInterval) {
-            setTimeout(() => {
-                if (!textEl.matches(':hover') && !isCurrentlyEncrypted && !typewriterInterval) {
-                    encryptText();
-                }
-            }, 500);
-        }
-    };
+    manageOracleAnimation(container, el, captionText, true); 
 }
-
-const oracleIntervals = new Map();
-const oracleIterations = new Map();
-
-function decryptOracleText(element, targetText, isDecrypting) {
-    if (oracleIntervals.has(element)) clearInterval(oracleIntervals.get(element));
-    let iteration = oracleIterations.get(element) || 0;
-    if (!isDecrypting && iteration === 0) iteration = targetText.length;
-    
-    const interval = setInterval(() => {
-        if (!document.contains(element)) {
-            clearInterval(interval);
-            oracleIntervals.delete(element);
-            return;
-        }
-        
-        element.innerText = targetText.split("").map((letter, index) => {
-            if (isDecrypting) {
-                if (index < iteration) return targetText[index];
-                return MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)];
-            } else {
-                if (index < iteration) return targetText[index];
-                return MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)];
-            }
-        }).join("");
-        
-        if (isDecrypting) {
-            iteration += 1/2; 
-            if (iteration >= targetText.length) { 
-                iteration = targetText.length; 
-                element.innerText = targetText; 
-                clearInterval(interval);
-                oracleIntervals.delete(element);
-                oracleIterations.delete(element);
-            }
-        } else {
-            iteration -= 1/2; 
-            if (iteration <= 0) { 
-                iteration = 0; 
-                element.innerText = targetText.replace(/./g, () => MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]); 
-                clearInterval(interval);
-                oracleIntervals.delete(element);
-                oracleIterations.delete(element);
-            }
-        }
-        oracleIterations.set(element, iteration);
-    }, 30);
-    oracleIntervals.set(element, interval);
-}
-
 // --- INDEXEDDB FOR STORAGE ---
 const dbName = "MatrixBackdropDB";
 function openDB() {
