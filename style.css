@@ -417,11 +417,10 @@ body, html {
 }
 
 .oracle-response-container {
-    text-align: left;
-    color: var(--theme-color);
+    background: transparent !important; /* This removes the grey backdrop */
     border-left: 2px solid var(--theme-color);
-    padding-left: 8px;
-    background: rgba(0, 242, 255, 0.05);
+    padding-left: 10px;
+    margin-bottom: 10px;
 }
 
 .oracle-response-text {
@@ -2036,4 +2035,53 @@ input[type="password"] {
 .oracle-scan-wrapper:hover img {
     filter: none !important;
     opacity: 1 !important;
+}
+
+/* Terminal Media Scanner Effect */
+.media-wrapper.scanning::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--theme-color);
+    box-shadow: 0 0 15px var(--theme-color), 0 0 20px var(--theme-color);
+    z-index: 5;
+    animation: terminal-scan 2.5s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes terminal-scan {
+    0% { top: 0%; opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+}
+
+/* Optional: Slight flicker for the image while scanning */
+.media-wrapper.scanning img {
+    animation: scan-flicker 2.5s infinite;
+}
+
+@keyframes scan-flicker {
+    0%, 100% { filter: brightness(1) contrast(1); }
+    50% { filter: brightness(1.2) contrast(1.1) sepia(0.2) hue-rotate(90deg); }
+}
+
+/* NUCLEAR BLOCKER FOR PUTER POPUPS */
+div[id^="puter"], 
+div[class*="puter-modal"],
+div[class*="puter-alert"],
+.puter-error-popup {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    z-index: -99999 !important;
+    position: fixed !important;
+    top: -9999px !important;
+    left: -9999px !important;
+    width: 0 !important;
+    height: 0 !important;
 }

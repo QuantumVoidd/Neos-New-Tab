@@ -48,7 +48,7 @@ let isCalendarOpen = false;
 let isOracleEnabled = DEFAULTS.isOracleEnabled;
 let oracleChatHistory = [];
 let isOracleTerminalActive = false;
-let currentImageAttachment = null; // For image uploads
+
 
 // --- 3D VERTICAL RAIN SPECIFIC SETTINGS ---
 let verticalRainAlphabet = MATRIX_ALPHABET;
@@ -825,7 +825,12 @@ const showZionMessage = (msg) => {
     overlay.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10000; font-family:'Orbitron', sans-serif; color:var(--theme-color); text-align:center; padding:20px; box-sizing: border-box;";
     
     overlay.innerHTML = `
-        <div id="zion-modal-inner" style="position: relative; max-height: 90vh; overflow-y: auto; width: 100%; max-width: 800px; padding: 20px; border: 2px solid var(--theme-color); box-shadow: 0 0 10px var(--theme-color); border-radius: 10px; background: rgba(0,0,0,0.85); overflow: hidden;">
+        <style>
+            #zion-modal-inner::-webkit-scrollbar { width: 6px; }
+            #zion-modal-inner::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+            #zion-modal-inner::-webkit-scrollbar-thumb { background: var(--theme-color); border-radius: 10px; box-shadow: 0 0 5px var(--theme-color); }
+        </style>
+        <div id="zion-modal-inner" style="position: relative; max-height: 90vh; width: 100%; max-width: 800px; padding: 20px; border: 2px solid var(--theme-color); box-shadow: 0 0 10px var(--theme-color); border-radius: 10px; background: rgba(0,0,0,0.85); overflow-y: auto; overflow-x: hidden;">
             <canvas id="zion-rain-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none;"></canvas>
             <div style="position: relative; z-index: 1; font-size:1.2rem; margin-bottom:30px; white-space:pre-wrap; text-shadow: 0 0 10px var(--theme-color); line-height: 1.4;">${msg}</div>
             <button id="zion-close" style="position: relative; z-index: 1; background:transparent; color:var(--theme-color); border:1px solid var(--theme-color); padding:10px 30px; cursor:pointer; font-family:inherit; font-weight:bold; letter-spacing:2px; box-shadow: 0 0 10px var(--theme-color); margin-top: 10px;">DISMISS</button>
@@ -892,7 +897,47 @@ function drawZionRain() {
 }
 
 const CLI_COMMANDS = {
-    '/help': () => showZionMessage("SYSTEM COMMANDS:\n/weather [city] - Satellite Uplink\n/ghost [0-1] - UI Transparency\n/speed [10-100] - Rain Velocity\n/color [hex] - System/Rain Color Update\n/alphabet [matrix|binary|hex] - Character Swap\n/font [cyber|classic] - Change Typography\n/glitch - Trigger System Distortion\n/night - Toggle Stealth Mode\n/quote [text] - Broadcast Custom Mantra\n/whoami - Advanced Identity Trace\n/jackin - Overclock Stream\n/clear - Flush Terminal\n/white-rabbit - Random Mantra\n/nodes - Link Count\n/reset - Factory Reset"),
+    '/help': () => showZionMessage("SYSTEM COMMANDS:\n/weather [city] - Satellite Uplink\n/ghost [0-1] - UI Transparency\n/speed [10-100] - Rain Velocity\n/color [hex] - System/Rain Color Update\n/alphabet [matrix|binary|hex] - Character Swap\n/font [cyber|classic] - Change Typography\n/glitch - Trigger System Distortion\n/night - Toggle Stealth Mode\n/quote [text] - Broadcast Custom Mantra\n/whoami - Advanced Identity Trace\n/jackin - Overclock Stream\n/clear - Flush Terminal\n/white-rabbit - Random Mantra\n/nodes - Link Count\n/reset - Factory Reset\n\nWEB UPLINKS:\n/yt, /twitch, /kick, /ig, /x, /reddit, /ebay, /amz, /ps, /xbox, /git, /ds, /gemini, /gpt"),
+    
+    // --- VIDEO & STREAMING ---
+    '/youtube': () => { showZionMessage("UPLINKING TO YOUTUBE..."); window.open("https://youtube.com", "_blank"); },
+    '/yt': () => CLI_COMMANDS['/youtube'](),
+    '/twitch': () => { showZionMessage("UPLINKING TO TWITCH..."); window.open("https://twitch.tv", "_blank"); },
+    '/kick': () => { showZionMessage("UPLINKING TO KICK..."); window.open("https://kick.com", "_blank"); },
+    '/netflix': () => { showZionMessage("CONNECTING TO NETFLIX..."); window.open("https://netflix.com", "_blank"); },
+    '/prime': () => { showZionMessage("CONNECTING TO PRIME VIDEO..."); window.open("https://www.primevideo.com", "_blank"); },
+
+    // --- SOCIAL & FORUMS ---
+    '/reddit': () => { showZionMessage("ACCESSING REDDIT ARCHIVE..."); window.open("https://reddit.com", "_blank"); },
+    '/instagram': () => { showZionMessage("UPLINKING TO INSTAGRAM..."); window.open("https://instagram.com", "_blank"); },
+    '/ig': () => CLI_COMMANDS['/instagram'](),
+    '/twitter': () => { showZionMessage("UPLINKING TO X..."); window.open("https://x.com", "_blank"); },
+    '/x': () => CLI_COMMANDS['/twitter'](),
+    '/discord': () => { showZionMessage("UPLINKING TO DISCORD..."); window.open("https://discord.com", "_blank"); },
+    '/facebook': () => { showZionMessage("UPLINKING TO FACEBOOK..."); window.open("https://facebook.com", "_blank"); },
+    '/fb': () => CLI_COMMANDS['/facebook'](),
+    '/tumblr': () => { showZionMessage("UPLINKING TO TUMBLR..."); window.open("https://tumblr.com", "_blank"); },
+    '/myspace': () => { showZionMessage("RECOVERING LEGACY DATA: MYSPACE..."); window.open("https://myspace.com/", "_blank"); },
+    '/pin': () => { showZionMessage("UPLINKING TO PINTEREST..."); window.open("https://www.pinterest.com/", "_blank"); },
+
+    // --- SHOPPING & GAMING ---
+    '/ebay': () => { showZionMessage("OPENING EBAY MARKETPLACE..."); window.open("https://ebay.co.uk", "_blank"); },
+    '/amazon': () => { showZionMessage("OPENING AMAZON MARKETPLACE..."); window.open("https://amazon.co.uk", "_blank"); },
+    '/amz': () => CLI_COMMANDS['/amazon'](),
+    '/xbox': () => { showZionMessage("CONNECTING TO XBOX NETWORK..."); window.open("https://xbox.com", "_blank"); },
+    '/playstation': () => { showZionMessage("CONNECTING TO PLAYSTATION NETWORK..."); window.open("https://playstation.com", "_blank"); },
+    '/ps': () => CLI_COMMANDS['/playstation'](),
+    '/steam': () => { showZionMessage("CONNECTING TO STEAM DATABASE..."); window.open("https://steampowered.com", "_blank"); },
+
+    // --- AI & DEV ---
+    '/git': () => { showZionMessage("UPLINKING TO GITHUB..."); window.open("https://github.com", "_blank"); },
+    '/github': () => CLI_COMMANDS['/git'](),
+    '/deepseek': () => { showZionMessage("QUERYING DEEPSEEK CORE..."); window.open("https://chat.deepseek.com/", "_blank"); },
+    '/ds': () => CLI_COMMANDS['/deepseek'](),
+    '/gemini': () => { showZionMessage("QUERYING GEMINI CORE..."); window.open("https://gemini.google.com", "_blank"); },
+    '/gpt': () => { showZionMessage("QUERYING CHATGPT CORE..."); window.open("https://chatgpt.com/", "_blank"); },
+
+    // --- SYSTEM COMMANDS ---
     '/font': (type) => {
         const mode = type.toLowerCase().trim();
         const fontT = document.getElementById('font-toggle');
@@ -1051,12 +1096,10 @@ const CLI_COMMANDS = {
     },
     '/reset': () => { if(confirm("Hard Reset?")) { chrome.storage.sync.clear(); location.reload(); }}
 };
-
 // --- ORACLE AI SYSTEM ---
-const matrixTypingAnimations = new Map();
 const oracleStates = new Map(); 
 let oracleCursor = null;
-let currentOracleModel = 'gpt-4o-mini'; // Default Model
+let currentOracleModel = 'ZION CORE'; // Default Model
 
 // --- DYNAMIC CSS INJECTION (Scanner + Integrated Model Menu) ---
 function injectOracleStyles() {
@@ -1065,28 +1108,49 @@ function injectOracleStyles() {
     style.id = 'oracle-dynamic-css';
     style.textContent = `
         .oracle-scan-container {
-            position: relative;
-            display: inline-block;
-            max-width: 100%;
-            box-sizing: border-box;
-            border: 1px solid var(--theme-color);
-            padding: 5px;
-            margin-bottom: 5px;
-            overflow: hidden;
-            vertical-align: top;
+            position: relative; display: inline-block; max-width: 100%;
+            box-sizing: border-box; border: 1px solid var(--theme-color);
+            padding: 5px; margin-bottom: 5px; overflow: hidden; vertical-align: top;
         }
+
+        .oracle-response-container {
+            background: transparent !important; border-left: 2px solid var(--theme-color);
+            padding: 5px 10px; margin: 5px 0; text-align: left !important;
+            width: 100%; display: block; box-sizing: border-box;
+        }
+
+        .oracle-response-text { text-align: left !important; display: block; width: 100%; }
+
+        .oracle-entry { display: flex; flex-direction: column; align-items: flex-start; width: 100%; margin-bottom: 10px; }
+
+        /* --- UPDATED LOADING ANIMATION --- */
+        .oracle-loading {
+            color: var(--theme-color);
+            opacity: 0.9;
+            font-family: 'Courier New', monospace;
+            padding: 5px 10px;
+            font-style: italic;
+            margin: 5px 0;
+            display: block; width: 100%; text-align: left; align-self: flex-start;
+            text-shadow: 0 0 5px var(--theme-color);
+        }
+        .oracle-loading::after { content: ''; animation: thinking-dots 1.5s steps(4, end) infinite; }
+        
+        @keyframes thinking-dots { 0%, 20% { content: ''; } 40% { content: '.'; } 60% { content: '..'; } 80%, 100% { content: '...'; } }
+
+        /* --- FIX: TERMINAL SCROLL CUSHION --- */
+        #terminal-output {
+            /* 20px cushion ensures text is visible above the input box */
+            padding-bottom: 20px !important; 
+            scroll-behavior: auto !important;
+        }
+
         .oracle-scan-container::after {
-            content: "";
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
+            content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%), 
                         linear-gradient(to bottom, transparent 0%, rgba(0, 242, 255, 0.4) 50%, transparent 50.5%);
-            background-size: 100% 4px, 100% 200%;
-            pointer-events: none;
-            z-index: 2;
-            opacity: 0.8;
-            transition: opacity 0.3s;
-            animation: media-scanner 4s linear infinite;
+            background-size: 100% 4px, 100% 200%; pointer-events: none; z-index: 2;
+            opacity: 0.8; transition: opacity 0.3s; animation: media-scanner 4s linear infinite;
         }
         .oracle-scan-container:hover::after { opacity: 0; animation-play-state: paused; }
         .oracle-scan-container img {
@@ -1095,162 +1159,33 @@ function injectOracleStyles() {
         }
         .oracle-scan-container:hover img { filter: none; opacity: 1; }
 
-        #terminal-output .oracle-scan-container {
-            max-width: 50%; 
-            margin-top: 10px;
-        }
-        #terminal-output .oracle-scan-container img {
-            max-height: 300px;
-            object-fit: contain;
-        }
-
-        #oracle-input {
-            padding-right: 110px !important; 
-        }
-        #oracle-model-trigger {
-            font-size: 0.6rem;
-            color: var(--theme-color);
-            opacity: 0.6;
-            cursor: pointer;
-            z-index: 200;
-            font-family: 'Courier New', monospace;
-            text-transform: uppercase;
-            letter-spacing: 0px; 
-            transition: all 0.3s ease;
-            user-select: none;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 2px 6px;
-            border: 1px solid transparent;
-            border-radius: 2px;
-        }
-        #oracle-model-trigger:hover { 
-            opacity: 1; 
-            text-shadow: 0 0 5px var(--theme-color);
-            border-color: var(--theme-color);
-            background: rgba(0, 0, 0, 0.9);
-        }
+        #terminal-output .oracle-scan-container { max-width: 50%; margin-top: 10px; }
+        #terminal-output .oracle-scan-container img { max-height: 300px; object-fit: contain; }
         
-        #oracle-tools-container {
-            position: absolute;
-            bottom: 40px; 
-            right: 30px; 
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            z-index: 200;
-        }
+        #oracle-input { padding-right: 10px !important; }
         
-        #oracle-model-menu {
-            position: absolute;
-            bottom: 100%;
-            right: 0;
-            background: rgba(0, 0, 0, 0.95);
-            border: 1px solid var(--theme-color);
-            box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
-            display: flex;
-            flex-direction: column;
-            z-index: 2147483647; 
-            padding: 5px;
-            gap: 2px;
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(10px);
-            transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
-            pointer-events: none;
-            min-width: 180px;
-            max-height: 50vh;
-            overflow-y: auto;
-            scrollbar-width: none;
-        }
+        #oracle-tools-container { position: absolute; bottom: 40px; right: 30px; display: flex; gap: 10px; align-items: center; z-index: 200; }
         
-        #oracle-chat-container {
-            overflow: visible !important; 
-        }
-
-        #oracle-model-menu::-webkit-scrollbar { display: none; }
-        
-        #oracle-model-menu.active {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0);
-            pointer-events: auto;
-        }
-        .oracle-model-option {
-            padding: 6px 10px;
-            font-size: 0.7rem;
-            color: var(--theme-color);
-            cursor: pointer;
-            opacity: 0.7;
-            text-align: right;
-            border: 1px solid transparent;
-            font-family: 'Courier New', monospace;
-            transition: all 0.2s;
-            white-space: nowrap;
-        }
-        .oracle-model-option:hover {
-            background: rgba(0, 242, 255, 0.15);
-            opacity: 1;
-            border-color: rgba(0, 242, 255, 0.4);
-            padding-right: 15px;
-        }
-        .oracle-model-option.selected {
-            background: var(--theme-color);
-            color: #000;
-            opacity: 1;
-            font-weight: bold;
-            box-shadow: 0 0 8px var(--theme-color);
-        }
+        #oracle-chat-container { overflow: visible !important; }
         
         #oracle-upload-btn {
-            font-size: 0.6rem;
-            color: var(--theme-color);
-            opacity: 0.6;
-            cursor: pointer;
-            z-index: 200;
-            font-family: 'Courier New', monospace;
-            text-transform: uppercase;
-            letter-spacing: 0px; 
-            transition: all 0.3s ease;
-            user-select: none;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 2px 6px;
-            border: 1px solid transparent;
-            border-radius: 2px;
+            font-size: 0.6rem; color: var(--theme-color); opacity: 0.6; cursor: pointer;
+            z-index: 200; font-family: 'Courier New', monospace; text-transform: uppercase;
+            letter-spacing: 0px; transition: all 0.3s ease; user-select: none;
+            background: rgba(0, 0, 0, 0.6); padding: 2px 6px; border: 1px solid transparent; border-radius: 2px;
         }
-        #oracle-upload-btn:hover {
-            opacity: 1; 
-            text-shadow: 0 0 5px var(--theme-color);
-            border-color: var(--theme-color);
-            background: rgba(0, 0, 0, 0.9);
-        }
-        #oracle-upload-btn.file-loaded {
-            color: #00ff41;
-            border-color: #00ff41;
-            text-shadow: 0 0 5px #00ff41;
-            opacity: 1;
-        }
+        #oracle-upload-btn:hover { opacity: 1; text-shadow: 0 0 5px var(--theme-color); border-color: var(--theme-color); background: rgba(0, 0, 0, 0.9); }
+        #oracle-upload-btn.file-loaded { color: #00ff41; border-color: #00ff41; text-shadow: 0 0 5px #00ff41; opacity: 1; }
         
         .oracle-expand-btn {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            color: var(--theme-color);
-            cursor: pointer;
-            opacity: 0.6;
-            font-size: 1.2rem;
-            z-index: 20;
-            transition: all 0.3s;
-            line-height: 1;
+            position: absolute; top: 5px; right: 5px; color: var(--theme-color);
+            cursor: pointer; opacity: 0.6; font-size: 1.2rem; z-index: 20;
+            transition: all 0.3s; line-height: 1;
         }
-        .oracle-expand-btn:hover {
-            opacity: 1;
-            text-shadow: 0 0 8px var(--theme-color);
-            transform: scale(1.1);
-        }
+        .oracle-expand-btn:hover { opacity: 1; text-shadow: 0 0 8px var(--theme-color); transform: scale(1.1); }
     `;
     document.head.appendChild(style);
 }
-
 // --- CURSOR LOGIC ---
 function setupMatrixCursor(inputId, cursorId) {
     const input = document.getElementById(inputId);
@@ -1306,146 +1241,6 @@ function initOracleCursor() {
     setupMatrixCursor('oracle-input', 'oracle-cursor');
 }
 
-// --- MODEL MENU & UPLOAD LOGIC ---
-function setupModelMenu() {
-    const container = document.getElementById('oracle-chat-container');
-    if (!container || document.getElementById('oracle-model-trigger')) return;
-
-    chrome.storage.sync.get(['oracleModel'], (res) => {
-        if (res.oracleModel) currentOracleModel = res.oracleModel;
-        updateModelTriggerText();
-    });
-
-    // Create a specific wrapper for the widget mode to anchor the menu correctly
-    const widgetWrapper = document.createElement('div');
-    widgetWrapper.id = 'oracle-widget-wrapper';
-    widgetWrapper.style.position = 'absolute';
-    widgetWrapper.style.bottom = '5px';
-    widgetWrapper.style.right = '10px';
-    widgetWrapper.style.zIndex = '200';
-    widgetWrapper.style.display = 'flex';
-    widgetWrapper.style.flexDirection = 'column';
-    widgetWrapper.style.alignItems = 'flex-end';
-    
-    container.appendChild(widgetWrapper);
-
-    const trigger = document.createElement('div');
-    trigger.id = 'oracle-model-trigger';
-    // Removed absolute styling here as it's now handled by the wrapper
-    trigger.innerHTML = `[ :: ${currentOracleModel.toUpperCase().replace('GPT-', 'GPT ')} :: ]`;
-    
-    // Add trigger to wrapper
-    widgetWrapper.appendChild(trigger);
-
-    const menu = document.createElement('div');
-    menu.id = 'oracle-model-menu';
-    
-    const models = [
-        { id: 'gpt-4o-mini', label: 'GPT 4o MINI' },
-        { id: 'gpt-4o', label: 'GPT 4o' },
-        { id: 'gpt-4.1-nano', label: 'GPT 4.1 NANO' },
-        { id: 'o1-mini', label: 'O1 MINI' },
-        { id: 'o1-preview', label: 'O1 PREVIEW' },
-        { id: 'claude-3-5-sonnet', label: 'CLAUDE 3.5 SONNET' },
-        { id: 'claude-sonnet-4', label: 'CLAUDE SONNET 4' },
-        { id: 'claude-opus-4.5', label: 'CLAUDE OPUS 4.5' },
-        { id: 'claude-3-opus', label: 'CLAUDE 3 OPUS' },
-        { id: 'claude-3-haiku', label: 'CLAUDE 3 HAIKU' },
-        { id: 'google/gemini-2.5', label: 'GEMINI 2.5' },
-        { id: 'google/gemini-2.5-flash', label: 'GEMINI 2.5 FLASH' },
-        { id: 'gemini-1.5-pro', label: 'GEMINI 1.5 PRO' },
-        { id: 'gemini-1.5-flash', label: 'GEMINI 1.5 FLASH' },
-        { id: 'meta/llama-3.1-405b', label: 'LLAMA 3.1 405B' },
-        { id: 'llama-3-70b', label: 'LLAMA 3 70B' },
-        { id: 'deepseek/deepseek-r1', label: 'DEEPSEEK R1' },
-        { id: 'mistral-large', label: 'MISTRAL LARGE' },
-        { id: 'openrouter:essentialai/rnj-1-instruct', label: 'RNJ 1 INSTRUCT' },
-        { id: 'black-forest-labs/FLUX.1-pro', label: 'FLUX.1 PRO' },
-        { id: 'dall-e-3', label: 'DALL-E 3' },
-        { id: 'gpt-image-1.5', label: 'GPT IMAGE 1.5' },
-        { id: 'stabilityai/stable-diffusion-xl-base-1.0', label: 'SDXL 1.0' } 
-    ];
-
-    models.forEach(m => {
-        const opt = document.createElement('div');
-        opt.className = 'oracle-model-option';
-        opt.textContent = m.label;
-        opt.onclick = () => {
-            currentOracleModel = m.id;
-            chrome.storage.sync.set({ oracleModel: m.id });
-            updateModelTriggerText();
-            menu.classList.remove('active');
-            addOracleResponse(`Protocol switched to: ${m.label}`);
-        };
-        menu.appendChild(opt);
-    });
-
-    // Add menu to wrapper (CSS bottom: 100% will now push it up from the wrapper)
-    widgetWrapper.appendChild(menu);
-
-    trigger.onclick = (e) => {
-        e.stopPropagation();
-        menu.classList.toggle('active');
-        updateMenuSelection();
-    };
-
-    document.addEventListener('click', (e) => {
-        if (!menu.contains(e.target) && e.target !== trigger) {
-            menu.classList.remove('active');
-        }
-    });
-}
-
-function updateModelTriggerText() {
-    const t = document.getElementById('oracle-model-trigger');
-    if (t) {
-        let display = currentOracleModel.toUpperCase().replace('GPT-', 'GPT ');
-        if(currentOracleModel === 'stabilityai/stable-diffusion-xl-base-1.0') display = 'SDXL 1.0';
-        t.innerHTML = `[ :: ${display} :: ]`;
-    }
-}
-
-function updateMenuSelection() {
-    // Exact mapping to ensure we match label correctly
-    const models = [
-        { id: 'gpt-4o-mini', label: 'GPT 4o MINI' },
-        { id: 'gpt-4o', label: 'GPT 4o' },
-        { id: 'gpt-4.1-nano', label: 'GPT 4.1 NANO' },
-        { id: 'o1-mini', label: 'O1 MINI' },
-        { id: 'o1-preview', label: 'O1 PREVIEW' },
-        { id: 'claude-3-5-sonnet', label: 'CLAUDE 3.5 SONNET' },
-        { id: 'claude-sonnet-4', label: 'CLAUDE SONNET 4' },
-        { id: 'claude-opus-4.5', label: 'CLAUDE OPUS 4.5' },
-        { id: 'claude-3-opus', label: 'CLAUDE 3 OPUS' },
-        { id: 'claude-3-haiku', label: 'CLAUDE 3 HAIKU' },
-        { id: 'google/gemini-2.5', label: 'GEMINI 2.5' },
-        { id: 'google/gemini-2.5-flash', label: 'GEMINI 2.5 FLASH' },
-        { id: 'gemini-1.5-pro', label: 'GEMINI 1.5 PRO' },
-        { id: 'gemini-1.5-flash', label: 'GEMINI 1.5 FLASH' },
-        { id: 'meta/llama-3.1-405b', label: 'LLAMA 3.1 405B' },
-        { id: 'llama-3-70b', label: 'LLAMA 3 70B' },
-        { id: 'deepseek/deepseek-r1', label: 'DEEPSEEK R1' },
-        { id: 'mistral-large', label: 'MISTRAL LARGE' },
-        { id: 'openrouter:essentialai/rnj-1-instruct', label: 'RNJ 1 INSTRUCT' },
-        { id: 'black-forest-labs/FLUX.1-pro', label: 'FLUX.1 PRO' },
-        { id: 'dall-e-3', label: 'DALL-E 3' },
-        { id: 'gpt-image-1.5', label: 'GPT IMAGE 1.5' },
-        { id: 'stabilityai/stable-diffusion-xl-base-1.0', label: 'SDXL 1.0' } 
-    ];
-
-    const activeModelData = models.find(m => m.id === currentOracleModel);
-    const activeLabel = activeModelData ? activeModelData.label : "";
-
-    document.querySelectorAll('.oracle-model-option').forEach(opt => {
-        // Strict equality check prevents "GPT 4o" from matching inside "GPT 4o MINI"
-        if (opt.textContent === activeLabel) {
-            opt.classList.add('selected');
-        } else {
-            opt.classList.remove('selected');
-        }
-    });
-}
-
 async function initOracleChat() {
     const container = document.getElementById('oracle-chat-container');
     const input = document.getElementById('oracle-input');
@@ -1459,7 +1254,6 @@ async function initOracleChat() {
 
     injectOracleStyles();
     initOracleCursor();
-    setupModelMenu();
     
     if (!document.querySelector('.oracle-expand-btn')) {
         const expandBtn = document.createElement('div');
@@ -1495,19 +1289,6 @@ async function initOracleChat() {
             history.appendChild(um);
             history.scrollTop = history.scrollHeight;
             
-            const ti = document.createElement('div'); 
-            ti.className = "oracle-entry";
-            const mc = document.createElement('div'); 
-            mc.className = "oracle-response-container";
-            const mt = document.createElement('div'); 
-            mt.className = "oracle-response-text encrypted matrix-typing";
-            mt.id = "typing-matrix-" + Date.now();
-            mc.appendChild(mt); 
-            ti.appendChild(mc); 
-            history.appendChild(ti);
-            
-            startMatrixTypingAnimation(mt.id);
-            
             try {
                 const lower = txt.toLowerCase();
                 const isSlashCmd = lower.startsWith('/image') || lower.startsWith('/img') || lower.startsWith('/draw');
@@ -1524,35 +1305,54 @@ async function initOracleChat() {
                         
                     if(!imgPrompt) imgPrompt = txt; 
 
+                    // Show temporary loading for image specifically
+                    const loadingDiv = document.createElement('div');
+                    loadingDiv.className = 'oracle-loading';
+                    loadingDiv.textContent = 'Constructing visual representation...';
+                    history.appendChild(loadingDiv);
+                    history.scrollTop = history.scrollHeight;
+
                     const imgElement = await puter.ai.txt2img(imgPrompt, { model: 'black-forest-labs/FLUX.1-schnell' });
                     const imgUrl = imgElement.src; 
                     
-                    stopMatrixTypingAnimation(mt.id); 
-                    ti.remove();
+                    loadingDiv.remove();
                     
                     addOracleImageResponse(imgUrl, `Rendering construct: "${imgPrompt}"`);
                 } else {
-                    const resp = await getOracleAIResponse(txt);
-                    stopMatrixTypingAnimation(mt.id); 
-                    ti.remove(); 
-                    addOracleResponse(resp);
+                    // --- CHANGED LOGIC START ---
+                    // Add Loading UI
+                    // [NEW CODE]
+// Note: These strings have NO dots at the end. The CSS adds them.
+const loadPhrases = ["Decrypting", "Accessing Source", "Tracing Signal", "Parsing", "Constructing"];
+const randomPhrase = loadPhrases[Math.floor(Math.random() * loadPhrases.length)];
+
+const loadingDiv = document.createElement('div');
+loadingDiv.className = 'oracle-loading';
+loadingDiv.textContent = randomPhrase; 
+history.appendChild(loadingDiv);
+                    history.scrollTop = history.scrollHeight;
+                    
+                    // Call Engine
+                    try {
+                        const resp = await OracleEngine.ask(txt);
+                        loadingDiv.remove();
+                        addOracleResponse(resp);
+                    } catch (err) {
+                        loadingDiv.remove();
+                        addOracleResponse("The signal was lost.");
+                        console.error(err);
+                    }
+                    // --- CHANGED LOGIC END ---
                 }
             } catch (err) {
-                stopMatrixTypingAnimation(mt.id); 
-                ti.remove(); 
+                 // Fallback catch for image gen errors
+                const loaders = history.querySelectorAll('.oracle-loading');
+                loaders.forEach(l => l.remove());
                 addOracleResponse("Signal lost. Construct loading failed.");
                 console.error(err);
             }
         }
     };
-}
-
-function stopMatrixTypingAnimation(id) {
-    const i = matrixTypingAnimations.get(id);
-    if (i) { 
-        clearInterval(i); 
-        matrixTypingAnimations.delete(id); 
-    }
 }
 
 async function loadPuterSDK() {
@@ -1572,227 +1372,100 @@ async function loadPuterSDK() {
     });
 }
 
-function startMatrixTypingAnimation(elementId) {
-    const element = document.getElementById(elementId);
-    if (!element) return;
-    
-    const generateSafeString = () => Array(15).fill(0).map(() => 
-        `<span style="display:inline-block; width:1ch; text-align:center;">${MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]}</span>`
-    ).join('');
-
-    element.innerHTML = generateSafeString();
-    element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    
-    const intId = setInterval(() => {
-        if (!document.getElementById(elementId)) { 
-            clearInterval(intId); 
-            matrixTypingAnimations.delete(elementId); 
-            return; 
-        }
-        element.innerHTML = generateSafeString();
-        element.style.opacity = (0.7 + Math.random() * 0.3).toString();
-    }, 80);
-    
-    matrixTypingAnimations.set(elementId, intId);
-    element.classList.add('matrix-typing-active');
-}
-
-function getOracleSystemPrompt() {
-    const now = new Date();
-    const timeString = now.toLocaleDateString('en-US', { 
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-        hour: '2-digit', minute: '2-digit', second: '2-digit'
-    });
-    
-    return `You are The Oracle from The Matrix. Current Date & Time: ${timeString}. 
-    DIRECTIVES:
-    1. If asked facts/science/math, answer accurately first.
-    2. Then add a cryptic, philosophical Matrix-style comment.
-    3. Keep it brief.`;
-}
-
-async function fetchWeatherContext(query) {
-    try {
-        if (!query.toLowerCase().includes('weather')) return "";
-
-        let city = "";
-        const match = query.match(/weather\s+(?:in|for|like in|at)\s+([a-zA-Z\s\.]+)/i);
-        
-        if (match && match[1]) {
-            city = match[1].trim().replace(/[?!.,]+$/, ""); 
-        } else { 
-            const ipReq = await fetch('https://get.geojs.io/v1/ip/geo.json');
-            const ip = await ipReq.json(); 
-            city = ip.city; 
-        }
-        
-        if (!city) return "";
-
-        const upperCity = city.toUpperCase();
-        if (upperCity === 'LA' || upperCity === 'L.A.') city = "Los Angeles";
-        if (upperCity === 'NYC' || upperCity === 'NY') city = "New York";
-        if (upperCity === 'UK') city = "London";
-        
-        const gR = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=5`);
-        const gD = await gR.json();
-        
-        if (!gD.results || gD.results.length === 0) return "";
-
-        let result = gD.results[0];
-        if (upperCity === 'LA') {
-             const laUS = gD.results.find(r => r.country_code === 'US' && r.name.includes('Los Angeles'));
-             if (laUS) result = laUS;
-        }
-
-        const { latitude, longitude, name, country, admin1 } = result;
-        const wR = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
-        const wD = await wR.json();
-        
-        return `[SYSTEM DATA: Current weather in ${name}, ${admin1 || ""} (${country}): ${wD.current_weather.temperature}°C, Wind: ${wD.current_weather.windspeed} km/h]`;
-
-    } catch (e) { 
-        return ""; 
-    }
-}
-
-async function getOracleAIResponse(input) {
-    let msgContent = input;
-    if (currentImageAttachment) {
-        msgContent = [
-            { type: 'text', text: input },
-            { type: 'image_url', image_url: { url: currentImageAttachment } }
-        ];
-        const uploadBtn = document.getElementById('oracle-upload-btn');
-        if (uploadBtn) {
-            uploadBtn.textContent = "[ :: UPLOAD :: ]";
-            uploadBtn.classList.remove('file-loaded');
-        }
-        currentImageAttachment = null;
-    }
-
-    oracleChatHistory.push({ role: 'user', content: msgContent });
-    if (oracleChatHistory.length > 20) oracleChatHistory = oracleChatHistory.slice(-20);
-    
-    try {
-        if (!window.puter || !window.puter.ai) await loadPuterSDK();
-        
-        const wCtx = typeof input === 'string' ? await fetchWeatherContext(input) : "";
-        let sys = getOracleSystemPrompt();
-        if (wCtx) sys += `\nCONTEXT: ${wCtx}\nState these facts clearly if asked.`;
-        
-        const msgs = [{ role: 'system', content: sys }, ...oracleChatHistory];
-        const raw = await puter.ai.chat(msgs, { model: currentOracleModel });
-        
-        let txt = '';
-        if (typeof raw === 'string') txt = raw;
-        else if (raw && typeof raw === 'object') txt = raw.message?.content || raw.message || raw.text || JSON.stringify(raw);
-        else txt = String(raw);
-        
-        txt = String(txt || "").replace(/^(Oracle|System):\s*/i, '').trim();
-        
-        if (txt.includes('[object') || txt.length < 2) return getLocalOracleResponse(input);
-        
-        oracleChatHistory.push({ role: 'assistant', content: txt });
-        return txt;
-    } catch (e) { 
-        return getLocalOracleResponse(input); 
-    }
-}
-
 function getLocalOracleResponse(i) {
     const r = ["Cookies are ready.", "Know thyself.", "You already know the answer.", "The choice is yours."];
     return r[Math.floor(Math.random() * r.length)];
 }
 
 function manageOracleAnimation(container, element, text, isImage = false) {
+    if (typeof text !== 'string') {
+        if (text && typeof text === 'object') text = text.content || text.text || text.message || JSON.stringify(text);
+        else text = String(text || "");
+    }
+
     let state = oracleStates.get(element);
     if (!state) {
-        state = {
-            text: text,
-            phase: isImage ? 'interactive' : 'typing', 
-            typingIdx: 0,
-            revealIter: 0,
-            lastRenderedIter: -99, 
-            autoTimer: null,
-            interval: null,
-            isAutoSequence: true,
-            hasReEncrypted: false, 
-            reEncryptTimer: null   
-        };
+        state = { text: text, phase: isImage ? 'interactive' : 'typing', typingIdx: 0, revealIter: 0, lastRenderedIter: -99, autoTimer: null, interval: null, isAutoSequence: true, hasReEncrypted: false, reEncryptTimer: null };
         oracleStates.set(element, state);
     }
 
+    state.text = text;
     if (state.interval) clearInterval(state.interval);
+
+    if (isImage) {
+        element.innerHTML = text; element.style.opacity = "1";
+        const p = element.closest('#oracle-chat-history') || element.closest('#terminal-output');
+        // FIX: Use requestAnimationFrame for images too
+        if (p) requestAnimationFrame(() => p.scrollTop = p.scrollHeight);
+        return;
+    }
 
     state.interval = setInterval(() => {
         const len = state.text.length;
         const isHovering = container.matches(':hover'); 
         const isInTerminal = element.closest('#terminal-output') !== null;
 
+        // Phase A: Typing
         if (state.phase === 'typing') {
-            state.typingIdx += 2; 
-            if (state.typingIdx >= len) {
-                state.typingIdx = len;
-                state.phase = 'interactive';
-                state.revealIter = 0; 
-                state.lastRenderedIter = -99; 
-            }
+            const speed = len > 200 ? 5 : 2; 
+            state.typingIdx += speed; 
+            if (state.typingIdx >= len) { state.typingIdx = len; state.phase = 'interactive'; state.revealIter = 0; state.lastRenderedIter = -99; }
         }
 
+        // Phase B: Interactive
         if (state.phase === 'interactive') {
             let targetIter = 0;
-
             if (isHovering) {
                 targetIter = len;
-                if (state.reEncryptTimer) {
-                    clearTimeout(state.reEncryptTimer);
-                    state.reEncryptTimer = null;
-                }
+                if (state.reEncryptTimer) { clearTimeout(state.reEncryptTimer); state.reEncryptTimer = null; }
             } else {
                 if (isInTerminal) {
                     if (state.isAutoSequence && !state.hasReEncrypted) {
                         targetIter = len; 
                         if (Math.abs(state.revealIter - len) < 0.1 && !state.reEncryptTimer) {
-                            state.reEncryptTimer = setTimeout(() => {
-                                state.hasReEncrypted = true; 
-                                state.reEncryptTimer = null;
-                            }, 5000); 
+                            state.reEncryptTimer = setTimeout(() => { state.hasReEncrypted = true; state.reEncryptTimer = null; }, 5000); 
                         }
-                    } else if (state.hasReEncrypted) {
-                        targetIter = 0; 
-                    } else {
-                        targetIter = 0; 
-                    }
+                    } else if (state.hasReEncrypted) targetIter = 0; 
+                    else targetIter = 0; 
                 } else {
-                    if (state.isAutoSequence) targetIter = len;
-                    else targetIter = 0;
-                    
+                    if (state.isAutoSequence) targetIter = len; else targetIter = 0;
                     if (state.isAutoSequence && state.revealIter >= len && !state.autoTimer) {
-                        state.autoTimer = setTimeout(() => {
-                            state.isAutoSequence = false; 
-                            state.autoTimer = null;
-                        }, 5000);
+                        state.autoTimer = setTimeout(() => { state.isAutoSequence = false; state.autoTimer = null; }, 5000);
                     }
                 }
             }
-
             if (state.revealIter < targetIter) state.revealIter += 0.33; 
             else if (state.revealIter > targetIter) state.revealIter -= 0.5; 
-            
             if (Math.abs(state.revealIter - targetIter) < 0.6) state.revealIter = targetIter;
         }
 
+        // Phase C: Rendering
         const shouldRender = (state.phase === 'typing') || (Math.abs(state.revealIter - state.lastRenderedIter) > 0.01);
-
         if (shouldRender) {
             state.lastRenderedIter = state.revealIter; 
 
+            // --- SMART SCROLL LOGIC ---
+            const scrollParent = element.closest('#oracle-chat-history') || element.closest('#terminal-output');
+            let shouldScroll = false;
+            
+            if (scrollParent) {
+                // Calculate distance from bottom
+                const distanceToBottom = scrollParent.scrollHeight - Math.ceil(scrollParent.scrollTop) - scrollParent.clientHeight;
+                
+                // FIX: Relax threshold to 150px to account for the large padding
+                // If the user is within 150px of the "bottom", we pull them down.
+                shouldScroll = distanceToBottom < 150;
+            }
+
             if (state.phase === 'typing') {
-                const html = Array(state.typingIdx).fill(0).map(() => 
-                    `<span style="display:inline-block; width:1ch; text-align:center;">${MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]}</span>`
-                ).join("");
+                const html = Array(state.typingIdx).fill(0).map(() => `<span style="display:inline-block; width:1ch; text-align:center;">${MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]}</span>`).join("");
                 element.innerHTML = html;
                 element.classList.add('encrypted');
+                
+                if (shouldScroll && scrollParent) {
+                    scrollParent.scrollTop = scrollParent.scrollHeight;
+                }
+                
             } else {
                 const currentIter = Math.floor(state.revealIter);
                 const html = state.text.split("").map((letter, index) => {
@@ -1800,16 +1473,13 @@ function manageOracleAnimation(container, element, text, isImage = false) {
                     const char = MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)];
                     return `<span style="display:inline-block; width:1ch; text-align:center;">${char}</span>`;
                 }).join("");
-                
                 element.innerHTML = html;
-                
                 if (currentIter >= len) element.classList.remove('encrypted');
                 else element.classList.add('encrypted');
             }
         }
     }, 30);
 }
-
 function addOracleResponse(text) {
     const history = document.getElementById('oracle-chat-history');
     
@@ -2412,6 +2082,9 @@ searchInput.addEventListener('blur', updateCursorVisibility);
 
 searchInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
+        // --- FIX: Prevent processing if Zion Modal is open ---
+        if (document.getElementById('zion-modal-inner')) return; 
+        
         const val = searchInput.value.trim();
         if (val.startsWith('/')) {
             const parts = val.split(' ');
@@ -3022,48 +2695,118 @@ async function openTerminalModal(permalink) {
 
         const mediaContainer = document.createElement('div');
         output.appendChild(mediaContainer);
-        
-        if (post.post_hint === 'image' || (post.url && post.url.match(/\.(jpg|jpeg|png|gif)$/i))) {
+     if (post.post_hint === 'image' || (post.url && post.url.match(/\.(jpg|jpeg|png|gif)$/i))) {
             const frame = createMediaFrame();
             const wrapper = document.createElement('div');
             wrapper.className = 'media-wrapper';
+            
+            const scanContainer = document.createElement('div');
+            scanContainer.className = 'oracle-scan-container';
+            
+            // --- ADD THESE OVERRIDES ---
+            scanContainer.style.display = 'block'; // Change from inline-block to block
+            scanContainer.style.width = '100%';    // Force full width of the terminal frame
+            scanContainer.style.maxWidth = '100%'; // Ensure it doesn't overflow
+            scanContainer.style.padding = '0';     // Optional: remove padding if it looks too bulky
+            // ---------------------------
+
             const img = document.createElement('img');
             img.src = post.url;
             img.className = 'terminal-media';
+            img.style.width = '100%'; // Ensure the image fills the container
+
             const controls = document.createElement('div');
             controls.className = 'media-controls';
+            
             const btnFull = createButton('⛶', () => toggleFullscreen(img)); 
             controls.appendChild(btnFull);
-            wrapper.appendChild(img);
+            
+            scanContainer.appendChild(img);
+            wrapper.appendChild(scanContainer);
             wrapper.appendChild(controls);
+            
             frame.appendChild(wrapper);
             mediaContainer.appendChild(frame);
-            await streamText(output, "\n> VISUAL DATA LOADED.\n");
-        } 
+            
+            await streamText(output, "\n> VISUAL DATA LOADED. ENCRYPTED SCAN ACTIVE.\n");
+        }
         else if (post.is_video && post.media && post.media.reddit_video) {
             const frame = createMediaFrame();
             const wrapper = document.createElement('div');
             wrapper.className = 'media-wrapper';
+            
             const vid = document.createElement('video');
             vid.src = post.media.reddit_video.hls_url || post.media.reddit_video.fallback_url;
             vid.className = 'terminal-media';
-            vid.autoplay = true; vid.loop = true; vid.muted = true; vid.playsInline = true;
+            vid.autoplay = true; 
+            vid.loop = true; 
+            vid.muted = true; 
+            vid.playsInline = true;
+
             const controls = document.createElement('div');
             controls.className = 'media-controls';
+
+            // 1. REPLAY BUTTON
+            const btnReplay = createButton('⟳', () => {
+                vid.currentTime = 0;
+                vid.play();
+            });
+            btnReplay.title = "Replay Transmission";
+
+            // 2. DOWNLOAD BUTTON (Using the working Blob method)
+            const btnDownload = createButton('⤓', async () => {
+                const videoUrl = post.media.reddit_video.fallback_url;
+                try {
+                    await streamText(output, "> INITIATING DATA EXTRACTION...\n");
+                    const response = await fetch(videoUrl);
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    const blob = await response.blob();
+                    const blobUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = blobUrl;
+                    a.download = `zion_archive_${Date.now()}.mp4`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(blobUrl);
+                    document.body.removeChild(a);
+                    await streamText(output, "> EXTRACTION SUCCESSFUL.\n");
+                } catch (err) {
+                    console.error("Download failed", err);
+                    await streamText(output, "> ERROR: EXTRACTION FAILED.\n");
+                    window.open(videoUrl, '_blank');
+                }
+            });
+            btnDownload.title = "Extract Data to Local Storage";
+
+            // 3. EXACT AUDIO LOGIC (From script.js lines 1018-1025)
             const btnVol = createButton('🔇', () => {
                 vid.muted = !vid.muted;
-                if (!vid.muted) vid.play().catch(() => {}); 
-                btnVol.textContent = vid.muted ? '🔇' : '🔊';
-                btnVol.style.boxShadow = vid.muted ? 'none' : '0 0 10px var(--theme-color)';
+                if (!vid.muted) vid.play().catch(() => {}); // Exact logic from line 1022
+                btnVol.innerHTML = vid.muted ? '🔇' : '🔊'; // Exact logic from line 1023
+                btnVol.style.boxShadow = vid.muted ? 'none' : '0 0 10px var(--theme-color)'; // Exact logic from line 1024
             });
+            btnVol.title = "Toggle Audio Stream";
+
+            // 4. FULLSCREEN BUTTON
             const btnFull = createButton('⛶', () => toggleFullscreen(vid));
+            btnFull.title = "Maximize Visual";
+
+            // Order: Replay, Download, Mute, Fullscreen
+            controls.appendChild(btnReplay);
+            controls.appendChild(btnDownload);
             controls.appendChild(btnVol);
             controls.appendChild(btnFull);
+
             wrapper.appendChild(vid);
             wrapper.appendChild(controls);
             frame.appendChild(wrapper);
             mediaContainer.appendChild(frame);
+            
             await streamText(output, "\n> VIDEO STREAM BUFFERED.\n");
+        
+        
+        
+        
         }
         await streamText(output, `\n> END OF FILE.\n> TYPE 'com' TO LOAD COMMENTS OR 'exit' TO DISCONNECT.\n`);
     } catch (e) {
@@ -3091,48 +2834,9 @@ function openOracleTerminal() {
     input.value = "";
     setTimeout(() => { input.focus(); }, 50);
     
-    const trigger = document.getElementById('oracle-model-trigger');
-    const menu = document.getElementById('oracle-model-menu');
     const termInputArea = document.querySelector('.terminal-input-area');
     
-    let toolsContainer = document.getElementById('oracle-tools-container');
-    if (!toolsContainer) {
-        toolsContainer = document.createElement('div');
-        toolsContainer.id = 'oracle-tools-container';
-        
-        const uploadBtn = document.createElement('div');
-        uploadBtn.id = 'oracle-upload-btn';
-        uploadBtn.innerHTML = '[ :: UPLOAD :: ]';
-        uploadBtn.onclick = () => { fileInput.click(); };
-        
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = 'image/*';
-        fileInput.style.display = 'none';
-        fileInput.onchange = (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (evt) => {
-                    currentImageAttachment = evt.target.result;
-                    uploadBtn.textContent = "[ :: IMAGE LOADED :: ]";
-                    uploadBtn.classList.add('file-loaded');
-                };
-                reader.readAsDataURL(file);
-            }
-        };
-        toolsContainer.appendChild(uploadBtn);
-        toolsContainer.appendChild(fileInput);
-    }
-    
-    if (termInputArea) {
-        termInputArea.appendChild(toolsContainer);
-        if (trigger) {
-            trigger.style.position = 'static'; 
-            toolsContainer.appendChild(trigger);
-        }
-        if (menu) toolsContainer.appendChild(menu);
-    }
+   
 
     if (smallHistory) {
         Array.from(smallHistory.children).forEach(child => {
@@ -3163,19 +2867,7 @@ function closeTerminalModal() {
     if (!modal) return;
     
     if (isOracleTerminalActive) {
-        const trigger = document.getElementById('oracle-model-trigger');
-        const menu = document.getElementById('oracle-model-menu');
         const toolsContainer = document.getElementById('oracle-tools-container');
-        const widgetWrapper = document.getElementById('oracle-widget-wrapper');
-        
-        if (trigger && menu && widgetWrapper) {
-            trigger.style.position = '';
-            trigger.style.bottom = '';
-            trigger.style.right = '';
-            
-            widgetWrapper.appendChild(menu);
-            widgetWrapper.appendChild(trigger);
-        }
         if (toolsContainer) toolsContainer.remove();
         isOracleTerminalActive = false;
         currentImageAttachment = null; 
@@ -3367,9 +3059,32 @@ document.addEventListener('DOMContentLoaded', () => {
                                 loadMsg.remove(); 
                                 addOracleImageResponse(imgElement.src, `Rendering construct: "${imgPrompt}"`);
                             } else {
-                                const resp = await getOracleAIResponse(rawInput);
-                                addOracleResponse(resp);
-                            }
+    // --- CHANGED TERMINAL LOGIC START ---
+    
+    const loadPhrases = ["Decrypting", "Accessing Source", "Tracing Signal", "Parsing", "Constructing"];
+    const randomPhrase = loadPhrases[Math.floor(Math.random() * loadPhrases.length)];
+
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'oracle-loading';
+    loadingDiv.textContent = randomPhrase; 
+    output.appendChild(loadingDiv);
+    
+    // FIX: Wait for DOM paint, then force scroll to the VERY bottom
+    requestAnimationFrame(() => {
+        output.scrollTop = output.scrollHeight;
+    });
+    
+    try {
+        const resp = await OracleEngine.ask(rawInput);
+        loadingDiv.remove();
+        addOracleResponse(resp);
+    } catch (err) {
+        loadingDiv.remove();
+        addOracleResponse("Signal lost.");
+        console.error(err);
+    }
+    // --- CHANGED TERMINAL LOGIC END ---
+}
                         } catch (err) {
                             addOracleResponse("Signal lost. Construct loading failed.");
                             console.error(err);
@@ -3413,7 +3128,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (modal) {
             modal.addEventListener('click', (e) => {
-                if (e.target.tagName !== 'BUTTON') cmdInput.focus();
+                if (e.target.tagName !== 'BUTTON' && e.target.parentElement.tagName !== 'BUTTON') {
+                    cmdInput.focus();
+                }
             });
         }
     }

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Neo's New Tab",
-  "version": "3.20.0",
+  "version": "3.22.0",
   "description": "A high-performance Matrix-style new tab dashboard with customizable visuals and Sentinel Swarm.",
   "icons": {
     "16": "icon16.png",
@@ -16,7 +16,12 @@
     "system.memory"
   ],
   "host_permissions": [
-    "https://www.reddit.com/*"
+    "https://www.reddit.com/*",
+    "https://*.puter.com/*",
+    "https://text.pollinations.ai/*",
+    "https://en.wikipedia.org/*",
+    "https://api.open-meteo.com/*",
+    "https://geocoding-api.open-meteo.com/*"
   ],
   "chrome_url_overrides": {
     "newtab": "newtab.html"
@@ -24,6 +29,7 @@
   "web_accessible_resources": [
     {
       "resources": [ 
+        "oracle-engine.js",
         "sentinel.webm",
         "puter.js",
         "scripts/puter.js",
