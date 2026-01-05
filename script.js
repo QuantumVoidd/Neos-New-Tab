@@ -7,7 +7,7 @@ const mainContainer = document.querySelector('.main-container');
 const MATRIX_ALPHABET = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789", BINARY_ALPHABET = "01", CLASSIC_GREEN = "#00FF41", 
 fontSize = 16;
 const HEX_ALPHABET = "0123456789ABCDEF";
-// New character sets - REMOVED BAMUM AND EMOJI due to Unicode support issues
+// New character sets
 const ASCII_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?";
 const MATH_SYMBOLS_ALPHABET = "∀∁∂∃∄∅∆∇∈∉∊∋∌∍∎∏∐∑−∓∔∕∖∗∘∙√∛∜∝∞∟∠∡∢∣∤∥∦∧∨∩∪∫∬∭∮∯∰∱∲∳∴∵∶∷∸∹∺∻∼∽∾∿≀≁≂≃≄≅≆≇≈≉≊≋≌≍≎≏≐≑≒≓≔≕≖≗≘≙≚≛≜≝≞≟≠≡≢≣≤≥≦≧≨≩≪≫≬≭≮≯≰≱≲≳≴≵≶≷≸≹≺≻≼≽≾≿⊀⊁⊂⊃⊄⊅⊆⊇⊈⊉⊊⊋⊌⊍⊎⊏⊐⊑⊒⊓⊔⊕⊖⊗⊘⊙⊚⊛⊜⊝⊞⊟⊠⊡⊢⊣⊤⊥⊦⊧⊨⊩⊪⊫⊬⊭⊮⊯⊰⊱⊲⊳⊴⊵⊶⊷⊸⊹⊺⊻⊼⊽⊾⊿⋀⋁⋂⋃⋄⋅⋆⋇⋈⋉⋊⋋⋌⋍⋎⋏⋐⋑⋒⋓⋔⋕⋖⋗⋘⋙⋚⋛⋜⋝⋞⋟⋠⋡⋢⋣⋤⋥⋦⋧⋨⋩⋪⋫⋬⋭⋮⋯⋰⋱⋲⋳⋴⋵⋶⋷⋸⋹⋺⋻⋼⋽⋾⋿";
 
@@ -47,6 +47,8 @@ let isCalendarOpen = false;
 // --- ORACLE AI VARIABLES ---
 let isOracleEnabled = DEFAULTS.isOracleEnabled;
 let oracleChatHistory = [];
+let isOracleTerminalActive = false;
+let currentImageAttachment = null; // For image uploads
 
 // --- 3D VERTICAL RAIN SPECIFIC SETTINGS ---
 let verticalRainAlphabet = MATRIX_ALPHABET;
@@ -116,8 +118,6 @@ const VIDEO_CONFIGS = {
 };
 
 // --- MATRIX CALENDAR FUNCTIONS ---
-
-// Calendar Rain Variables
 let calendarRainInterval = null;
 let calendarDrops = [];
 
@@ -128,22 +128,16 @@ function initCalendarRain() {
     const ctx = canvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
     
-    // Set resolution to match the physical pixel size
     canvas.width = canvas.offsetWidth * dpr;
     canvas.height = canvas.offsetHeight * dpr;
     ctx.scale(dpr, dpr);
-
-    // Clear buffer to prevent "stuck" frames
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Dense columns (matches Zion/Terminal look)
     const columnSpacing = fontSize * 0.6;
     const columns = Math.floor(canvas.offsetWidth / columnSpacing);
     
-    // Reset drops
     calendarDrops = Array(columns).fill(0).map(() => Math.floor(Math.random() * (canvas.height / fontSize)));
 
-    // Start loop
     if (calendarRainInterval) clearInterval(calendarRainInterval);
     calendarRainInterval = setInterval(drawCalendarRain, rainSpeed);
 }
@@ -153,23 +147,18 @@ function drawCalendarRain() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     
-    // Fade out trail
     ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw characters
-    ctx.fillStyle = rainColor; // Uses your global rain color setting
+    ctx.fillStyle = rainColor; 
     ctx.font = fontSize + "px 'Courier New', monospace";
     const columnSpacing = fontSize * 0.6;
 
     for (let i = 0; i < calendarDrops.length; i++) {
         const text = MATRIX_ALPHABET.charAt(Math.floor(Math.random() * MATRIX_ALPHABET.length));
-        
-        // Random alpha for depth
         ctx.globalAlpha = 0.3 + (Math.random() * 0.7);
         ctx.fillText(text, i * columnSpacing, calendarDrops[i] * fontSize);
 
-        // Reset drop
         if (calendarDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
             calendarDrops[i] = 0;
         }
@@ -179,25 +168,12 @@ function drawCalendarRain() {
 }
 
 function initCalendar() {
-    console.log("Attempting to initialize calendar...");
-    
     const calendarIcon = document.getElementById('calendar-icon');
     const calendarPopup = document.getElementById('calendar-popup');
     const calendarPrev = document.getElementById('calendar-prev');
     const calendarNext = document.getElementById('calendar-next');
-    const calendarGrid = document.getElementById('calendar-grid');
     
-    console.log("Calendar elements found:", {
-        calendarIcon: !!calendarIcon,
-        calendarPopup: !!calendarPopup,
-        calendarPrev: !!calendarPrev,
-        calendarNext: !!calendarNext,
-        calendarGrid: !!calendarGrid
-    });
-    
-    if (!calendarIcon || !calendarPopup) {
-        return;
-    }
+    if (!calendarIcon || !calendarPopup) return;
     
     renderCalendar();
     
@@ -238,12 +214,8 @@ function initCalendar() {
 function toggleCalendar() {
     const calendarPopup = document.getElementById('calendar-popup');
     if (!calendarPopup) return;
-    
-    if (isCalendarOpen) {
-        closeCalendar();
-    } else {
-        openCalendar();
-    }
+    if (isCalendarOpen) closeCalendar();
+    else openCalendar();
 }
 
 function openCalendar() {
@@ -263,11 +235,8 @@ function openCalendar() {
     } catch (e) {}
     
     renderCalendar();
-
-    // Initialize rain immediately
     initCalendarRain();
     
-    // Resize observer handles height changes when switching months
     if (!window.calendarResizeObserver) {
         window.calendarResizeObserver = new ResizeObserver(() => {
             initCalendarRain();
@@ -283,13 +252,11 @@ function closeCalendar() {
     calendarPopup.classList.remove('active');
     isCalendarOpen = false;
 
-    // Cleanup rain animation
     if (calendarRainInterval) {
         clearInterval(calendarRainInterval);
         calendarRainInterval = null;
     }
     
-    // Cleanup observer
     if (window.calendarResizeObserver) {
         window.calendarResizeObserver.disconnect();
         window.calendarResizeObserver = null;
@@ -299,7 +266,6 @@ function closeCalendar() {
 function navigateCalendar(direction) {
     currentCalDate.setMonth(currentCalDate.getMonth() + direction);
     renderCalendar();
-    
     try {
         const navSound = document.getElementById('signal-beep') || new Audio();
         if (navSound.src) {
@@ -374,9 +340,7 @@ function selectDate(day) {
     const dateString = selectedDate.toLocaleDateString('en-US', options);
     
     const dateDisplay = document.getElementById('date');
-    if (dateDisplay) {
-        dateDisplay.textContent = dateString;
-    }
+    if (dateDisplay) dateDisplay.textContent = dateString;
     
     try {
         const selectSound = document.getElementById('signal-beep') || new Audio();
@@ -396,16 +360,13 @@ function selectDate(day) {
             dateMsg.className = 'chat-msg';
             dateMsg.innerHTML = `<b class="morpheus">SYSTEM:</b> Temporal interface updated: ${dateString}`;
             chatLog.appendChild(dateMsg);
-            
-            if (chatLog.children.length > 50) {
-                chatLog.removeChild(chatLog.firstChild);
-            }
+            if (chatLog.children.length > 50) chatLog.removeChild(chatLog.firstChild);
             chatLog.scrollTop = chatLog.scrollHeight;
         }
     }
 }
 
-// --- VERTICAL RAIN 3D EFFECT (OPTIMIZED VERSION) ---
+// --- VERTICAL RAIN 3D EFFECT ---
 let verticalRainCanvas = null;
 let verticalRainCtx = null;
 let verticalRainAnimationId = null;
@@ -491,7 +452,6 @@ function drawVerticalRain(timestamp) {
         verticalRainAnimationId = requestAnimationFrame(drawVerticalRain);
         return;
     }
-    
     if (!isTabVisible) {
         verticalRainAnimationId = requestAnimationFrame(drawVerticalRain);
         return;
@@ -540,9 +500,7 @@ function drawVerticalRain(timestamp) {
 
             const charY = s.y - charObj.trailOffset;
             
-            if (charY < -100 || charY > h + 100) {
-                continue;
-            }
+            if (charY < -100 || charY > h + 100) continue;
 
             const alpha = (1 - (j / s.chars.length)) * (0.2 + s.depth * 0.6);
             
@@ -615,7 +573,6 @@ function handleTabVisibilityChange() {
         }
     }
 }
-
 document.addEventListener('visibilitychange', handleTabVisibilityChange);
 
 function logVideoStatus(message) {
@@ -628,7 +585,6 @@ function initBackgroundVideoElement() {
         existingVideo.remove();
         backgroundVideo = null;
     }
-    
     removeFallbackCanvas();
     
     backgroundVideo = document.createElement('video');
@@ -640,21 +596,9 @@ function initBackgroundVideoElement() {
     backgroundVideo.preload = 'auto';
     
     backgroundVideo.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        z-index: 0;
-        opacity: 0;
-        pointer-events: none;
-        display: none;
-        background-color: #000;
-        transition: opacity 1s ease;
-        will-change: transform; 
-        backface-visibility: hidden;
-        transform: translateZ(0);
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;
+        z-index: 0; opacity: 0; pointer-events: none; display: none; background-color: #000;
+        transition: opacity 1s ease; will-change: transform; backface-visibility: hidden; transform: translateZ(0);
     `;
     
     backgroundVideo.addEventListener('timeupdate', function() {
@@ -712,15 +656,11 @@ function initBackgroundVideoElement() {
 
 function removeFallbackCanvas() {
     const existingFallback = document.getElementById('background-fallback-canvas');
-    if (existingFallback) {
-        existingFallback.remove();
-    }
+    if (existingFallback) existingFallback.remove();
 }
 
 function showBackgroundVideo(videoType) {
-    if (!videoType || videoType === "") {
-        return false;
-    }
+    if (!videoType || videoType === "") return false;
     
     if (videoType === "vertical-rain") {
         stopRain();
@@ -742,9 +682,7 @@ function showBackgroundVideo(videoType) {
     const currentSession = activeVideoSession;
 
     const videoConfig = VIDEO_CONFIGS[videoType];
-    if (!videoConfig) {
-        return false;
-    }
+    if (!videoConfig) return false;
     
     stopRain();
     canvas.style.display = 'none';
@@ -765,9 +703,7 @@ function showBackgroundVideo(videoType) {
     backgroundVideo.load();
     
     setTimeout(() => {
-        if (activeVideoSession === currentSession) {
-            backgroundVideo.style.opacity = '1';
-        }
+        if (activeVideoSession === currentSession) backgroundVideo.style.opacity = '1';
     }, 50);
     
     const playPromise = backgroundVideo.play();
@@ -822,9 +758,7 @@ function handleVideoBackgroundToggle(videoType, isChecked) {
         });
         startBackgroundVideo(videoType);
     } else {
-        if (videoBackground === videoType) {
-            stopBackgroundVideo();
-        }
+        if (videoBackground === videoType) stopBackgroundVideo();
     }
 }
 
@@ -888,71 +822,50 @@ let networkData = { sent: 0, received: 0, lastUpdate: Date.now() };
 
 const showZionMessage = (msg) => {
     const overlay = document.createElement('div');
-    // Main overlay container
     overlay.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10000; font-family:'Orbitron', sans-serif; color:var(--theme-color); text-align:center; padding:20px; box-sizing: border-box;";
     
-    // Inner Modal
     overlay.innerHTML = `
         <div id="zion-modal-inner" style="position: relative; max-height: 90vh; overflow-y: auto; width: 100%; max-width: 800px; padding: 20px; border: 2px solid var(--theme-color); box-shadow: 0 0 10px var(--theme-color); border-radius: 10px; background: rgba(0,0,0,0.85); overflow: hidden;">
-            
             <canvas id="zion-rain-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none;"></canvas>
-            
             <div style="position: relative; z-index: 1; font-size:1.2rem; margin-bottom:30px; white-space:pre-wrap; text-shadow: 0 0 10px var(--theme-color); line-height: 1.4;">${msg}</div>
-            
             <button id="zion-close" style="position: relative; z-index: 1; background:transparent; color:var(--theme-color); border:1px solid var(--theme-color); padding:10px 30px; cursor:pointer; font-family:inherit; font-weight:bold; letter-spacing:2px; box-shadow: 0 0 10px var(--theme-color); margin-top: 10px;">DISMISS</button>
         </div>`;
     
     document.body.appendChild(overlay);
-    
-    // Initialize the rain effect
     initZionRain();
 
-    // --- FIX START: Observe size changes (e.g. image loading) ---
     const innerModal = document.getElementById('zion-modal-inner');
-    const resizeObserver = new ResizeObserver(() => {
-        // Re-init rain to match new dimensions
-        initZionRain();
-    });
+    const resizeObserver = new ResizeObserver(() => initZionRain());
     resizeObserver.observe(innerModal);
-    // --- FIX END ---
-
-    // Handle Window Resize
     const resizeHandler = () => initZionRain();
     window.addEventListener('resize', resizeHandler);
 
-    // Cleanup
     document.getElementById('zion-close').onclick = () => {
         clearInterval(zionRainInterval);
         window.removeEventListener('resize', resizeHandler);
-        resizeObserver.disconnect(); // Clean up observer
+        resizeObserver.disconnect();
         overlay.remove();
     };
 };
-// --- ZION MODAL RAIN LOGIC ---
+
 let zionRainInterval = null;
 let zionDrops = [];
 
 function initZionRain() {
     const canvas = document.getElementById('zion-rain-canvas');
     if (!canvas) return;
-    
     const ctx = canvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
-    
-    // Set resolution matches the modal size
     canvas.width = canvas.offsetWidth * dpr;
     canvas.height = canvas.offsetHeight * dpr;
     ctx.scale(dpr, dpr);
-    ctx.clearRect(0, 0, canvas.width, canvas.height); // Hard clear
+    ctx.clearRect(0, 0, canvas.width, canvas.height); 
 
-    // Dense columns (0.6 spacing)
     const columnSpacing = fontSize * 0.6;
     const columns = Math.floor(canvas.offsetWidth / columnSpacing);
     zionDrops = Array(columns).fill(0).map(() => Math.floor(Math.random() * (canvas.height / fontSize)));
 
     if (zionRainInterval) clearInterval(zionRainInterval);
-    
-    // Syncs with your global rainSpeed slider
     zionRainInterval = setInterval(drawZionRain, rainSpeed);
 }
 
@@ -960,32 +873,23 @@ function drawZionRain() {
     const canvas = document.getElementById('zion-rain-canvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    
-    // Fade out previous frame
     ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Use global rainColor
     ctx.fillStyle = rainColor;
     ctx.font = fontSize + "px 'Courier New', monospace";
     const columnSpacing = fontSize * 0.6;
 
     for (let i = 0; i < zionDrops.length; i++) {
         const text = MATRIX_ALPHABET.charAt(Math.floor(Math.random() * MATRIX_ALPHABET.length));
-        
-        // Random alpha for depth
         ctx.globalAlpha = 0.3 + (Math.random() * 0.7);
         ctx.fillText(text, i * columnSpacing, zionDrops[i] * fontSize);
-
         if (zionDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
             zionDrops[i] = 0;
         }
         zionDrops[i]++;
     }
     ctx.globalAlpha = 1.0;
-   }
-// --- CALENDAR RAIN VARIABLES ---
-// (Replaced by new block below)
+}
 
 const CLI_COMMANDS = {
     '/help': () => showZionMessage("SYSTEM COMMANDS:\n/weather [city] - Satellite Uplink\n/ghost [0-1] - UI Transparency\n/speed [10-100] - Rain Velocity\n/color [hex] - System/Rain Color Update\n/alphabet [matrix|binary|hex] - Character Swap\n/font [cyber|classic] - Change Typography\n/glitch - Trigger System Distortion\n/night - Toggle Stealth Mode\n/quote [text] - Broadcast Custom Mantra\n/whoami - Advanced Identity Trace\n/jackin - Overclock Stream\n/clear - Flush Terminal\n/white-rabbit - Random Mantra\n/nodes - Link Count\n/reset - Factory Reset"),
@@ -1034,7 +938,6 @@ const CLI_COMMANDS = {
         const oldColor = themeColor; 
 
         const glitchAudio = new Audio('glitch.mp3');
-        
         body.classList.add('glitch-enabled');
         root.style.setProperty('--glitch-intensity', '60px');
         
@@ -1101,9 +1004,7 @@ const CLI_COMMANDS = {
     '/speed': (v) => { 
         if(v) { 
             rainSpeed = parseInt(v); 
-            if (!videoBackground) {
-                startRain();
-            }
+            if (!videoBackground) startRain();
             chrome.storage.sync.set({ rainSpeed }); 
         }
     },
@@ -1124,16 +1025,8 @@ const CLI_COMMANDS = {
         const physicalHeight = Math.round(window.screen.height * dpr);
         
         const idImage = chrome.runtime.getURL("neo_id.png");
-
-        // CHANGES MADE:
-        // 1. Removed "\n" before the <div>
-        // 2. Changed margin from "20px 0" to "5px 0"
-        // 3. Removed "\n" after the </div> so the STATUS line sits right underneath
         const info = `IDENTITY TRACE: \nOS: ${platform}\nCORE: ${browserName}\nDPR: ${dpr.toFixed(2)}x (Scaling Factor)\nVIEWPORT: ${window.innerWidth}x${window.innerHeight}\nHARDWARE: ${physicalWidth}x${physicalHeight} (True Resolution)\nUPLINK: ${navigator.onLine ? "SECURE" : "DISCONNECTED"}\nNETWORK ACTIVITY: ${networkData.sent.toFixed(1)}KB sent, ${networkData.received.toFixed(1)}KB received<div style="margin: 5px 0; text-align: center;"><img src="${idImage}" style="max-width: 300px; width: 100%; background: transparent; display: inline-block;"></div>STATUS: YOU ARE THE ONE.`;
-        
         showZionMessage(info);
-    
-    
     },
     '/clear': () => { const log = document.getElementById('chat-log'); if(log) log.innerHTML = ""; },
     '/jackin': () => {
@@ -1171,7 +1064,6 @@ function injectOracleStyles() {
     const style = document.createElement('style');
     style.id = 'oracle-dynamic-css';
     style.textContent = `
-        /* --- SCANNER OVERLAY (ZION RSS STYLE) --- */
         .oracle-scan-container {
             position: relative;
             display: inline-block;
@@ -1203,15 +1095,19 @@ function injectOracleStyles() {
         }
         .oracle-scan-container:hover img { filter: none; opacity: 1; }
 
-        /* --- SMART INPUT INTEGRATION (MODEL MENU) --- */
+        #terminal-output .oracle-scan-container {
+            max-width: 50%; 
+            margin-top: 10px;
+        }
+        #terminal-output .oracle-scan-container img {
+            max-height: 300px;
+            object-fit: contain;
+        }
+
         #oracle-input {
-            /* FIX: Padding preserved to prevent text overlap */
             padding-right: 110px !important; 
         }
         #oracle-model-trigger {
-            position: absolute;
-            bottom: 5px; /* EDGE ALIGNED */
-            right: 10px; /* EDGE ALIGNED */
             font-size: 0.6rem;
             color: var(--theme-color);
             opacity: 0.6;
@@ -1233,16 +1129,27 @@ function injectOracleStyles() {
             border-color: var(--theme-color);
             background: rgba(0, 0, 0, 0.9);
         }
+        
+        #oracle-tools-container {
+            position: absolute;
+            bottom: 40px; 
+            right: 30px; 
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            z-index: 200;
+        }
+        
         #oracle-model-menu {
             position: absolute;
-            bottom: 35px;
-            right: 10px;
+            bottom: 100%;
+            right: 0;
             background: rgba(0, 0, 0, 0.95);
             border: 1px solid var(--theme-color);
             box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
             display: flex;
             flex-direction: column;
-            z-index: 201;
+            z-index: 2147483647; 
             padding: 5px;
             gap: 2px;
             opacity: 0;
@@ -1251,10 +1158,15 @@ function injectOracleStyles() {
             transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
             pointer-events: none;
             min-width: 180px;
-            max-height: 50vh; /* Scrollable for many models */
+            max-height: 50vh;
             overflow-y: auto;
             scrollbar-width: none;
         }
+        
+        #oracle-chat-container {
+            overflow: visible !important; 
+        }
+
         #oracle-model-menu::-webkit-scrollbar { display: none; }
         
         #oracle-model-menu.active {
@@ -1287,6 +1199,53 @@ function injectOracleStyles() {
             opacity: 1;
             font-weight: bold;
             box-shadow: 0 0 8px var(--theme-color);
+        }
+        
+        #oracle-upload-btn {
+            font-size: 0.6rem;
+            color: var(--theme-color);
+            opacity: 0.6;
+            cursor: pointer;
+            z-index: 200;
+            font-family: 'Courier New', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0px; 
+            transition: all 0.3s ease;
+            user-select: none;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 2px 6px;
+            border: 1px solid transparent;
+            border-radius: 2px;
+        }
+        #oracle-upload-btn:hover {
+            opacity: 1; 
+            text-shadow: 0 0 5px var(--theme-color);
+            border-color: var(--theme-color);
+            background: rgba(0, 0, 0, 0.9);
+        }
+        #oracle-upload-btn.file-loaded {
+            color: #00ff41;
+            border-color: #00ff41;
+            text-shadow: 0 0 5px #00ff41;
+            opacity: 1;
+        }
+        
+        .oracle-expand-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            color: var(--theme-color);
+            cursor: pointer;
+            opacity: 0.6;
+            font-size: 1.2rem;
+            z-index: 20;
+            transition: all 0.3s;
+            line-height: 1;
+        }
+        .oracle-expand-btn:hover {
+            opacity: 1;
+            text-shadow: 0 0 8px var(--theme-color);
+            transform: scale(1.1);
         }
     `;
     document.head.appendChild(style);
@@ -1321,7 +1280,6 @@ function setupMatrixCursor(inputId, cursorId) {
         
         const paddingLeft = parseFloat(style.paddingLeft) || 0;
         const borderLeft = parseFloat(style.borderLeftWidth) || 0;
-        
         const finalX = (textWidth + paddingLeft + borderLeft) - input.scrollLeft;
         
         cursor.style.transform = `translateX(${finalX}px)`;
@@ -1341,7 +1299,6 @@ function setupMatrixCursor(inputId, cursorId) {
     input.addEventListener('blur', () => {
         cursor.style.opacity = '0';
     });
-    
     updateCursorPos();
 }
 
@@ -1349,60 +1306,64 @@ function initOracleCursor() {
     setupMatrixCursor('oracle-input', 'oracle-cursor');
 }
 
-// --- MODEL MENU LOGIC (INTEGRATED) ---
+// --- MODEL MENU & UPLOAD LOGIC ---
 function setupModelMenu() {
     const container = document.getElementById('oracle-chat-container');
     if (!container || document.getElementById('oracle-model-trigger')) return;
 
-    // Load saved model state
     chrome.storage.sync.get(['oracleModel'], (res) => {
         if (res.oracleModel) currentOracleModel = res.oracleModel;
         updateModelTriggerText();
     });
 
-    // Create Trigger (Bottom Right Status)
+    // Create a specific wrapper for the widget mode to anchor the menu correctly
+    const widgetWrapper = document.createElement('div');
+    widgetWrapper.id = 'oracle-widget-wrapper';
+    widgetWrapper.style.position = 'absolute';
+    widgetWrapper.style.bottom = '5px';
+    widgetWrapper.style.right = '10px';
+    widgetWrapper.style.zIndex = '200';
+    widgetWrapper.style.display = 'flex';
+    widgetWrapper.style.flexDirection = 'column';
+    widgetWrapper.style.alignItems = 'flex-end';
+    
+    container.appendChild(widgetWrapper);
+
     const trigger = document.createElement('div');
     trigger.id = 'oracle-model-trigger';
+    // Removed absolute styling here as it's now handled by the wrapper
     trigger.innerHTML = `[ :: ${currentOracleModel.toUpperCase().replace('GPT-', 'GPT ')} :: ]`;
-    container.appendChild(trigger);
+    
+    // Add trigger to wrapper
+    widgetWrapper.appendChild(trigger);
 
-    // Create Drop-Up Menu
     const menu = document.createElement('div');
     menu.id = 'oracle-model-menu';
     
     const models = [
-        // GPT Family
         { id: 'gpt-4o-mini', label: 'GPT 4o MINI' },
         { id: 'gpt-4o', label: 'GPT 4o' },
         { id: 'gpt-4.1-nano', label: 'GPT 4.1 NANO' },
         { id: 'o1-mini', label: 'O1 MINI' },
         { id: 'o1-preview', label: 'O1 PREVIEW' },
-        
-        // Claude Family
         { id: 'claude-3-5-sonnet', label: 'CLAUDE 3.5 SONNET' },
         { id: 'claude-sonnet-4', label: 'CLAUDE SONNET 4' },
         { id: 'claude-opus-4.5', label: 'CLAUDE OPUS 4.5' },
         { id: 'claude-3-opus', label: 'CLAUDE 3 OPUS' },
         { id: 'claude-3-haiku', label: 'CLAUDE 3 HAIKU' },
-        
-        // Google Family
         { id: 'google/gemini-2.5', label: 'GEMINI 2.5' },
         { id: 'google/gemini-2.5-flash', label: 'GEMINI 2.5 FLASH' },
         { id: 'gemini-1.5-pro', label: 'GEMINI 1.5 PRO' },
         { id: 'gemini-1.5-flash', label: 'GEMINI 1.5 FLASH' },
-        
-        // Llama & Open Source
         { id: 'meta/llama-3.1-405b', label: 'LLAMA 3.1 405B' },
         { id: 'llama-3-70b', label: 'LLAMA 3 70B' },
         { id: 'deepseek/deepseek-r1', label: 'DEEPSEEK R1' },
         { id: 'mistral-large', label: 'MISTRAL LARGE' },
         { id: 'openrouter:essentialai/rnj-1-instruct', label: 'RNJ 1 INSTRUCT' },
-        
-        // Image Generation
         { id: 'black-forest-labs/FLUX.1-pro', label: 'FLUX.1 PRO' },
         { id: 'dall-e-3', label: 'DALL-E 3' },
         { id: 'gpt-image-1.5', label: 'GPT IMAGE 1.5' },
-        { id: 'stabilityai/stable-diffusion-xl-base-1.0', label: 'SDXL 1.0' } // Shortened Name
+        { id: 'stabilityai/stable-diffusion-xl-base-1.0', label: 'SDXL 1.0' } 
     ];
 
     models.forEach(m => {
@@ -1419,16 +1380,15 @@ function setupModelMenu() {
         menu.appendChild(opt);
     });
 
-    container.appendChild(menu);
+    // Add menu to wrapper (CSS bottom: 100% will now push it up from the wrapper)
+    widgetWrapper.appendChild(menu);
 
-    // Toggle Logic
     trigger.onclick = (e) => {
         e.stopPropagation();
         menu.classList.toggle('active');
         updateMenuSelection();
     };
 
-    // Close on click outside
     document.addEventListener('click', (e) => {
         if (!menu.contains(e.target) && e.target !== trigger) {
             menu.classList.remove('active');
@@ -1439,28 +1399,46 @@ function setupModelMenu() {
 function updateModelTriggerText() {
     const t = document.getElementById('oracle-model-trigger');
     if (t) {
-        // Handle short names for display if needed, mainly formatting
         let display = currentOracleModel.toUpperCase().replace('GPT-', 'GPT ');
-        
-        // Custom overrides for very long internal IDs if they leak into display
         if(currentOracleModel === 'stabilityai/stable-diffusion-xl-base-1.0') display = 'SDXL 1.0';
-        
         t.innerHTML = `[ :: ${display} :: ]`;
     }
 }
 
 function updateMenuSelection() {
-    document.querySelectorAll('.oracle-model-option').forEach(opt => {
-        // Basic matching logic
-        const cleanModel = currentOracleModel.replace('-', ' ').toUpperCase();
-        
-        // Handle the specific shortened case for SDXL
-        if (currentOracleModel === 'stabilityai/stable-diffusion-xl-base-1.0' && opt.textContent === 'SDXL 1.0') {
-             opt.classList.add('selected');
-             return;
-        }
+    // Exact mapping to ensure we match label correctly
+    const models = [
+        { id: 'gpt-4o-mini', label: 'GPT 4o MINI' },
+        { id: 'gpt-4o', label: 'GPT 4o' },
+        { id: 'gpt-4.1-nano', label: 'GPT 4.1 NANO' },
+        { id: 'o1-mini', label: 'O1 MINI' },
+        { id: 'o1-preview', label: 'O1 PREVIEW' },
+        { id: 'claude-3-5-sonnet', label: 'CLAUDE 3.5 SONNET' },
+        { id: 'claude-sonnet-4', label: 'CLAUDE SONNET 4' },
+        { id: 'claude-opus-4.5', label: 'CLAUDE OPUS 4.5' },
+        { id: 'claude-3-opus', label: 'CLAUDE 3 OPUS' },
+        { id: 'claude-3-haiku', label: 'CLAUDE 3 HAIKU' },
+        { id: 'google/gemini-2.5', label: 'GEMINI 2.5' },
+        { id: 'google/gemini-2.5-flash', label: 'GEMINI 2.5 FLASH' },
+        { id: 'gemini-1.5-pro', label: 'GEMINI 1.5 PRO' },
+        { id: 'gemini-1.5-flash', label: 'GEMINI 1.5 FLASH' },
+        { id: 'meta/llama-3.1-405b', label: 'LLAMA 3.1 405B' },
+        { id: 'llama-3-70b', label: 'LLAMA 3 70B' },
+        { id: 'deepseek/deepseek-r1', label: 'DEEPSEEK R1' },
+        { id: 'mistral-large', label: 'MISTRAL LARGE' },
+        { id: 'openrouter:essentialai/rnj-1-instruct', label: 'RNJ 1 INSTRUCT' },
+        { id: 'black-forest-labs/FLUX.1-pro', label: 'FLUX.1 PRO' },
+        { id: 'dall-e-3', label: 'DALL-E 3' },
+        { id: 'gpt-image-1.5', label: 'GPT IMAGE 1.5' },
+        { id: 'stabilityai/stable-diffusion-xl-base-1.0', label: 'SDXL 1.0' } 
+    ];
 
-        if (opt.textContent.toUpperCase().includes(cleanModel)) {
+    const activeModelData = models.find(m => m.id === currentOracleModel);
+    const activeLabel = activeModelData ? activeModelData.label : "";
+
+    document.querySelectorAll('.oracle-model-option').forEach(opt => {
+        // Strict equality check prevents "GPT 4o" from matching inside "GPT 4o MINI"
+        if (opt.textContent === activeLabel) {
             opt.classList.add('selected');
         } else {
             opt.classList.remove('selected');
@@ -1483,6 +1461,18 @@ async function initOracleChat() {
     initOracleCursor();
     setupModelMenu();
     
+    if (!document.querySelector('.oracle-expand-btn')) {
+        const expandBtn = document.createElement('div');
+        expandBtn.className = 'oracle-expand-btn';
+        expandBtn.innerHTML = '⛶';
+        expandBtn.title = "Expand to Terminal";
+        expandBtn.onclick = (e) => {
+            e.stopPropagation();
+            openOracleTerminal();
+        };
+        container.appendChild(expandBtn);
+    }
+
     try {
         await loadPuterSDK();
         addOracleResponse(`Sit down, kid. It's ${new Date().toLocaleTimeString()} now - ask me anything.`);
@@ -1519,7 +1509,6 @@ async function initOracleChat() {
             startMatrixTypingAnimation(mt.id);
             
             try {
-                // --- IMAGE DETECTION ---
                 const lower = txt.toLowerCase();
                 const isSlashCmd = lower.startsWith('/image') || lower.startsWith('/img') || lower.startsWith('/draw');
                 const hasAction = /(draw|generate|create|make|visualize|show)/i.test(lower);
@@ -1587,15 +1576,12 @@ function startMatrixTypingAnimation(elementId) {
     const element = document.getElementById(elementId);
     if (!element) return;
     
-    const history = document.getElementById('oracle-chat-history'); 
-    
     const generateSafeString = () => Array(15).fill(0).map(() => 
         `<span style="display:inline-block; width:1ch; text-align:center;">${MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]}</span>`
     ).join('');
 
     element.innerHTML = generateSafeString();
-    
-    if(history) history.scrollTop = history.scrollHeight;
+    element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     
     const intId = setInterval(() => {
         if (!document.getElementById(elementId)) { 
@@ -1603,11 +1589,8 @@ function startMatrixTypingAnimation(elementId) {
             matrixTypingAnimations.delete(elementId); 
             return; 
         }
-        
         element.innerHTML = generateSafeString();
         element.style.opacity = (0.7 + Math.random() * 0.3).toString();
-        
-        if(history) history.scrollTop = history.scrollHeight;
     }, 80);
     
     matrixTypingAnimations.set(elementId, intId);
@@ -1628,7 +1611,6 @@ function getOracleSystemPrompt() {
     3. Keep it brief.`;
 }
 
-// --- SMART WEATHER CONTEXT ---
 async function fetchWeatherContext(query) {
     try {
         if (!query.toLowerCase().includes('weather')) return "";
@@ -1674,21 +1656,32 @@ async function fetchWeatherContext(query) {
 }
 
 async function getOracleAIResponse(input) {
-    oracleChatHistory.push({ role: 'user', content: input });
+    let msgContent = input;
+    if (currentImageAttachment) {
+        msgContent = [
+            { type: 'text', text: input },
+            { type: 'image_url', image_url: { url: currentImageAttachment } }
+        ];
+        const uploadBtn = document.getElementById('oracle-upload-btn');
+        if (uploadBtn) {
+            uploadBtn.textContent = "[ :: UPLOAD :: ]";
+            uploadBtn.classList.remove('file-loaded');
+        }
+        currentImageAttachment = null;
+    }
+
+    oracleChatHistory.push({ role: 'user', content: msgContent });
     if (oracleChatHistory.length > 20) oracleChatHistory = oracleChatHistory.slice(-20);
     
     try {
         if (!window.puter || !window.puter.ai) await loadPuterSDK();
         
-        const wCtx = await fetchWeatherContext(input);
+        const wCtx = typeof input === 'string' ? await fetchWeatherContext(input) : "";
         let sys = getOracleSystemPrompt();
         if (wCtx) sys += `\nCONTEXT: ${wCtx}\nState these facts clearly if asked.`;
         
         const msgs = [{ role: 'system', content: sys }, ...oracleChatHistory];
-        const prompt = msgs.map(m => `${m.role}: ${m.content}`).join('\n') + '\nOracle:';
-        
-        // --- USING SELECTED MODEL ---
-        const raw = await puter.ai.chat(prompt, { model: currentOracleModel });
+        const raw = await puter.ai.chat(msgs, { model: currentOracleModel });
         
         let txt = '';
         if (typeof raw === 'string') txt = raw;
@@ -1711,7 +1704,6 @@ function getLocalOracleResponse(i) {
     return r[Math.floor(Math.random() * r.length)];
 }
 
-// --- STABILIZED ANIMATION ENGINE (Fixes the "Spinning Loop") ---
 function manageOracleAnimation(container, element, text, isImage = false) {
     let state = oracleStates.get(element);
     if (!state) {
@@ -1720,10 +1712,12 @@ function manageOracleAnimation(container, element, text, isImage = false) {
             phase: isImage ? 'interactive' : 'typing', 
             typingIdx: 0,
             revealIter: 0,
-            lastRenderedIter: -99, // FIX: Tracks last render state to prevent loop
+            lastRenderedIter: -99, 
             autoTimer: null,
             interval: null,
-            isAutoSequence: true 
+            isAutoSequence: true,
+            hasReEncrypted: false, 
+            reEncryptTimer: null   
         };
         oracleStates.set(element, state);
     }
@@ -1732,62 +1726,66 @@ function manageOracleAnimation(container, element, text, isImage = false) {
 
     state.interval = setInterval(() => {
         const len = state.text.length;
-        // POLLING: Always check hover
         const isHovering = container.matches(':hover'); 
+        const isInTerminal = element.closest('#terminal-output') !== null;
 
-        // 1. TYPING PHASE (Initial Growth)
         if (state.phase === 'typing') {
             state.typingIdx += 2; 
             if (state.typingIdx >= len) {
                 state.typingIdx = len;
                 state.phase = 'interactive';
                 state.revealIter = 0; 
-                state.lastRenderedIter = -99; // Force re-render on phase switch
+                state.lastRenderedIter = -99; 
             }
         }
 
-        // 2. INTERACTIVE PHASE (Target Convergence)
         if (state.phase === 'interactive') {
             let targetIter = 0;
 
             if (isHovering) {
                 targetIter = len;
-                state.isAutoSequence = false; // Hover breaks auto-sequence
-                if (state.autoTimer) { clearTimeout(state.autoTimer); state.autoTimer = null; }
+                if (state.reEncryptTimer) {
+                    clearTimeout(state.reEncryptTimer);
+                    state.reEncryptTimer = null;
+                }
             } else {
-                if (state.isAutoSequence) {
-                    targetIter = len;
+                if (isInTerminal) {
+                    if (state.isAutoSequence && !state.hasReEncrypted) {
+                        targetIter = len; 
+                        if (Math.abs(state.revealIter - len) < 0.1 && !state.reEncryptTimer) {
+                            state.reEncryptTimer = setTimeout(() => {
+                                state.hasReEncrypted = true; 
+                                state.reEncryptTimer = null;
+                            }, 5000); 
+                        }
+                    } else if (state.hasReEncrypted) {
+                        targetIter = 0; 
+                    } else {
+                        targetIter = 0; 
+                    }
                 } else {
-                    targetIter = 0;
+                    if (state.isAutoSequence) targetIter = len;
+                    else targetIter = 0;
+                    
+                    if (state.isAutoSequence && state.revealIter >= len && !state.autoTimer) {
+                        state.autoTimer = setTimeout(() => {
+                            state.isAutoSequence = false; 
+                            state.autoTimer = null;
+                        }, 5000);
+                    }
                 }
             }
 
-            if (state.revealIter < targetIter) {
-                state.revealIter += 0.33; 
-            } else if (state.revealIter > targetIter) {
-                state.revealIter -= 0.5; 
-            }
+            if (state.revealIter < targetIter) state.revealIter += 0.33; 
+            else if (state.revealIter > targetIter) state.revealIter -= 0.5; 
             
-            // Snap to bounds
             if (Math.abs(state.revealIter - targetIter) < 0.6) state.revealIter = targetIter;
-
-            // AUTO-TIMER TRIGGER
-            if (state.isAutoSequence && state.revealIter >= len && !state.autoTimer) {
-                state.autoTimer = setTimeout(() => {
-                    state.isAutoSequence = false; 
-                    state.autoTimer = null;
-                }, 5000);
-            }
         }
 
-        // 3. RENDER CHECK (The Fix for "Spinning Loop")
-        // We only update the DOM if the state has changed significantly.
-        // If revealIter is settled at 0 (encrypted) or len (revealed), we STOP RENDERING.
-        // This effectively "freezes" the Matrix characters so they don't spin.
         const shouldRender = (state.phase === 'typing') || (Math.abs(state.revealIter - state.lastRenderedIter) > 0.01);
 
         if (shouldRender) {
-            state.lastRenderedIter = state.revealIter; // Update tracker
+            state.lastRenderedIter = state.revealIter; 
 
             if (state.phase === 'typing') {
                 const html = Array(state.typingIdx).fill(0).map(() => 
@@ -1799,7 +1797,6 @@ function manageOracleAnimation(container, element, text, isImage = false) {
                 const currentIter = Math.floor(state.revealIter);
                 const html = state.text.split("").map((letter, index) => {
                     if (index < currentIter) return letter === '<' ? '&lt;' : letter;
-                    // Only generate random chars when actively animating
                     const char = MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)];
                     return `<span style="display:inline-block; width:1ch; text-align:center;">${char}</span>`;
                 }).join("");
@@ -1810,28 +1807,47 @@ function manageOracleAnimation(container, element, text, isImage = false) {
                 else element.classList.add('encrypted');
             }
         }
-
-        const history = document.getElementById('oracle-chat-history');
-        if(history && shouldRender) history.scrollTop = history.scrollHeight;
-
     }, 30);
 }
 
 function addOracleResponse(text) {
     const history = document.getElementById('oracle-chat-history');
+    
     const entry = document.createElement('div'); 
     entry.className = "oracle-entry";
     const id = 'oracle-res-' + Date.now();
-    
-    // Start empty container for typing
     entry.innerHTML = `<div class="oracle-response-container"><div class="oracle-response-text encrypted" id="${id}"></div></div>`;
     history.appendChild(entry); 
-    history.scrollTop = history.scrollHeight;
+    
+    if (!isOracleTerminalActive) {
+        entry.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
     
     const container = entry.querySelector('.oracle-response-container');
     const el = entry.querySelector('.oracle-response-text');
     
+    el.dataset.fullText = text;
+
     manageOracleAnimation(container, el, text, false);
+
+    if (isOracleTerminalActive) {
+        const termOutput = document.getElementById('terminal-output');
+        if (termOutput) {
+            const termEntry = entry.cloneNode(true);
+            const termId = 'term-oracle-res-' + Date.now();
+            const termTextEl = termEntry.querySelector('.oracle-response-text');
+            termTextEl.id = termId;
+            termTextEl.innerHTML = ""; 
+            
+            termTextEl.dataset.fullText = text;
+            
+            termOutput.appendChild(termEntry);
+            termEntry.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            
+            const termContainer = termEntry.querySelector('.oracle-response-container');
+            manageOracleAnimation(termContainer, termTextEl, text, false);
+        }
+    }
 }
 
 function addOracleImageResponse(imgUrl, captionText) {
@@ -1840,7 +1856,7 @@ function addOracleImageResponse(imgUrl, captionText) {
     entry.className = "oracle-entry";
     const id = 'oracle-res-' + Date.now();
 
-    entry.innerHTML = `
+    const innerHTML = `
         <div class="oracle-response-container" style="border-left:none; background: transparent; padding-left: 0;">
             <div class="oracle-scan-container">
                 <img src="${imgUrl}" />
@@ -1848,14 +1864,42 @@ function addOracleImageResponse(imgUrl, captionText) {
             <div class="oracle-response-text encrypted" id="${id}" style="font-size: 0.75rem; border-left: 2px solid var(--theme-color); padding-left: 8px;"></div>
         </div>
     `;
-    
+    entry.innerHTML = innerHTML;
     history.appendChild(entry);
-    history.scrollTop = history.scrollHeight;
+    
+    if (!isOracleTerminalActive) {
+        entry.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
     
     const container = entry.querySelector('.oracle-response-container');
     const el = entry.querySelector('.oracle-response-text');
+
+    el.dataset.fullText = captionText;
+    el.dataset.isImage = "true";
     
     manageOracleAnimation(container, el, captionText, true); 
+    
+    if (isOracleTerminalActive) {
+        const termOutput = document.getElementById('terminal-output');
+        if (termOutput) {
+            const termEntry = document.createElement('div');
+            termEntry.className = "oracle-entry";
+            const termId = 'term-oracle-res-' + Date.now();
+            
+            termEntry.innerHTML = innerHTML.replace(`id="${id}"`, `id="${termId}"`);
+            
+            termOutput.appendChild(termEntry);
+            termEntry.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            
+            const termContainer = termEntry.querySelector('.oracle-response-container');
+            const termTextEl = termEntry.querySelector('.oracle-response-text');
+            
+            termTextEl.dataset.fullText = captionText;
+            termTextEl.dataset.isImage = "true";
+
+            manageOracleAnimation(termContainer, termTextEl, captionText, true);
+        }
+    }
 }
 // --- INDEXEDDB FOR STORAGE ---
 const dbName = "MatrixBackdropDB";
@@ -2034,25 +2078,15 @@ function resize() {
     const columns = Math.floor(fullWidth / fontSize); 
     rainDrops = Array(columns).fill(0).map(() => -Math.floor(Math.random() * (fullHeight / fontSize))); 
      }
-            // --- MAIN CANVAS 2D RAIN LOGIC ---
 
-/**
- * Optimized Draw Function for Main Canvas
- * Fixes the "solid grid" by increasing trail fade speed and alpha management.
- */
 function drawMatrix() {
     if (videoBackground) return;
-    
     const fullWidth = Math.max(window.innerWidth, document.documentElement.clientWidth);
     const fullHeight = Math.max(window.innerHeight, document.documentElement.clientHeight);
-    
-    // FIX: Increased opacity from 0.05 to 0.15. 
-    // This ensures old characters are "painted over" fast enough to prevent grid buildup.
     ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
     ctx.fillRect(0, 0, fullWidth, fullHeight);
     
     const fontFamily = getFontFamilyForAlphabet(isMathSymbols);
-    
     if (!isFlashing) ctx.fillStyle = rainColor;
     ctx.font = fontSize + "px " + fontFamily;
     ctx.textBaseline = 'top';
@@ -2060,41 +2094,23 @@ function drawMatrix() {
     
     for (let i = 0; i < rainDrops.length; i++) {
         if (isFlashing) ctx.fillStyle = `hsl(${Math.random() * 360}, 100%, 50%)`;
-        
         const text = currentAlphabet.charAt(Math.floor(Math.random() * currentAlphabet.length));
         const x = i * fontSize;
         const y = rainDrops[i] * fontSize;
-        
-        // Slight randomization of alpha for digital depth
         ctx.globalAlpha = 0.8 + (Math.random() * 0.2);
         ctx.fillText(text, x, y);
-        
         rainDrops[i]++;
-        
         if (rainDrops[i] * fontSize > fullHeight + 100) {
             rainDrops[i] = -Math.floor(Math.random() * 20);
         }
     }
-    ctx.globalAlpha = 1.0; // Reset alpha to prevent bleeding into other UI elements
+    ctx.globalAlpha = 1.0; 
 }
 
-/**
- * Starts the rain loop.
- * Fix: Explicitly clears the canvas buffer to remove any "stuck" frames.
- */
 function startRain() { 
     clearInterval(rainInterval); 
     if (!videoBackground) {
-        // HARD CLEAR: Wipe the canvas buffer before starting a new session
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        if (!rainDrops || rainDrops.length === 0) resize();
-        rainInterval = setInterval(drawMatrix, rainSpeed); 
-    }
-}
-function startRain() { 
-    clearInterval(rainInterval); 
-    if (!videoBackground) {
         if (!rainDrops || rainDrops.length === 0) resize();
         rainInterval = setInterval(drawMatrix, rainSpeed); 
     }
@@ -2144,7 +2160,7 @@ function updateUI() {
     if (Date.now() - networkData.lastUpdate > 2000) updateNetworkStats();
 }
 
-// --- ZION NETWORK RSS (INTERCEPTED & RESTORED) ---
+// --- ZION NETWORK RSS ---
 const matrixTextIntervals = new Map(), matrixTextIterations = new Map();
 
 function decryptRssText(element, targetText, isHovering) {
@@ -2177,7 +2193,6 @@ async function updateZionFeed(isSilent = false) {
     if (!data.isRssEnabled) { container.classList.add('hidden'); return; }
     container.classList.remove('hidden');
     
-    // Initialize Loading State
     if (!isSilent) {
         list.innerHTML = '<div class="rss-meta">Establishing Uplink...</div>';
         if (barCont && bar) {
@@ -2191,19 +2206,12 @@ async function updateZionFeed(isSilent = false) {
         const response = await fetch(`https://www.reddit.com/r/${subs}/hot.json?limit=50&raw_json=1`);
         
         if (!isSilent && bar) bar.style.width = '70%'; 
-        
-        // --- FIX: Check for JSON Content Type ---
         const contentType = response.headers.get("content-type");
         if (!response.ok || !contentType || contentType.indexOf("application/json") === -1) {
-            // If Reddit returns HTML (often a 429/403 error page), throw a clear error to avoid syntax crashes
             throw new Error("Reddit Uplink Failed: Received HTML/Error instead of JSON");
         }
-        // ----------------------------------------
-        
         const json = await response.json();
-        
         if (!isSilent && bar) bar.style.width = '100%'; 
-        
         list.innerHTML = "";
 
         json.data.children.forEach(post => {
@@ -2212,156 +2220,109 @@ async function updateZionFeed(isSilent = false) {
             link.className = 'rss-item'; 
             link.href = `https://reddit.com${item.permalink}`; 
             
-            // --- INTERCEPT CLICK FOR TERMINAL ---
             link.onclick = (e) => {
-                // Do not open terminal if user clicked a control button (fullscreen/volume)
                 if (e.target.tagName !== 'BUTTON' && e.target.parentElement.tagName !== 'BUTTON') {
                     e.preventDefault();
                     if (typeof openTerminalModal === "function") {
                         openTerminalModal(item.permalink);
                     } else {
-                        // Fallback if modal function is missing
                         window.open(link.href, '_blank');
                     }
                 }
             };
-            // ------------------------------------
 
-            // 1. Create Title (Matrix Cipher Effect)
             const title = document.createElement('div');
             title.className = 'rss-title';
             title.style.color = 'var(--theme-color)';
             const originalTitle = item.title;
             title.innerText = originalTitle.replace(/./g, () => MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]);
             
-            // 2. Create Meta Info
             const meta = document.createElement('div');
             meta.className = 'rss-meta';
             meta.style.color = 'var(--theme-color)';
             meta.style.opacity = '0.7';
-            
             const subText = `r/${item.subreddit}`;
             const authText = `u/${item.author}`;
             const combinedMeta = `${subText} • ${authText}`;
-            
             meta.innerText = combinedMeta.replace(/./g, () => MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]);
 
             link.appendChild(title);
             link.appendChild(meta);
 
-            // 3. Media Wrapper (RESTORED)
             if (item.post_hint === 'image' || (item.url && item.url.match(/\.(jpg|jpeg|png|gif)$/))) {
                 const wrap = document.createElement('div');
                 wrap.className = 'rss-media-wrapper';
-
                 const img = document.createElement('img');
                 img.src = item.url;
                 img.className = 'rss-media-content';
-
-                // --- IMAGE FULLSCREEN BUTTON ---
                 const imgFsBtn = document.createElement('button');
                 imgFsBtn.className = 'video-fullscreen-btn'; 
                 imgFsBtn.innerHTML = '⛶';
                 imgFsBtn.title = "Maximize Visual";
                 imgFsBtn.onclick = (e) => {
-                    e.preventDefault();
-                    e.stopPropagation(); // Stop click from bubbling to the link/terminal
+                    e.preventDefault(); e.stopPropagation(); 
                     if (img.requestFullscreen) img.requestFullscreen();
                     else if (img.webkitRequestFullscreen) img.webkitRequestFullscreen();
                     else if (img.msRequestFullscreen) img.msRequestFullscreen();
                 };
-
                 wrap.appendChild(img);
                 wrap.appendChild(imgFsBtn);
                 link.appendChild(wrap);
             } else if (item.is_video && item.media && item.media.reddit_video) {
                 const wrap = document.createElement('div');
                 wrap.className = 'rss-media-wrapper';
-
                 const video = document.createElement('video');
                 video.src = item.media.reddit_video.hls_url || item.media.reddit_video.fallback_url;
                 video.className = 'rss-media-content';
-                video.autoplay = true;
-                video.loop = true;
-                video.muted = true; 
-                video.playsInline = true;
-
-                // --- FULLSCREEN TOGGLE ---
+                video.autoplay = true; video.loop = true; video.muted = true; video.playsInline = true;
                 const fsBtn = document.createElement('button');
                 fsBtn.className = 'video-fullscreen-btn';
                 fsBtn.innerHTML = '⛶';
                 fsBtn.title = "Maximize Transmission";
                 fsBtn.onclick = (e) => {
-                    e.preventDefault();
-                    e.stopPropagation(); // Stop click from bubbling
+                    e.preventDefault(); e.stopPropagation();
                     if (video.requestFullscreen) video.requestFullscreen();
                     else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
-                    else if (video.msRequestFullscreen) video.msRequestFullscreen();
                 };
-
-                // --- VOLUME TOGGLE ---
                 const volBtn = document.createElement('button');
                 volBtn.className = 'video-vol-btn';
                 volBtn.innerHTML = '🔇';
                 volBtn.title = "Toggle Audio";
                 volBtn.onclick = (e) => {
-                    e.preventDefault();
-                    e.stopPropagation(); // Stop click from bubbling
+                    e.preventDefault(); e.stopPropagation();
                     video.muted = !video.muted;
                     if (!video.muted) video.play().catch(() => {});
                     volBtn.innerHTML = video.muted ? '🔇' : '🔊';
                     volBtn.style.boxShadow = video.muted ? 'none' : '0 0 10px var(--theme-color)';
                 };
-
-                wrap.appendChild(video);
-                wrap.appendChild(fsBtn);
-                wrap.appendChild(volBtn);
+                wrap.appendChild(video); wrap.appendChild(fsBtn); wrap.appendChild(volBtn);
                 link.appendChild(wrap);
             }
 
-            // 4. Stats Row (RESTORED WITH REDDIT ARROWS)
             const statsRow = document.createElement('div');
             statsRow.className = 'rss-stats-row';
             const format = (n) => (n > 999 ? (n/1000).toFixed(1) + 'k' : Math.floor(n) || 0);
 
-            // Upvote (Reddit Style SVG)
             const upDiv = document.createElement('div');
             upDiv.className = 'rss-stat-item upvote-item';
-            upDiv.innerHTML = `
-                <span class="rss-stat-icon">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 4L3 15H9V20H15V15H21L12 4Z" />
-                    </svg>
-                </span> 
-                ${format(item.ups)}`;
+            upDiv.innerHTML = `<span class="rss-stat-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4L3 15H9V20H15V15H21L12 4Z" /></svg></span> ${format(item.ups)}`;
             statsRow.appendChild(upDiv);
 
-            // Downvote (RESTORED LOGIC WITH REDDIT ARROWS)
             const ratio = item.upvote_ratio || 1;
             const estimatedDowns = ratio < 1 ? Math.round((item.ups / ratio) - item.ups) : 0;
             if (estimatedDowns > 0) {
                 const downDiv = document.createElement('div');
                 downDiv.className = 'rss-stat-item downvote-item';
-                downDiv.innerHTML = `
-                    <span class="rss-stat-icon">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="transform: rotate(180deg);">
-                            <path d="M12 4L3 15H9V20H15V15H21L12 4Z" />
-                        </svg>
-                    </span> 
-                    ${format(estimatedDowns)}`;
+                downDiv.innerHTML = `<span class="rss-stat-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="transform: rotate(180deg);"><path d="M12 4L3 15H9V20H15V15H21L12 4Z" /></svg></span> ${format(estimatedDowns)}`;
                 statsRow.appendChild(downDiv);
-            
             }
 
-            // Comments
             const commDiv = document.createElement('div');
             commDiv.className = 'rss-stat-item';
             commDiv.innerHTML = `<span class="rss-stat-icon">💬</span> ${format(item.num_comments)}`;
             statsRow.appendChild(commDiv);
-
             link.appendChild(statsRow);
 
-            // 5. Interaction: Decrypt Title AND Meta
             link.onmouseenter = () => {
                 decryptRssText(title, originalTitle, true);
                 decryptRssText(meta, combinedMeta, true);
@@ -2379,19 +2340,14 @@ async function updateZionFeed(isSilent = false) {
             list.appendChild(link);
         });
 
-        // Cleanup Loading State
         if (!isSilent && barCont) {
             setTimeout(() => {
                 barCont.style.display = 'none';
                 if (bar) bar.style.width = '0%';
             }, 800);
         }
-
-            } catch (e) { 
-                                    console.error("Zion Feed Error:", e);
-                                    // ...
-                            }
-        }
+    } catch (e) { console.error("Zion Feed Error:", e); }
+}
 
 // --- EXPANDED CHAT SCRIPTS ---
 const CHAT_SCRIPTS = [
@@ -2490,13 +2446,11 @@ const journey2T = get('journey2-toggle'), binaryTunnelT = get('binary-toggle'), 
 const movieTunnelT = get('movie-tunnel-toggle'), matrixRoomNewT = get('matrix-room-toggle'), combatTrainingT = get('combat-training-toggle'), meditationT = get('meditation-toggle');
 const verticalRainT = get('vertical-rain-toggle');
 
-// --- VERTICAL RAIN CONTROLS ---
 const verticalRainBinaryT = get('vertical-rain-binary-mode');
 const verticalRainHexT = get('vertical-rain-hex-mode');
 const verticalRainAsciiT = get('vertical-rain-ascii-mode');
 const verticalRainMathT = get('vertical-rain-math-mode');
 const verticalRainRainbowT = get('vertical-rain-rainbow-toggle');
-
 const oracleT = get('oracle-toggle');
 
 function applyImg(s) { removeM(); const i = document.createElement('img'); i.id = 'bg-image-layer'; i.src = s; mainContainer.prepend(i); }
@@ -2632,10 +2586,7 @@ bgFilterT.onchange = (e) => document.body.classList.toggle('bg-filter-active', e
 bgT.onchange = (e) => mainContainer.classList.toggle('transparent-bg', e.target.checked);
 cycleT.onchange = (e) => { if (e.target.checked) { quoteI.value = ""; startQuoteCycling(); } else stopQuoteCycling(); };
 speedS.oninput = (e) => { rainSpeed = parseInt(e.target.value); if (!videoBackground) startRain(); };
-sizeS.oninput = (e) => {
-    // Only scales the main central container now
-    mainContainer.style.transform = `translate(-50%, -50%) scale(${e.target.value})`;
-};
+sizeS.oninput = (e) => { mainContainer.style.transform = `translate(-50%, -50%) scale(${e.target.value})`; };
 textScaleS.oninput = (e) => document.documentElement.style.setProperty('--text-scale', e.target.value);
 glitchS.oninput = (e) => document.documentElement.style.setProperty('--glitch-intensity', e.target.value + 'px');
 scaleS.onchange = (e) => document.documentElement.style.setProperty('--bg-scale', e.target.value);
@@ -2741,10 +2692,6 @@ function initPhoneSystem() {
           transAudio = get('transmission-audio'), 
           ringAudio = get('ring-audio');
 
-    // --- REPLACEMENT STARTS HERE ---
-    
-    // 1. Define your local files here. 
-    // Ensure these files exist in your extension folder!
     const localPhoneFiles = [
         "phone_msg_1.mp3",
         "phone_msg_2.mp3",
@@ -2756,7 +2703,7 @@ function initPhoneSystem() {
         "phone_msg_8.mp3",
         "phone_msg_9.mp3",
         "phone_msg_10.mp3",
-   "phone_msg_11.mp3"
+        "phone_msg_11.mp3"
     ];
 
     phoneCont.onclick = async () => {
@@ -2767,38 +2714,20 @@ function initPhoneSystem() {
             ringAudio.src = ""; 
             phoneCont.classList.add('receiving');
 
-            // Try to get user-uploaded audios first (from Settings)
             const userAudios = await getAudiosFromDB();
 
             if (userAudios.length > 0) {
-                // Priority: Play user-uploaded custom audio
                 const b = userAudios[Math.floor(Math.random() * userAudios.length)]; 
                 transAudio.src = URL.createObjectURL(b); 
                 transText.textContent = "ENCRYPTED TRANSMISSION..."; 
                 transAudio.play().catch(() => {});
-                
-                transAudio.onended = () => { 
-                    URL.revokeObjectURL(transAudio.src); 
-                    transAudio.src = ""; 
-                    finishCall(); 
-                };
+                transAudio.onended = () => { URL.revokeObjectURL(transAudio.src); transAudio.src = ""; finishCall(); };
             } else {
-                // Fallback: Play random local MP3 from folder
                 const randomFile = localPhoneFiles[Math.floor(Math.random() * localPhoneFiles.length)];
-                
                 transText.textContent = "INCOMING VOICE TRANSMISSION...";
                 transAudio.src = randomFile;
-                
-                transAudio.play().catch((e) => {
-                    console.warn(`Could not play local file: ${randomFile}. Check if file exists.`, e);
-                    // Optional: If file fails, finish call immediately to avoid getting stuck
-                    finishCall();
-                });
-
-                transAudio.onended = () => {
-                    transAudio.src = "";
-                    finishCall();
-                };
+                transAudio.play().catch((e) => { finishCall(); });
+                transAudio.onended = () => { transAudio.src = ""; finishCall(); };
             }
         }
     };
@@ -2827,27 +2756,17 @@ let dragHintTimeout = null;
 
 function showDragHint(message) {
     let hint = document.getElementById('drag-hint');
-    
-    // Create it if it doesn't exist yet
     if (!hint) {
         hint = document.createElement('div');
         hint.id = 'drag-hint';
         document.body.appendChild(hint);
     }
-    
-    // Set the message and trigger the CSS animation
     hint.textContent = message;
     hint.classList.add('active');
-    
     clearTimeout(dragHintTimeout);
     dragHintTimeout = setTimeout(() => {
-        // Remove the class so the CSS 'visibility: hidden' and 'opacity: 0' take over
         hint.classList.remove('active');
-    }, 4000); // 4 seconds gives the user time to see the glitch effect
-}
-
-function updateLinkOrder(newOrder) {
-    chrome.storage.sync.set({ userNavLinks: newOrder }, loadNavLinks);
+    }, 4000); 
 }
 
 function updateLinkOrder(newOrder) {
@@ -2856,26 +2775,16 @@ function updateLinkOrder(newOrder) {
 
 function loadNavLinks() {
     chrome.storage.sync.get({ userNavLinks: [] }, (data) => {
-        // Clear existing icons
         navWrapper.innerHTML = '';
         const count = data.userNavLinks.length; 
-        
-        // FIX 1: Initially hide the button to prevent the center-screen ghosting glitch
         addLinkBtn.style.display = 'none';
         addLinkBtn.title = `Add Secure Node (${count}/10)`;
         
-        // FIX 2: Trigger hint on every refresh
-        if (count > 0) {
-            setTimeout(() => showDragHint('Drag and drop links to reorder'), 1000);
-        }
+        if (count > 0) setTimeout(() => showDragHint('Drag and drop links to reorder'), 1000);
         
         data.userNavLinks.forEach((url, idx) => {
             let domain;
-            try { 
-                domain = new URL(url).hostname; 
-            } catch (e) { 
-                domain = 'node'; 
-            }
+            try { domain = new URL(url).hostname; } catch (e) { domain = 'node'; }
             
             const node = document.createElement('div');
             node.className = 'nav-icon-circle';
@@ -2888,43 +2797,24 @@ function loadNavLinks() {
             img.draggable = false;
             node.appendChild(img);
             
-            node.onclick = (e) => { 
-                if (!isDragging) window.location.href = url; 
-            };
+            node.onclick = (e) => { if (!isDragging) window.location.href = url; };
 
             node.ondragstart = (e) => {
-                isDragging = true; 
-                draggedItem = node; 
-                dragStartIndex = idx; 
+                isDragging = true; draggedItem = node; dragStartIndex = idx; 
                 node.classList.add('dragging'); 
                 e.dataTransfer.setData('text/plain', idx.toString()); 
                 e.dataTransfer.effectAllowed = 'move';
-                
                 const ghost = node.cloneNode(true); 
                 ghost.classList.add('drag-ghost'); 
-                ghost.style.position = 'absolute'; 
-                ghost.style.opacity = '0.7'; 
-                ghost.style.pointerEvents = 'none'; 
-                document.body.appendChild(ghost); 
-                e.dataTransfer.setDragImage(ghost, 24, 24); 
+                ghost.style.position = 'absolute'; ghost.style.opacity = '0.7'; ghost.style.pointerEvents = 'none'; 
+                document.body.appendChild(ghost); e.dataTransfer.setDragImage(ghost, 24, 24); 
                 setTimeout(() => ghost.remove(), 0);
             };
 
-            node.ondragover = (e) => { 
-                e.preventDefault(); 
-                if (draggedItem !== node) { 
-                    node.classList.add('drag-over'); 
-                    e.dataTransfer.dropEffect = 'move'; 
-                }
-            };
-
-            node.ondragleave = () => { 
-                node.classList.remove('drag-over'); 
-            };
-
+            node.ondragover = (e) => { e.preventDefault(); if (draggedItem !== node) { node.classList.add('drag-over'); e.dataTransfer.dropEffect = 'move'; } };
+            node.ondragleave = () => { node.classList.remove('drag-over'); };
             node.ondrop = (e) => {
-                e.preventDefault(); 
-                node.classList.remove('drag-over');
+                e.preventDefault(); node.classList.remove('drag-over');
                 if (draggedItem === node) return;
                 const dragEndIndex = parseInt(node.getAttribute('data-index'));
                 if (dragStartIndex !== dragEndIndex) {
@@ -2935,92 +2825,38 @@ function loadNavLinks() {
                     showDragHint('Link order updated');
                 }
             };
-
-            node.ondragend = () => { 
-                isDragging = false; 
-                document.querySelectorAll('.nav-icon-circle').forEach(el => { 
-                    el.classList.remove('dragging', 'drag-over'); 
-                }); 
-                draggedItem = null; 
-            };
+            node.ondragend = () => { isDragging = false; document.querySelectorAll('.nav-icon-circle').forEach(el => { el.classList.remove('dragging', 'drag-over'); }); draggedItem = null; };
 
             node.oncontextmenu = (e) => {
-                e.preventDefault(); 
-                if (isDragging) return;
+                e.preventDefault(); if (isDragging) return;
                 node.classList.add('pulse-glow');
                 const confirmEl = document.createElement('div');
                 confirmEl.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 15, 15, 0.95); border: 2px solid var(--theme-color); border-radius: 10px; padding: 20px; z-index: 3000; color: var(--theme-color); text-align: center; box-shadow: 0 0 30px var(--theme-color); font-family: var(--main-font); min-width: 250px;`;
                 confirmEl.innerHTML = `<div style="margin-bottom: 15px; font-size: 0.9rem;">Purge <span style="color: #fff;">${domain}</span> from navigation?</div><div style="display: flex; gap: 10px; justify-content: center;"><button id="confirm-delete" style="background: #a00; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-family: inherit; font-weight: bold;">Purge</button><button id="cancel-delete" style="background: var(--theme-color); color: black; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-family: inherit; font-weight: bold;">Cancel</button></div>`;
                 document.body.appendChild(confirmEl);
-                
-                const cleanup = () => { 
-                    node.classList.remove('pulse-glow'); 
-                    confirmEl.remove(); 
-                };
-
-                document.getElementById('confirm-delete').onclick = () => { 
-                    data.userNavLinks.splice(idx, 1); 
-                    chrome.storage.sync.set({ userNavLinks: data.userNavLinks }, () => { 
-                        cleanup(); 
-                        loadNavLinks(); 
-                        showDragHint('Link purged'); 
-                    }); 
-                };
-
+                const cleanup = () => { node.classList.remove('pulse-glow'); confirmEl.remove(); };
+                document.getElementById('confirm-delete').onclick = () => { data.userNavLinks.splice(idx, 1); chrome.storage.sync.set({ userNavLinks: data.userNavLinks }, () => { cleanup(); loadNavLinks(); showDragHint('Link purged'); }); };
                 document.getElementById('cancel-delete').onclick = cleanup;
-                const closeOnOutside = (clickEvent) => { 
-                    if (!confirmEl.contains(clickEvent.target) && !node.contains(clickEvent.target)) { 
-                        cleanup(); 
-                        document.removeEventListener('click', closeOnOutside); 
-                    }
-                };
+                const closeOnOutside = (clickEvent) => { if (!confirmEl.contains(clickEvent.target) && !node.contains(clickEvent.target)) { cleanup(); document.removeEventListener('click', closeOnOutside); } };
                 setTimeout(() => { document.addEventListener('click', closeOnOutside); }, 100);
             };
             navWrapper.appendChild(node);
         });
 
-        // FIX 3: Restore the "Add" button ONLY after icons have populated
-        if (count < 10) {
-            addLinkBtn.style.display = 'flex';
-        }
+        if (count < 10) addLinkBtn.style.display = 'flex';
 
-        addLinkBtn.ondragover = (e) => { 
-            e.preventDefault(); 
-            if (draggedItem) { 
-                addLinkBtn.classList.add('drag-over'); 
-                e.dataTransfer.dropEffect = 'move'; 
-            }
-        };
-
-        addLinkBtn.ondragleave = () => { 
-            addLinkBtn.classList.remove('drag-over'); 
-        };
-
-        addLinkBtn.ondrop = (e) => { 
-            e.preventDefault(); 
-            addLinkBtn.classList.remove('drag-over'); 
-            if (dragStartIndex !== -1) { 
-                const newLinks = [...data.userNavLinks]; 
-                const [movedItem] = newLinks.splice(dragStartIndex, 1); 
-                newLinks.push(movedItem); 
-                updateLinkOrder(newLinks); 
-                showDragHint('Link moved to end'); 
-            }
-        };
+        addLinkBtn.ondragover = (e) => { e.preventDefault(); if (draggedItem) { addLinkBtn.classList.add('drag-over'); e.dataTransfer.dropEffect = 'move'; } };
+        addLinkBtn.ondragleave = () => { addLinkBtn.classList.remove('drag-over'); };
+        addLinkBtn.ondrop = (e) => { e.preventDefault(); addLinkBtn.classList.remove('drag-over'); if (dragStartIndex !== -1) { const newLinks = [...data.userNavLinks]; const [movedItem] = newLinks.splice(dragStartIndex, 1); newLinks.push(movedItem); updateLinkOrder(newLinks); showDragHint('Link moved to end'); } };
     });
 }
 
 chrome.storage.sync.get(null, (d) => {
     const data = { ...DEFAULTS, ...d };
-    
     initVerticalRainEffect();
-    
     rainSpeed = data.rainSpeed; speedS.value = rainSpeed; 
     isMatrixGreen = data.isMatrixGreen; greenT.checked = isMatrixGreen; 
-    
-    colorP.value = data.rainColor; 
-    themeColorP.value = data.themeColor || DEFAULTS.themeColor;
-    
+    colorP.value = data.rainColor; themeColorP.value = data.themeColor || DEFAULTS.themeColor;
     syncThemeColor(); 
     
     isBinary = data.isBinary; binaryT.checked = isBinary;
@@ -3038,16 +2874,8 @@ chrome.storage.sync.get(null, (d) => {
         startRain();
     }
 
-    isSnowing = data.isSnowing; 
-    snowT.checked = isSnowing; 
-    if(isSnowing) {
-        initSnow();
-        const swarmAudio = document.getElementById('sentinel-swarm-sfx');
-        if (swarmAudio) {
-            swarmAudio.volume = 0.4;
-            swarmAudio.play().catch(() => {});
-        }
-    }
+    isSnowing = data.isSnowing; snowT.checked = isSnowing; 
+    if(isSnowing) { initSnow(); const swarmAudio = document.getElementById('sentinel-swarm-sfx'); if (swarmAudio) { swarmAudio.volume = 0.4; swarmAudio.play().catch(() => {}); } }
 
     isFlashing = data.isFlashing; rainbowT.checked = isFlashing;
     showMinutes = data.showMinutes; minT.checked = showMinutes; 
@@ -3086,30 +2914,22 @@ chrome.storage.sync.get(null, (d) => {
     if(data.isRainAmbience) rA.play().catch(() => {}); 
     if(data.isHumEnabled) hA.play().catch(() => {}); 
     if(data.isMatrixSfxEnabled) mA.play().catch(() => {});
-    
     loadSfxFromDB().then(f => { if(f) { cA.src = URL.createObjectURL(f); cA.play().catch(() => {}); } });
     
     statsT.checked = data.isStatsEnabled; get('operator-console').classList.toggle('stats-hidden', !data.isStatsEnabled);
     
-    setTimeout(() => {
-        initOracleChat();
-    }, 100);
+    setTimeout(() => { initOracleChat(); }, 100);
     
     loadNavLinks(); resize(); animateSentinels(); updateUI(); 
     initPhoneSystem(); runChatTerminal(); 
     
-    setTimeout(() => {
-        console.log("Initializing calendar...");
-        initCalendar();
-    }, 50);
-    
+    setTimeout(() => { initCalendar(); }, 50);
     mainContainer.style.opacity = "1";
 });
 
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         if (!isCalendarOpen && !window.calendarInitialized) {
-            console.log("DOM loaded, initializing calendar...");
             initCalendar();
             window.calendarInitialized = true;
         }
@@ -3123,48 +2943,25 @@ setInterval(updateUI, 1000);
 setInterval(updateNetworkStats, 2000);
 
 // --- MATRIX TERMINAL MODAL LOGIC ---
-
-// REPAIR: Updating existing variables without 'let' to avoid "Already Declared" crashes.
 terminalCurrentData = null;
 isTerminalTyping = false;
 terminalRainInterval = null; 
 termDrops = [];
 
-/**
- * Initializes the rain effect for the terminal modal.
- * Updated: Increased density for a richer look.
- * Updated: Synchronized with global rainSpeed slider.
- * Fix: Explicitly clears the canvas buffer to prevent the "static grid" bug.
- */
 function initTerminalRain() {
     const termCanvas = document.getElementById('terminal-rain-canvas');
-    if (!termCanvas) {
-        console.warn("Terminal canvas not found.");
-        return;
-    }
-    
+    if (!termCanvas) return;
     const termCtx = termCanvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
-    
-    // Set internal resolution based on modal size
     termCanvas.width = termCanvas.offsetWidth * dpr;
     termCanvas.height = termCanvas.offsetHeight * dpr;
     termCtx.scale(dpr, dpr);
-
-    // FIX: Hard clear of the canvas buffer to remove any "stuck" frames/grids
     termCtx.clearRect(0, 0, termCanvas.width, termCanvas.height);
-
-    // DENSITY ADJUSTMENT: Denser columns for a richer "digital" look.
     const columnSpacing = fontSize * 0.6;
     const columns = Math.floor(termCanvas.offsetWidth / columnSpacing);
-    
-    // Start drops at random vertical positions so the screen is full immediately
     termDrops = Array(columns).fill(0).map(() => Math.floor(Math.random() * (termCanvas.height / fontSize)));
-    
     if (terminalRainInterval) clearInterval(terminalRainInterval);
-    
     drawTerminalRain(); 
-    // Synchronized with global rainSpeed
     terminalRainInterval = setInterval(drawTerminalRain, rainSpeed); 
 }
 
@@ -3172,36 +2969,23 @@ function drawTerminalRain() {
     const termCanvas = document.getElementById('terminal-rain-canvas');
     if (!termCanvas) return;
     const termCtx = termCanvas.getContext('2d');
-    
-    // TRAIL FIX: Using 0.15 opacity ensures old characters fade out properly
-    // This prevents the symbols from stacking into a permanent grid.
     termCtx.fillStyle = "rgba(0, 0, 0, 0.15)"; 
     termCtx.fillRect(0, 0, termCanvas.width, termCanvas.height);
-
-    // Uses global rainColor and fontSize from your settings
     termCtx.fillStyle = rainColor; 
     termCtx.font = fontSize + "px 'Courier New', monospace";
-
     const columnSpacing = fontSize * 0.6;
-
     for (let i = 0; i < termDrops.length; i++) {
         const text = MATRIX_ALPHABET.charAt(Math.floor(Math.random() * MATRIX_ALPHABET.length));
-        
-        // Randomize opacity slightly per column to add depth
         termCtx.globalAlpha = 0.3 + (Math.random() * 0.7);
-        
         termCtx.fillText(text, i * columnSpacing, termDrops[i] * fontSize);
-
-        // Reset drop to top once it hits the bottom
         if (termDrops[i] * fontSize > termCanvas.height && Math.random() > 0.975) {
             termDrops[i] = 0;
         }
         termDrops[i]++;
     }
-    termCtx.globalAlpha = 1.0; // Reset alpha for next frame
+    termCtx.globalAlpha = 1.0; 
 }
 
-// 1. OPEN THE MODAL
 async function openTerminalModal(permalink) {
     const modal = document.getElementById('matrix-modal');
     const output = document.getElementById('terminal-output');
@@ -3209,39 +2993,32 @@ async function openTerminalModal(permalink) {
     
     if (!modal || !output || !input) return;
 
+    input.placeholder = "Type 'com' for comments, 'exit' to close...";
+
     modal.classList.remove('hidden');
     output.innerHTML = "";
     input.value = "";
     terminalCurrentData = null; 
-
-    // Initialize rain immediately
     initTerminalRain(); 
     window.addEventListener('resize', initTerminalRain);
 
     initTerminalCursor();
     setTimeout(() => { input.focus(); }, 50);
 
-    // NON-BLOCKING START: rain and text begin together
     streamText(output, `> INITIALIZING SECURE CONNECTION TO NODE: ${permalink}\n> ESTABLISHING UPLINK...\n`);
 
     try {
         const response = await fetch(`https://www.reddit.com${permalink}.json`);
         const json = await response.json();
-        
         terminalCurrentData = json; 
         const post = json[0].data.children[0].data;
-        
         let content = `\n> SUBJECT: ${post.title.toUpperCase()}\n`;
         content += `> AUTHOR:  ${post.author}\n`;
         content += `> SUBREQ:  r/${post.subreddit}\n`;
         content += `> SCORE:   ${post.ups} UNITS\n`;
         content += `----------------------------------------\n\n`;
-        
         await streamText(output, content);
-
-        if (post.selftext) {
-            await streamText(output, post.selftext + "\n\n");
-        }
+        if (post.selftext) await streamText(output, post.selftext + "\n\n");
 
         const mediaContainer = document.createElement('div');
         output.appendChild(mediaContainer);
@@ -3295,14 +3072,118 @@ async function openTerminalModal(permalink) {
     }
 }
 
+function openOracleTerminal() {
+    const modal = document.getElementById('matrix-modal');
+    const output = document.getElementById('terminal-output');
+    const input = document.getElementById('terminal-cmd-input');
+    const smallHistory = document.getElementById('oracle-chat-history');
+    
+    if (!modal || !output || !input) return;
+    
+    input.placeholder = "Ask the Oracle... Type 'exit' to close...";
+
+    isOracleTerminalActive = true;
+    modal.classList.remove('hidden');
+    output.innerHTML = "";
+    initTerminalRain(); 
+    window.addEventListener('resize', initTerminalRain);
+    initTerminalCursor();
+    input.value = "";
+    setTimeout(() => { input.focus(); }, 50);
+    
+    const trigger = document.getElementById('oracle-model-trigger');
+    const menu = document.getElementById('oracle-model-menu');
+    const termInputArea = document.querySelector('.terminal-input-area');
+    
+    let toolsContainer = document.getElementById('oracle-tools-container');
+    if (!toolsContainer) {
+        toolsContainer = document.createElement('div');
+        toolsContainer.id = 'oracle-tools-container';
+        
+        const uploadBtn = document.createElement('div');
+        uploadBtn.id = 'oracle-upload-btn';
+        uploadBtn.innerHTML = '[ :: UPLOAD :: ]';
+        uploadBtn.onclick = () => { fileInput.click(); };
+        
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        fileInput.style.display = 'none';
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    currentImageAttachment = evt.target.result;
+                    uploadBtn.textContent = "[ :: IMAGE LOADED :: ]";
+                    uploadBtn.classList.add('file-loaded');
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+        toolsContainer.appendChild(uploadBtn);
+        toolsContainer.appendChild(fileInput);
+    }
+    
+    if (termInputArea) {
+        termInputArea.appendChild(toolsContainer);
+        if (trigger) {
+            trigger.style.position = 'static'; 
+            toolsContainer.appendChild(trigger);
+        }
+        if (menu) toolsContainer.appendChild(menu);
+    }
+
+    if (smallHistory) {
+        Array.from(smallHistory.children).forEach(child => {
+            const clone = child.cloneNode(true);
+            const typingEls = clone.querySelectorAll('.matrix-typing');
+            typingEls.forEach(el => {
+                el.classList.remove('matrix-typing-active'); 
+                el.id = 'term-clone-' + Math.random().toString(36).substr(2, 9);
+            });
+
+            const cloneTextEl = clone.querySelector('.oracle-response-text');
+            if (cloneTextEl && cloneTextEl.dataset.fullText) {
+                 cloneTextEl.classList.remove('encrypted'); 
+                 const isImage = cloneTextEl.dataset.isImage === "true";
+                 manageOracleAnimation(clone.querySelector('.oracle-response-container'), cloneTextEl, cloneTextEl.dataset.fullText, isImage);
+            }
+            
+            output.appendChild(clone);
+        });
+    }
+
+    streamText(output, `> ORACLE INTERFACE EXPANDED.\n> TERMINAL LINK ESTABLISHED.\n> MODEL: ${currentOracleModel.toUpperCase()}\n\n`);
+    setTimeout(() => { output.scrollTop = output.scrollHeight; }, 100);
+}
+
 function closeTerminalModal() {
     const modal = document.getElementById('matrix-modal');
     if (!modal) return;
     
+    if (isOracleTerminalActive) {
+        const trigger = document.getElementById('oracle-model-trigger');
+        const menu = document.getElementById('oracle-model-menu');
+        const toolsContainer = document.getElementById('oracle-tools-container');
+        const widgetWrapper = document.getElementById('oracle-widget-wrapper');
+        
+        if (trigger && menu && widgetWrapper) {
+            trigger.style.position = '';
+            trigger.style.bottom = '';
+            trigger.style.right = '';
+            
+            widgetWrapper.appendChild(menu);
+            widgetWrapper.appendChild(trigger);
+        }
+        if (toolsContainer) toolsContainer.remove();
+        isOracleTerminalActive = false;
+        currentImageAttachment = null; 
+    }
+    
     modal.classList.add('hidden');
     document.getElementById('terminal-output').innerHTML = "";
     isTerminalTyping = false; 
-
     if (terminalRainInterval) clearInterval(terminalRainInterval);
     window.removeEventListener('resize', initTerminalRain);
 }
@@ -3317,10 +3198,7 @@ function createButton(text, onClick) {
     const btn = document.createElement('button');
     btn.textContent = text;
     btn.className = 'terminal-btn';
-    btn.onclick = (e) => {
-        e.stopPropagation(); 
-        onClick();
-    };
+    btn.onclick = (e) => { e.stopPropagation(); onClick(); };
     return btn;
 }
 
@@ -3370,27 +3248,9 @@ function initTerminalCursor() {
     if (!cursor) {
         cursor = document.createElement('div');
         cursor.id = 'modal-terminal-cursor';
-        
-        cursor.style.cssText = `
-            position: absolute;
-            top: 50%;
-            left: 0;
-            width: 8px;
-            height: 1.2em;
-            background-color: var(--theme-color);
-            transform: translateY(-50%);
-            pointer-events: none;
-            z-index: 10;
-            display: none; 
-            animation: terminal-blink 1s step-end infinite;
-        `;
-        
-        if (getComputedStyle(inputArea).position === 'static') {
-            inputArea.style.position = 'relative';
-        }
-        
+        cursor.style.cssText = `position: absolute; top: 50%; left: 0; width: 8px; height: 1.2em; background-color: var(--theme-color); transform: translateY(-50%); pointer-events: none; z-index: 10; display: none; animation: terminal-blink 1s step-end infinite;`;
+        if (getComputedStyle(inputArea).position === 'static') { inputArea.style.position = 'relative'; }
         inputArea.appendChild(cursor);
-        
         if (!document.getElementById('cursor-blink-style')) {
             const style = document.createElement('style');
             style.id = 'cursor-blink-style';
@@ -3414,33 +3274,20 @@ function initTerminalCursor() {
         measure.style.fontWeight = style.fontWeight;
         measure.style.letterSpacing = style.letterSpacing;
         measure.textContent = input.value || "";
-        
         const textWidth = measure.getBoundingClientRect().width;
         const startPos = input.offsetLeft; 
         const paddingLeft = parseFloat(style.paddingLeft) || 0;
         const scrollOffset = input.scrollLeft;
-        
         cursor.style.left = `${startPos + paddingLeft + textWidth - scrollOffset}px`; 
         cursor.style.transform = `translateY(-50%)`;
     }
 
-    input.removeEventListener('input', sync);
-    input.removeEventListener('scroll', sync);
-    
-    input.addEventListener('input', sync);
-    input.addEventListener('scroll', sync);
-    input.addEventListener('focus', () => { 
-        cursor.style.display = 'block'; 
-        sync(); 
-    });
-    input.addEventListener('blur', () => { 
-        cursor.style.display = 'none'; 
-    });
+    input.removeEventListener('input', sync); input.removeEventListener('scroll', sync);
+    input.addEventListener('input', sync); input.addEventListener('scroll', sync);
+    input.addEventListener('focus', () => { cursor.style.display = 'block'; sync(); });
+    input.addEventListener('blur', () => { cursor.style.display = 'none'; });
 
-    if (document.activeElement === input) {
-        cursor.style.display = 'block';
-        sync();
-    }
+    if (document.activeElement === input) { cursor.style.display = 'block'; sync(); }
 }
 
 async function renderComments() {
@@ -3452,68 +3299,99 @@ async function renderComments() {
     await streamText(output, "\n> DECRYPTING COMMENT STREAM...\n\n");
     const comments = terminalCurrentData[1].data.children;
     const maxDepth = 4; 
-    
     function processComment(comment, depth) {
         if (depth > maxDepth || !comment.data.body) return "";
         const indent = "|   ".repeat(depth);
         let treeStr = `${indent}|-- [${comment.data.author}]: ${comment.data.body.substring(0, 300).replace(/\\n/g, ' ')}\n`;
         if (comment.data.replies && comment.data.replies.data) {
-            comment.data.replies.data.children.forEach(reply => {
-                treeStr += processComment(reply, depth + 1);
-            });
+            comment.data.replies.data.children.forEach(reply => { treeStr += processComment(reply, depth + 1); });
         }
         return treeStr;
     }
-    
     let fullTree = "";
     comments.slice(0, 15).forEach(c => { fullTree += processComment(c, 0); });
     if (fullTree === "") fullTree = "> NO COMMENTS FOUND.\n";
-    
     const pre = document.createElement('div');
-    pre.style.whiteSpace = "pre-wrap";
-    pre.style.marginBottom = "20px";
-    pre.textContent = fullTree;
-    output.appendChild(pre);
-    output.scrollTop = output.scrollHeight;
+    pre.style.whiteSpace = "pre-wrap"; pre.style.marginBottom = "20px"; pre.textContent = fullTree;
+    output.appendChild(pre); output.scrollTop = output.scrollHeight;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('terminal-cmd-input');
     const modal = document.getElementById('matrix-modal');
-    
     initTerminalCursor();
 
     if (cmdInput) {
-        cmdInput.addEventListener('keydown', function(e) {
+        cmdInput.addEventListener('keydown', async function(e) {
             if (e.key === 'Enter') {
                 const rawInput = this.value.trim();
+                this.value = "";
+                const event = new Event('input'); this.dispatchEvent(event);
+                
+                if (isOracleTerminalActive) {
+                    const output = document.getElementById('terminal-output');
+                    if (rawInput === 'exit') { closeTerminalModal(); return; }
+                    
+                    if (rawInput !== "") {
+                        const userEntry = document.createElement('div');
+                        userEntry.className = "oracle-entry";
+                        userEntry.innerHTML = `<div class="user-query">${rawInput}</div>`;
+                        output.appendChild(userEntry);
+                        userEntry.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+                        const smallHistory = document.getElementById('oracle-chat-history');
+                        if (smallHistory) { smallHistory.appendChild(userEntry.cloneNode(true)); }
+                        
+                        try {
+                            const lower = rawInput.toLowerCase();
+                            const isSlashCmd = lower.startsWith('/image') || lower.startsWith('/img') || lower.startsWith('/draw');
+                            const hasAction = /(draw|generate|create|make|visualize|show)/i.test(lower);
+                            const hasObject = /(image|picture|photo|art|sketch|painting)/i.test(lower);
+                            const isNaturalCmd = hasAction && hasObject;
+
+                            if (isSlashCmd || isNaturalCmd) {
+                                let imgPrompt = rawInput
+                                    .replace(/^\/(image|img|draw)/i, '')
+                                    .replace(/^(can you|please|kindly)\s+/i, '')
+                                    .replace(/^(draw|generate|create|make|visualize|show)\s+(me\s+)?(an?\s+)?(image|picture|photo|art|sketch|painting)\s+(of\s+)?/i, '')
+                                    .trim();
+                                if(!imgPrompt) imgPrompt = rawInput; 
+                                
+                                const loadMsg = document.createElement('div');
+                                loadMsg.className = "oracle-entry";
+                                loadMsg.innerHTML = `<div class="oracle-response-container"><div class="oracle-response-text encrypted">Generating Visual...</div></div>`;
+                                output.appendChild(loadMsg);
+                                loadMsg.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                                
+                                const imgElement = await puter.ai.txt2img(imgPrompt, { model: 'black-forest-labs/FLUX.1-schnell' });
+                                loadMsg.remove(); 
+                                addOracleImageResponse(imgElement.src, `Rendering construct: "${imgPrompt}"`);
+                            } else {
+                                const resp = await getOracleAIResponse(rawInput);
+                                addOracleResponse(resp);
+                            }
+                        } catch (err) {
+                            addOracleResponse("Signal lost. Construct loading failed.");
+                            console.error(err);
+                        }
+                    }
+                    return; 
+                }
+
                 const cmdParts = rawInput.split(' ');
                 const baseCmd = cmdParts[0].toLowerCase();
                 const args = cmdParts.slice(1).join(' ');
-                
-                this.value = "";
-                
-                const event = new Event('input');
-                this.dispatchEvent(event);
-
                 const output = document.getElementById('terminal-output');
                 const echo = document.createElement('div');
                 echo.textContent = `operator@zion:~$ ${rawInput}`;
                 echo.style.opacity = "0.7";
                 output.appendChild(echo);
 
-                if (baseCmd === 'exit') {
-                    closeTerminalModal();
-                } 
-                else if (baseCmd === 'com' || baseCmd === 'comments') {
-                    renderComments();
-                } 
-                else if (baseCmd === 'clear' || baseCmd === 'cls') {
-                    output.innerHTML = "";
-                } 
+                if (baseCmd === 'exit') { closeTerminalModal(); } 
+                else if (baseCmd === 'com' || baseCmd === 'comments') { renderComments(); } 
+                else if (baseCmd === 'clear' || baseCmd === 'cls') { output.innerHTML = ""; } 
                 else {
                     const slashCmd = baseCmd.startsWith('/') ? baseCmd : `/${baseCmd}`;
-                    
                     if (typeof CLI_COMMANDS !== 'undefined' && CLI_COMMANDS[slashCmd]) {
                         CLI_COMMANDS[slashCmd](args);
                         const successMsg = document.createElement('div');
@@ -3521,8 +3399,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         successMsg.style.color = "var(--theme-color)"; 
                         successMsg.style.textShadow = "0 0 5px var(--theme-color)";
                         output.appendChild(successMsg);
-                    } 
-                    else if (rawInput !== "") {
+                    } else if (rawInput !== "") {
                         const errorMsg = document.createElement('div');
                         errorMsg.textContent = `> COMMAND '${baseCmd}' NOT RECOGNIZED.`;
                         errorMsg.style.color = "#ff3333";
@@ -3531,63 +3408,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 output.scrollTop = output.scrollHeight;
             }
-            
-            if (e.key === 'Escape') {
-                closeTerminalModal();
-            }
+            if (e.key === 'Escape') closeTerminalModal();
         });
         
         if (modal) {
             modal.addEventListener('click', (e) => {
-                if (e.target.tagName !== 'BUTTON') {
-                    cmdInput.focus();
-                }
+                if (e.target.tagName !== 'BUTTON') cmdInput.focus();
             });
         }
     }
-
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
-            closeTerminalModal();
-        }
+        if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) closeTerminalModal();
     });
 });
 
-// --- SETTINGS MODAL RAIN LOGIC ---
 let settingsRainInterval = null;
 let settingsDrops = [];
 
-/**
- * Initializes the rain effect for the settings modal.
- * Synchronized: Uses the global rainSpeed variable for velocity.
- * Fix: Explicitly clears the canvas buffer to prevent the "static grid" bug.
- */
 function initSettingsRain() {
     const canvas = document.getElementById('settings-rain-canvas');
     if (!canvas) return;
-    
     const ctx = canvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
-    
-    // Set internal resolution based on modal size
     canvas.width = canvas.offsetWidth * dpr;
     canvas.height = canvas.offsetHeight * dpr;
     ctx.scale(dpr, dpr);
-
-    // Hard clear to prevent frame ghosting
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Match the dense column spacing used in the terminal (0.6 divisor)
     const columnSpacing = fontSize * 0.6;
     const columns = Math.floor(canvas.offsetWidth / columnSpacing);
-    
-    // Start drops at random vertical positions to fill the background instantly
     settingsDrops = Array(columns).fill(0).map(() => Math.floor(Math.random() * (canvas.height / fontSize)));
-    
     if (settingsRainInterval) clearInterval(settingsRainInterval);
-    
     drawSettingsRain(); 
-    // Synchronized with global rainSpeed slider
     settingsRainInterval = setInterval(drawSettingsRain, rainSpeed); 
 }
 
@@ -3595,24 +3446,15 @@ function drawSettingsRain() {
     const canvas = document.getElementById('settings-rain-canvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    
-    // Trail persistence (matches terminal fade speed)
     ctx.fillStyle = "rgba(0, 0, 0, 0.15)"; 
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
     ctx.fillStyle = rainColor; 
     ctx.font = fontSize + "px 'Courier New', monospace";
-
     const columnSpacing = fontSize * 0.6;
-
     for (let i = 0; i < settingsDrops.length; i++) {
         const text = MATRIX_ALPHABET.charAt(Math.floor(Math.random() * MATRIX_ALPHABET.length));
-        
-        // Randomized alpha for depth
-        ctx.globalAlpha = 0.2 + (Math.random() * 0.5); // Lower alpha so it stays in the background
-        
+        ctx.globalAlpha = 0.2 + (Math.random() * 0.5); 
         ctx.fillText(text, i * columnSpacing, settingsDrops[i] * fontSize);
-
         if (settingsDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
             settingsDrops[i] = 0;
         }
@@ -3621,11 +3463,9 @@ function drawSettingsRain() {
     ctx.globalAlpha = 1.0; 
 }
 
-// Update the settings icon click handler to trigger the rain
 const settingsIconContainer = document.getElementById('settings-icon-container');
 if (settingsIconContainer) {
     settingsIconContainer.addEventListener('click', () => {
-        // Since the toggle happens in your existing code, we check visibility here
         if (!modal.classList.contains('hidden')) {
             initSettingsRain();
             window.addEventListener('resize', initSettingsRain);
