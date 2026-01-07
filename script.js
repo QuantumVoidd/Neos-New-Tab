@@ -897,8 +897,7 @@ function drawZionRain() {
 }
 
 const CLI_COMMANDS = {
-    '/help': () => showZionMessage("SYSTEM COMMANDS:\n/weather [city] - Satellite Uplink\n/ghost [0-1] - UI Transparency\n/speed [10-100] - Rain Velocity\n/color [hex] - System/Rain Color Update\n/alphabet [matrix|binary|hex] - Character Swap\n/font [cyber|classic] - Change Typography\n/glitch - Trigger System Distortion\n/night - Toggle Stealth Mode\n/quote [text] - Broadcast Custom Mantra\n/whoami - Advanced Identity Trace\n/jackin - Overclock Stream\n/clear - Flush Terminal\n/white-rabbit - Random Mantra\n/nodes - Link Count\n/reset - Factory Reset\n\nWEB UPLINKS:\n/yt, /twitch, /kick, /ig, /x, /reddit, /ebay, /amz, /ps, /xbox, /git, /ds, /gemini, /gpt"),
-    
+    '/help': () => showZionMessage("SYSTEM COMMANDS:\n/weather [city] - Satellite Uplink\n/ghost [0-1] - UI Transparency\n/speed [10-100] - Rain Velocity\n/color [hex] - System/Rain Color Update\n/alphabet [matrix|binary|hex] - Character Swap\n/font [cyber|classic] - Change Typography\n/glitch - Trigger System Distortion\n/night - Toggle Stealth Mode\n/quote [text] - Broadcast Custom Mantra\n/whoami - Advanced Identity Trace\n/jackin - Overclock Stream\n/clear - Flush Terminal\n/white-rabbit - Random Mantra\n/nodes - Link Count\n/reset - Factory Reset\n/space - Open NASA Solar System Viewer\n/earth - Open NASA Eyes on the Earth\n/asteroid - Open NASA Eyes on Asteroids\n/tunnel - Play Tunnel Recon\n/rampage - Play Matrix: Rampage\n/play zion - Play Citizens of Zion\n/play pandemonium - Play Matrix: Pandemonium\n/play dock - Play Dock Defence\n\nWEB UPLINKS:\n/yt, /twitch, /kick, /ig, /x, /reddit, /ebay, /amz, /ps, /xbox, /git, /ds, /gemini, /gpt"),    
     // --- VIDEO & STREAMING ---
     '/youtube': () => { showZionMessage("UPLINKING TO YOUTUBE..."); window.open("https://youtube.com", "_blank"); },
     '/yt': () => CLI_COMMANDS['/youtube'](),
@@ -1094,7 +1093,37 @@ const CLI_COMMANDS = {
             showZionMessage(`SECURE NODES IDENTIFIED: ${data.userNavLinks.length}/10`);
         });
     },
-    '/reset': () => { if(confirm("Hard Reset?")) { chrome.storage.sync.clear(); location.reload(); }}
+    '/reset': () => { if(confirm("Hard Reset?")) { chrome.storage.sync.clear(); location.reload(); }},
+    
+    // --- SPACE & NASA COMMANDS ---
+    '/space': () => { openSpaceTerminal(); },
+    '/earth': () => { openEarthTerminal(); },
+    '/asteroid': () => { openAsteroidTerminal(); },
+    '/asteroids': () => { openAsteroidTerminal(); },
+    
+    // --- GAMES COMMANDS ---
+    '/tunnel': () => { openTunnelGame(); },
+    '/rampage': () => { openMatrixRampageGame(); },
+    '/zion': () => { openCitizensOfZionGame(); },
+    '/pandemonium': () => { openMatrixPandemoniumGame(); },
+    '/dock': () => { openDockDefenceGame(); },
+    '/play': (gameName) => {
+        if(!gameName) return showZionMessage("USAGE: /play [zion|rampage|tunnel]");
+        const target = gameName.toLowerCase().trim();
+        if (target === 'zion') {
+            openCitizensOfZionGame();
+        } else if (target === 'rampage') {
+            openMatrixRampageGame();
+        } else if (target === 'tunnel') {
+            openTunnelGame();
+        } else if (target === 'pandemonium') {
+            openMatrixPandemoniumGame();
+        } else if (target === 'dock') {
+            openDockDefenceGame();
+        } else {
+            showZionMessage("ERROR: GAME '" + gameName + "' NOT FOUND.");
+        }
+    }
 };
 // --- ORACLE AI SYSTEM ---
 const oracleStates = new Map(); 
@@ -2659,6 +2688,36 @@ function drawTerminalRain() {
     termCtx.globalAlpha = 1.0; 
 }
 
+// --- NEW FUNCTION: CENTRALIZED MEDIA CLEANUP ---
+function purgeTerminalMedia() {
+    const output = document.getElementById('terminal-output');
+    if (!output) return;
+
+    // 1. Kill Iframes (Games, NASA tools)
+    const iframes = output.querySelectorAll('iframe');
+    iframes.forEach(iframe => {
+        iframe.src = "about:blank"; // Forces immediate unload of WebGL context
+        try { 
+            iframe.contentWindow.document.write(''); 
+            iframe.contentWindow.close(); 
+        } catch(e) {}
+        iframe.remove();
+    });
+
+    // 2. Kill Videos
+    const videos = output.querySelectorAll('video');
+    videos.forEach(video => {
+        video.pause();
+        video.removeAttribute('src');
+        video.load(); 
+        video.remove();
+    });
+    
+    // 3. Remove Game Containers specifically to prevent visual stacking
+    const frames = output.querySelectorAll('.ascii-media-frame');
+    frames.forEach(frame => frame.remove());
+}
+
 async function openTerminalModal(permalink) {
     const modal = document.getElementById('matrix-modal');
     const output = document.getElementById('terminal-output');
@@ -2815,6 +2874,495 @@ async function openTerminalModal(permalink) {
     }
 }
 
+async function openSpaceTerminal() {
+    const modal = document.getElementById('matrix-modal');
+    const output = document.getElementById('terminal-output');
+    const input = document.getElementById('terminal-cmd-input');
+
+    if (!modal || !output || !input) return;
+    
+    input.placeholder = "Type 'exit' to close...";
+
+    // Purge previous
+    purgeTerminalMedia();
+
+    // Reset UI
+    modal.classList.remove('hidden');
+    output.innerHTML = "";
+    input.value = "";
+    terminalCurrentData = null;
+    
+    // Init Effects
+    initTerminalRain();
+    window.addEventListener('resize', initTerminalRain);
+    initTerminalCursor();
+    
+    // Text Intro - Shortened to save vertical space
+    await streamText(output, "> UPLINK ESTABLISHED: NASA DEEP SPACE NETWORK\n");
+
+    // Container
+    const frame = createMediaFrame(); 
+    frame.style.width = "101%";
+    frame.style.maxWidth = "103%";
+    frame.style.boxSizing = "border-box";
+    frame.style.marginTop = "5px"; 
+    frame.style.marginBottom = "5px";
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = 'media-wrapper';
+    
+    // Updated: Reduced to 45vh to guarantee it fits without scrolling
+    wrapper.style.position = 'relative'; 
+    wrapper.style.width = '100%';
+    wrapper.style.height = '57vh'; 
+    wrapper.style.minHeight = '300px'; 
+    wrapper.style.backgroundColor = '#000'; 
+
+    // Iframe
+    const iframe = document.createElement('iframe');
+    iframe.src = "https://eyes.nasa.gov/apps/orrery/index.html";
+    iframe.style.width = "100%";
+    iframe.style.height = "100%";
+    iframe.style.border = "none";
+    iframe.allow = "fullscreen; accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+    
+    wrapper.appendChild(iframe);
+    frame.appendChild(wrapper);
+    output.appendChild(frame);
+    
+    // NOTE: No custom controls/fullscreen button appended here.
+    // This ensures the button is gone for Space, but remains for Reddit (which uses openTerminalModal).
+
+    input.focus();
+    await streamText(output, `> SYSTEM READY.\n`);
+}
+
+async function openEarthTerminal() {
+    const modal = document.getElementById('matrix-modal');
+    const output = document.getElementById('terminal-output');
+    const input = document.getElementById('terminal-cmd-input');
+
+    if (!modal || !output || !input) return;
+
+    input.placeholder = "Type 'exit' to close...";
+
+    // Purge previous
+    purgeTerminalMedia();
+
+    // Reset UI
+    modal.classList.remove('hidden');
+    output.innerHTML = "";
+    input.value = "";
+    terminalCurrentData = null;
+    
+    // Init Effects
+    initTerminalRain();
+    window.addEventListener('resize', initTerminalRain);
+    initTerminalCursor();
+    
+    await streamText(output, "> UPLINK ESTABLISHED: NASA TV (LIVE DYNAMIC FEED)\n");
+
+    // Container
+    const frame = createMediaFrame(); 
+    frame.style.width = "100%";
+    frame.style.maxWidth = "100%";
+    frame.style.boxSizing = "border-box";
+    frame.style.marginTop = "5px"; 
+    frame.style.marginBottom = "5px";
+    frame.style.display = "block";
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = 'media-wrapper';
+    
+    wrapper.style.position = 'relative'; 
+    wrapper.style.width = '100%';
+    wrapper.style.height = '57vh'; 
+    wrapper.style.minHeight = '300px'; 
+    wrapper.style.backgroundColor = '#000'; 
+    wrapper.style.overflow = 'hidden'; 
+
+    // Iframe
+    const iframe = document.createElement('iframe');
+    
+    // DYNAMIC URL STRATEGY:
+    // endpoint: 'embed/live_stream'
+    // channel: 'fO9e9jnhYK8' (Official NASA TV Channel ID)
+    // This will ALWAYS load the current live stream, never an expired video.
+    iframe.src = "https://eyes.nasa.gov/apps/earth/#/";
+    
+    // For 'live_stream' endpoint, 'no-referrer' is often more stable in extensions
+    iframe.referrerPolicy = "no-referrer"; 
+    
+    iframe.style.width = "100%";
+    iframe.style.height = "100%";
+    iframe.style.border = "none";
+    iframe.style.display = "block";
+    
+    iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+    iframe.allowFullscreen = true;
+    
+    wrapper.appendChild(iframe);
+    frame.appendChild(wrapper);
+    output.appendChild(frame);
+
+    input.focus();
+    await streamText(output, `> SYSTEM READY.\n`);
+}
+
+async function openAsteroidTerminal() {
+    const modal = document.getElementById('matrix-modal');
+    const output = document.getElementById('terminal-output');
+    const input = document.getElementById('terminal-cmd-input');
+
+    if (!modal || !output || !input) return;
+
+    input.placeholder = "Type 'exit' to close...";
+
+    // Purge previous
+    purgeTerminalMedia();
+
+    // Reset UI
+    modal.classList.remove('hidden');
+    output.innerHTML = "";
+    input.value = "";
+    terminalCurrentData = null;
+    
+    // Init Effects
+    initTerminalRain();
+    window.addEventListener('resize', initTerminalRain);
+    initTerminalCursor();
+    
+    await streamText(output, "> UPLINK ESTABLISHED: NASA EYES ON ASTEROIDS\n");
+
+    // Container
+    const frame = createMediaFrame(); 
+    frame.style.width = "101%";
+    frame.style.maxWidth = "103%";
+    frame.style.boxSizing = "border-box";
+    frame.style.marginTop = "5px"; 
+    frame.style.marginBottom = "5px";
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = 'media-wrapper';
+    
+    wrapper.style.position = 'relative'; 
+    wrapper.style.width = '100%';
+    wrapper.style.height = '57vh'; 
+    wrapper.style.minHeight = '300px'; 
+    wrapper.style.backgroundColor = '#000'; 
+
+    // Iframe
+    const iframe = document.createElement('iframe');
+    iframe.src = "https://eyes.nasa.gov/apps/asteroids/";
+    iframe.style.width = "100%";
+    iframe.style.height = "100%";
+    iframe.style.border = "none";
+    iframe.allow = "fullscreen; accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+    
+    wrapper.appendChild(iframe);
+    frame.appendChild(wrapper);
+    output.appendChild(frame);
+
+    input.focus();
+    await streamText(output, `> SYSTEM READY.\n`);
+}
+
+async function openTunnelGame() {
+    const modal = document.getElementById('matrix-modal');
+    const output = document.getElementById('terminal-output');
+    const input = document.getElementById('terminal-cmd-input');
+
+    if (!modal || !output || !input) return;
+    
+    input.placeholder = "Type 'exit' to close...";
+
+    // Purge previous
+    purgeTerminalMedia();
+
+    // Reset UI
+    modal.classList.remove('hidden');
+    output.innerHTML = "";
+    input.value = "";
+    terminalCurrentData = null;
+    
+    // Init Effects
+    initTerminalRain();
+    window.addEventListener('resize', initTerminalRain);
+    initTerminalCursor();
+    
+    await streamText(output, "> INITIALIZING TUNNEL RECONNAISSANCE SIMULATION...\n> ESTABLISHING SECURE CONNECTION...\n");
+
+    // Container
+    const frame = createMediaFrame(); 
+    frame.style.width = "101%";
+    frame.style.maxWidth = "103%";
+    frame.style.boxSizing = "border-box";
+    frame.style.marginTop = "5px"; 
+    frame.style.marginBottom = "5px";
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = 'media-wrapper';
+    
+    wrapper.style.position = 'relative'; 
+    wrapper.style.width = '100%';
+    wrapper.style.height = '61vh'; 
+    wrapper.style.minHeight = '300px'; 
+    wrapper.style.backgroundColor = '#000'; 
+
+    // Iframe
+    const iframe = document.createElement('iframe');
+    
+    // --- THIS IS THE FIX ---
+    // We point to the local file using chrome.runtime.getURL
+    iframe.src = chrome.runtime.getURL("Games/game.html");
+    
+    iframe.style.width = "100%";
+    iframe.style.height = "100%";
+    iframe.style.border = "none";
+    iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
+    
+    wrapper.appendChild(iframe);
+    frame.appendChild(wrapper);
+    output.appendChild(frame);
+
+    input.focus();
+    await streamText(output, `> SIMULATION LOADED. PREPARE FOR ENTRY.\n`);
+}
+async function openMatrixRampageGame() {
+    const modal = document.getElementById('matrix-modal');
+    const output = document.getElementById('terminal-output');
+    const input = document.getElementById('terminal-cmd-input');
+
+    if (!modal || !output || !input) return;
+    
+    input.placeholder = "Type 'exit' to close...";
+
+    // Purge previous
+    purgeTerminalMedia();
+
+    modal.classList.remove('hidden');
+    output.innerHTML = "";
+    input.value = "";
+    terminalCurrentData = null;
+    
+    initTerminalRain();
+    window.addEventListener('resize', initTerminalRain);
+    initTerminalCursor();
+    
+    await streamText(output, "> LOADING COMBAT TRAINING PROGRAM: RELOADED...\n> ACCESSING MAINFRAME...\n");
+
+    const frame = createMediaFrame(); 
+    frame.style.width = "101%";
+    frame.style.maxWidth = "103%";
+    frame.style.boxSizing = "border-box";
+    frame.style.marginTop = "5px"; 
+    frame.style.marginBottom = "5px";
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = 'media-wrapper';
+    wrapper.style.position = 'relative'; 
+    wrapper.style.width = '100%';
+    wrapper.style.height = '61vh'; // Matching our perfected height
+    wrapper.style.minHeight = '300px'; 
+    wrapper.style.backgroundColor = '#000'; 
+    wrapper.style.overflow = 'hidden'; // Prevents bottom leaking
+    wrapper.style.borderRadius = '2px';
+
+    const iframe = document.createElement('iframe');
+    
+    // --- LOCAL LINK FIX ---
+    iframe.src = chrome.runtime.getURL("Games/rampage.html");
+    
+    iframe.style.width = "100%";
+    iframe.style.height = "109%";
+    iframe.style.border = "none";
+    iframe.style.display = "block";
+    iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
+    
+    wrapper.appendChild(iframe);
+    frame.appendChild(wrapper);
+    output.appendChild(frame);
+
+    input.focus();
+    await streamText(output, `> PROGRAM READY. FREE YOUR MIND.\n`);
+}
+
+async function openMatrixPandemoniumGame() {
+    const modal = document.getElementById('matrix-modal');
+    const output = document.getElementById('terminal-output');
+    const input = document.getElementById('terminal-cmd-input');
+
+    if (!modal || !output || !input) return;
+    
+    input.placeholder = "Type 'exit' to close...";
+
+    // Purge previous
+    purgeTerminalMedia();
+
+    modal.classList.remove('hidden');
+    output.innerHTML = "";
+    input.value = "";
+    terminalCurrentData = null;
+    
+    initTerminalRain();
+    window.addEventListener('resize', initTerminalRain);
+    initTerminalCursor();
+    
+    await streamText(output, "> LOADING COMBAT TRAINING PROGRAM: RELOADED...\n> ACCESSING MAINFRAME...\n");
+
+    const frame = createMediaFrame(); 
+    frame.style.width = "101%";
+    frame.style.maxWidth = "103%";
+    frame.style.boxSizing = "border-box";
+    frame.style.marginTop = "5px"; 
+    frame.style.marginBottom = "5px";
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = 'media-wrapper';
+    wrapper.style.position = 'relative'; 
+    wrapper.style.width = '100%';
+    wrapper.style.height = '61vh'; // Matching our perfected height
+    wrapper.style.minHeight = '300px'; 
+    wrapper.style.backgroundColor = '#000'; 
+    wrapper.style.overflow = 'hidden'; // Prevents bottom leaking
+    wrapper.style.borderRadius = '2px';
+
+    const iframe = document.createElement('iframe');
+    
+    // --- LOCAL LINK FIX ---
+    iframe.src = chrome.runtime.getURL("Games/pandemonium.html");
+    
+    iframe.style.width = "100%";
+    iframe.style.height = "109%";
+    iframe.style.border = "none";
+    iframe.style.display = "block";
+    iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
+    
+    wrapper.appendChild(iframe);
+    frame.appendChild(wrapper);
+    output.appendChild(frame);
+
+    input.focus();
+    await streamText(output, `> PROGRAM READY. FREE YOUR MIND.\n`);
+}
+    async function openCitizensOfZionGame() {
+    const modal = document.getElementById('matrix-modal');
+    const output = document.getElementById('terminal-output');
+    const input = document.getElementById('terminal-cmd-input');
+
+    if (!modal || !output || !input) return;
+    
+    input.placeholder = "Type 'exit' to close...";
+
+    // Purge previous
+    purgeTerminalMedia();
+
+    modal.classList.remove('hidden');
+    output.innerHTML = "";
+    input.value = "";
+    terminalCurrentData = null;
+    
+    initTerminalRain();
+    window.addEventListener('resize', initTerminalRain);
+    initTerminalCursor();
+    
+    await streamText(output, "> LOADING COMBAT TRAINING PROGRAM: RELOADED...\n> ACCESSING MAINFRAME...\n");
+
+    const frame = createMediaFrame(); 
+    frame.style.width = "101%";
+    frame.style.maxWidth = "103%";
+    frame.style.boxSizing = "border-box";
+    frame.style.marginTop = "5px"; 
+    frame.style.marginBottom = "5px";
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = 'media-wrapper';
+    wrapper.style.position = 'relative'; 
+    wrapper.style.width = '100%';
+    wrapper.style.height = '61vh'; // Matching our perfected height
+    wrapper.style.minHeight = '300px'; 
+    wrapper.style.backgroundColor = '#000'; 
+    wrapper.style.overflow = 'hidden'; // Prevents bottom leaking
+    wrapper.style.borderRadius = '2px';
+
+    const iframe = document.createElement('iframe');
+    
+    // --- LOCAL LINK FIX ---
+    iframe.src = chrome.runtime.getURL("Games/citizensofzion.html");
+    
+    iframe.style.width = "100%";
+    iframe.style.height = "103%";
+    iframe.style.border = "none";
+    iframe.style.display = "block";
+    iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
+    
+    wrapper.appendChild(iframe);
+    frame.appendChild(wrapper);
+    output.appendChild(frame);
+
+    input.focus();
+    await streamText(output, `> PROGRAM READY. FREE YOUR MIND.\n`);
+}
+
+async function openDockDefenceGame() {
+    const modal = document.getElementById('matrix-modal');
+    const output = document.getElementById('terminal-output');
+    const input = document.getElementById('terminal-cmd-input');
+
+    if (!modal || !output || !input) return;
+    
+    input.placeholder = "Type 'exit' to close...";
+
+    // Purge previous
+    purgeTerminalMedia();
+
+    modal.classList.remove('hidden');
+    output.innerHTML = "";
+    input.value = "";
+    terminalCurrentData = null;
+    
+    initTerminalRain();
+    window.addEventListener('resize', initTerminalRain);
+    initTerminalCursor();
+    
+    await streamText(output, "> LOADING COMBAT TRAINING PROGRAM: RELOADED...\n> ACCESSING MAINFRAME...\n");
+
+    const frame = createMediaFrame(); 
+    frame.style.width = "101%";
+    frame.style.maxWidth = "103%";
+    frame.style.boxSizing = "border-box";
+    frame.style.marginTop = "5px"; 
+    frame.style.marginBottom = "5px";
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = 'media-wrapper';
+    wrapper.style.position = 'relative'; 
+    wrapper.style.width = '100%';
+    wrapper.style.height = '61vh'; // Matching our perfected height
+    wrapper.style.minHeight = '300px'; 
+    wrapper.style.backgroundColor = '#000'; 
+    wrapper.style.overflow = 'hidden'; // Prevents bottom leaking
+    wrapper.style.borderRadius = '2px';
+
+    const iframe = document.createElement('iframe');
+    
+    // --- LOCAL LINK FIX ---
+    iframe.src = chrome.runtime.getURL("Games/dockdefence.html");
+    
+    iframe.style.width = "100%";
+    iframe.style.height = "103%";
+    iframe.style.border = "none";
+    iframe.style.display = "block";
+    iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
+    
+    wrapper.appendChild(iframe);
+    frame.appendChild(wrapper);
+    output.appendChild(frame);
+
+    input.focus();
+    await streamText(output, `> PROGRAM READY. FREE YOUR MIND.\n`);
+}
+
 function openOracleTerminal() {
     const modal = document.getElementById('matrix-modal');
     const output = document.getElementById('terminal-output');
@@ -2865,6 +3413,12 @@ function openOracleTerminal() {
 function closeTerminalModal() {
     const modal = document.getElementById('matrix-modal');
     if (!modal) return;
+
+    // Use centralized purge logic
+    purgeTerminalMedia();
+    
+    const output = document.getElementById('terminal-output');
+    if (output) output.innerHTML = "";
     
     if (isOracleTerminalActive) {
         const toolsContainer = document.getElementById('oracle-tools-container');
@@ -2874,7 +3428,6 @@ function closeTerminalModal() {
     }
     
     modal.classList.add('hidden');
-    document.getElementById('terminal-output').innerHTML = "";
     isTerminalTyping = false; 
     if (terminalRainInterval) clearInterval(terminalRainInterval);
     window.removeEventListener('resize', initTerminalRain);
