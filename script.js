@@ -1094,7 +1094,8 @@ const CLI_COMMANDS = {
         showZionMessage(`THE CONSTRUCT SAYS:\n"${q}"`);
     },
     '/nodes': () => {
-        chrome.storage.sync.get({ userNavLinks: [] }, (data) => {
+        // --- UPDATED TO LOCAL STORAGE ---
+        chrome.storage.local.get({ userNavLinks: [] }, (data) => {
             showZionMessage(`SECURE NODES IDENTIFIED: ${data.userNavLinks.length}/10`);
         });
     },
@@ -2478,11 +2479,30 @@ function showDragHint(message) {
 }
 
 function updateLinkOrder(newOrder) {
-    chrome.storage.sync.set({ userNavLinks: newOrder }, loadNavLinks);
+    chrome.storage.local.set({ userNavLinks: newOrder }, loadNavLinks);
 }
 
+// --- ADD THIS BLOCK TO SCRIPT.JS ---
+addLinkBtn.onclick = () => {
+    const url = prompt("Enter Secure Node URL (include http/https):");
+    if (url) {
+        // Fetch current links from LOCAL storage
+        chrome.storage.local.get({ userNavLinks: [] }, (data) => {
+            const currentLinks = data.userNavLinks;
+            if (currentLinks.length >= 10) {
+                showZionMessage("LIMIT REACHED: Maximum 10 nodes allowed.");
+                return;
+            }
+            // Add new URL and update local storage
+            const updatedLinks = [...currentLinks, url];
+            updateLinkOrder(updatedLinks); // This function already uses local.set
+            showDragHint('Node established');
+        });
+    }
+};
+
 function loadNavLinks() {
-    chrome.storage.sync.get({ userNavLinks: [] }, (data) => {
+    chrome.storage.local.get({ userNavLinks: [] }, (data) => {
         navWrapper.innerHTML = '';
         const count = data.userNavLinks.length; 
         addLinkBtn.style.display = 'none';
@@ -2543,7 +2563,11 @@ function loadNavLinks() {
                 confirmEl.innerHTML = `<div style="margin-bottom: 15px; font-size: 0.9rem;">Purge <span style="color: #fff;">${domain}</span> from navigation?</div><div style="display: flex; gap: 10px; justify-content: center;"><button id="confirm-delete" style="background: #a00; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-family: inherit; font-weight: bold;">Purge</button><button id="cancel-delete" style="background: var(--theme-color); color: black; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-family: inherit; font-weight: bold;">Cancel</button></div>`;
                 document.body.appendChild(confirmEl);
                 const cleanup = () => { node.classList.remove('pulse-glow'); confirmEl.remove(); };
-                document.getElementById('confirm-delete').onclick = () => { data.userNavLinks.splice(idx, 1); chrome.storage.sync.set({ userNavLinks: data.userNavLinks }, () => { cleanup(); loadNavLinks(); showDragHint('Link purged'); }); };
+                document.getElementById('confirm-delete').onclick = () => { 
+                    data.userNavLinks.splice(idx, 1); 
+                    // --- UPDATED TO LOCAL STORAGE ---
+                    chrome.storage.local.set({ userNavLinks: data.userNavLinks }, () => { cleanup(); loadNavLinks(); showDragHint('Link purged'); }); 
+                };
                 document.getElementById('cancel-delete').onclick = cleanup;
                 const closeOnOutside = (clickEvent) => { if (!confirmEl.contains(clickEvent.target) && !node.contains(clickEvent.target)) { cleanup(); document.removeEventListener('click', closeOnOutside); } };
                 setTimeout(() => { document.addEventListener('click', closeOnOutside); }, 100);
@@ -2627,6 +2651,23 @@ chrome.storage.sync.get(null, (d) => {
     statsT.checked = data.isStatsEnabled; get('operator-console').classList.toggle('stats-hidden', !data.isStatsEnabled);
     
     setTimeout(() => { initOracleChat(); }, 100);
+    
+    // --- MIGRATION: SYNC TO LOCAL FOR NAV LINKS ---
+    chrome.storage.sync.get(['userNavLinks'], (syncData) => {
+        if (syncData.userNavLinks && syncData.userNavLinks.length > 0) {
+            chrome.storage.local.get(['userNavLinks'], (localData) => {
+                // If local is empty but sync has data, migrate it
+                if (!localData.userNavLinks || localData.userNavLinks.length === 0) {
+                    chrome.storage.local.set({ userNavLinks: syncData.userNavLinks }, () => {
+                        console.log("Migrated Nav Links from Sync to Local Storage");
+                        // Remove from sync to prevent future conflicts (optional, but cleaner)
+                        chrome.storage.sync.remove('userNavLinks');
+                        loadNavLinks(); // Refresh UI
+                    });
+                }
+            });
+        }
+    });
     
     loadNavLinks(); resize(); animateSentinels(); updateUI(); 
     initPhoneSystem(); runChatTerminal(); 
