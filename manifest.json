@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Neo's New Tab",
-  "version": "3.23.0",
+  "version": "3.25.0",
   "description": "A high-performance Matrix-style new tab dashboard with customizable visuals and Sentinel Swarm.",
   "icons": {
     "16": "icon16.png",
@@ -34,6 +34,14 @@
       "resources": [
         "oracle-engine.js",
         "sentinel.webm",
+        "journey2.mp4",
+        "matrix_binary_tunnel.mp4",
+        "matrix_class_room.mp4",
+        "matrix_movie_tunnel.mp4",
+        "matrix_room.mp4",
+        "combat_training.mp4",
+        "meditation.mp4",
+        "operator.mp4",
         "puter.js",
         "scripts/puter.js",
         "typewriter-key.mp3",

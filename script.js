@@ -114,6 +114,11 @@ const VIDEO_CONFIGS = {
         file: "meditation.mp4",
         fallbackColor: "#800080",
         name: "Meditation"
+    },
+    "operator": {
+        file: "operator.mp4",
+        fallbackColor: "#00f2ff",
+        name: "Zion Operator"
     }
 };
 
@@ -748,7 +753,7 @@ function stopBackgroundVideo() {
 }
 
 function handleVideoBackgroundToggle(videoType, isChecked) {
-    const videoTypes = ["journey2", "binary", "room", "movie-tunnel", "matrix-room", "combat-training", "meditation", "vertical-rain"];
+    const videoTypes = ["journey2", "binary", "room", "movie-tunnel", "matrix-room", "combat-training", "meditation", "vertical-rain", "operator"];
     if (isChecked) {
         videoTypes.forEach(type => {
             if (type !== videoType) {
@@ -2145,7 +2150,7 @@ const rssT = get('rss-toggle'), rssI = get('rss-input'), statsT = get('stats-tog
 const rainAmbT = get('rain-ambience-toggle'), humT = get('hum-toggle'), matrixSfxT = get('matrix-sfx-toggle'), envVolS = get('env-volume-slider');
 const upSfxB = get('upload-custom-sfx-btn'), sfxI = get('custom-sfx-input'), clearSfxB = get('clear-custom-sfx');
 const journey2T = get('journey2-toggle'), binaryTunnelT = get('binary-toggle'), matrixRoomT = get('room-toggle');
-const movieTunnelT = get('movie-tunnel-toggle'), matrixRoomNewT = get('matrix-room-toggle'), combatTrainingT = get('combat-training-toggle'), meditationT = get('meditation-toggle');
+const movieTunnelT = get('movie-tunnel-toggle'), matrixRoomNewT = get('matrix-room-toggle'), combatTrainingT = get('combat-training-toggle'), meditationT = get('meditation-toggle'), operatorT = get('operator-toggle');
 const verticalRainT = get('vertical-rain-toggle');
 
 const verticalRainBinaryT = get('vertical-rain-binary-mode');
@@ -2301,6 +2306,7 @@ matrixRoomNewT.onchange = (e) => handleVideoBackgroundToggle('matrix-room', e.ta
 combatTrainingT.onchange = (e) => handleVideoBackgroundToggle('combat-training', e.target.checked);
 meditationT.onchange = (e) => handleVideoBackgroundToggle('meditation', e.target.checked);
 verticalRainT.onchange = (e) => handleVideoBackgroundToggle('vertical-rain', e.target.checked);
+operatorT.onchange = (e) => handleVideoBackgroundToggle('operator', e.target.checked);
 
 phoneT.onchange = (e) => { 
     isPhoneEnabled = e.target.checked; 
@@ -3744,4 +3750,160 @@ if (settingsIconContainer) {
             window.removeEventListener('resize', initSettingsRain);
         }
     });
+}
+
+function initSidebarRain(sidebarId) {
+    const sidebar = document.getElementById(sidebarId);
+    if (!sidebar) return;
+
+    // 1. Setup Canvas
+    let canvas = sidebar.querySelector('.matrix-canvas');
+    if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.className = 'matrix-canvas';
+        // Insert before content so it stays in the background
+        sidebar.insertBefore(canvas, sidebar.firstChild); 
+    }
+
+    const ctx = canvas.getContext('2d');
+    
+    // 2. Configuration
+    // Removed the "fat" characters so all columns are the same width
+    const chars = "0123456789ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜｦﾝ";
+    const fontSize = 12;
+    let columns = 0;
+    let drops = [];
+
+    // Helper to reset drops with random negative offsets
+    const initDrops = () => {
+        columns = Math.floor(canvas.width / fontSize);
+        drops = [];
+        for (let i = 0; i < columns; i++) {
+            // Random start between -100 and 0
+            // This spreads them out vertically above the screen so they don't fall as a line
+            drops[i] = Math.floor(Math.random() * -50); 
+        }
+    };
+
+    // 3. Resize Logic
+    const resizeCanvas = () => {
+        canvas.width = sidebar.offsetWidth;
+        canvas.height = sidebar.offsetHeight;
+        initDrops();
+    };
+    
+    // Initial setup
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // 4. Get Settings Inputs
+    const speedSlider = document.getElementById('speed-slider');
+    const colorPicker = document.getElementById('color-picker');
+
+    // 5. The Animation Loop
+    function draw() {
+        // --- SYNC COLOR ---
+        let currentColor = '#0F0';
+        if (colorPicker) {
+            currentColor = colorPicker.value;
+        } else {
+            currentColor = getComputedStyle(document.documentElement).getPropertyValue('--theme-color').trim();
+        }
+
+        // Fade out previous frame (Trail Effect)
+        ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw new characters
+        ctx.fillStyle = currentColor;
+        ctx.font = `${fontSize}px monospace`;
+
+        for (let i = 0; i < drops.length; i++) {
+            // Only draw if the drop is actually on screen (y > 0)
+            if (drops[i] * fontSize > 0) {
+                const text = chars.charAt(Math.floor(Math.random() * chars.length));
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+            }
+
+            // Reset logic: If it hits bottom, reset to top (0)
+            if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                drops[i] = 0;
+            }
+            drops[i]++;
+        }
+
+        // --- SYNC SPEED ---
+        let speedVal = speedSlider ? parseInt(speedSlider.value) : 35;
+        let timeout = Math.max(10, 120 - speedVal); 
+
+        setTimeout(() => requestAnimationFrame(draw), timeout);
+    }
+    
+    draw();
+}
+
+// Initialize on load
+document.addEventListener('DOMContentLoaded', () => {
+    initSidebarRain('sidebar-left');
+    initSidebarRain('sidebar-right');
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    // --- ATTACH GAME BUTTON LISTENERS ---
+    const snakeBtn = document.getElementById('btn-snake');
+    if (snakeBtn) snakeBtn.addEventListener('click', () => openGame('snake'));
+
+    const pongBtn = document.getElementById('btn-pong');
+    if (pongBtn) pongBtn.addEventListener('click', () => openGame('pong'));
+
+    const tetrisBtn = document.getElementById('btn-tetris');
+    if (tetrisBtn) tetrisBtn.addEventListener('click', () => openGame('tetris'));
+
+    const game2048Btn = document.getElementById('btn-2048');
+    if (game2048Btn) game2048Btn.addEventListener('click', () => openGame('2048'));
+
+
+    // --- ATTACH NASA BUTTON LISTENERS ---
+    const solarBtn = document.getElementById('btn-solar');
+    if (solarBtn) solarBtn.addEventListener('click', () => openNasa('solar'));
+
+    const earthBtn = document.getElementById('btn-earth');
+    if (earthBtn) earthBtn.addEventListener('click', () => openNasa('earth'));
+
+    const asteroidBtn = document.getElementById('btn-asteroids');
+    if (asteroidBtn) asteroidBtn.addEventListener('click', () => openNasa('asteroids'));
+});
+
+/* --- ADD THIS TO THE VERY BOTTOM OF script.js --- */
+
+// 1. Router for Game Buttons
+function openGame(gameName) {
+    // Hide sidebar immediately for better UX
+    const leftSidebar = document.getElementById('sidebar-left');
+    if (leftSidebar) leftSidebar.style.left = '-230px';
+
+    if (gameName === 'snake') {
+        openMatrixRampageGame();
+    } else if (gameName === 'pong') {
+        openMatrixPandemoniumGame();
+    } else if (gameName === 'tetris') {
+        openCitizensOfZionGame();
+    } else if (gameName === '2048') {
+        openDockDefenceGame();
+    }
+}
+
+// 2. Router for NASA Buttons
+function openNasa(mode) {
+    // Hide sidebar immediately
+    const rightSidebar = document.getElementById('sidebar-right');
+    if (rightSidebar) rightSidebar.style.right = '-230px';
+
+    if (mode === 'solar') {
+        openSpaceTerminal();
+    } else if (mode === 'earth') {
+        openEarthTerminal();
+    } else if (mode === 'asteroids') {
+        openAsteroidTerminal();
+    }
 }

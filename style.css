@@ -2044,3 +2044,170 @@ div[class*="puter-alert"],
     width: 0 !important;
     height: 0 !important;
 }
+
+/* --- SLIDING SIDEBARS (NO GLOW LEAK) --- */
+.cyber-sidebar {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 200px; 
+    height: 600px; 
+    
+    background: transparent; 
+    border: none;
+    box-shadow: none;
+    
+    z-index: 9000; 
+    transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1), right 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+    filter: drop-shadow(0 0 5px var(--theme-color)); 
+}
+
+/* --- THE SHAPE CONTAINER (Green Border) --- */
+.cyber-sidebar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--theme-color); 
+    /* Changed 8% -> 15% and 92% -> 85% for steeper angle */
+    clip-path: polygon(0% 0%, 100% 15%, 100% 85%, 0% 100%);
+    z-index: -2;
+}
+
+/* --- THE INNER BLACK BODY (Solid Black) --- */
+.cyber-sidebar::after {
+    content: '';
+    position: absolute;
+    top: 3px; 
+    left: 3px;
+    width: calc(100% - 6px);
+    height: calc(100% - 6px);
+    background: #000; 
+    /* Changed 8% -> 15% and 92% -> 85% */
+    clip-path: polygon(0% 0%, 100% 15%, 100% 85%, 0% 100%);
+    z-index: -1;
+}
+
+/* --- MATRIX RAIN CANVAS --- */
+.matrix-canvas {
+    position: absolute;
+    top: 3px !important;
+    left: 3px !important;
+    width: calc(100% - 6px) !important;
+    height: calc(100% - 6px) !important;
+    z-index: 1; 
+    opacity: 0.3; 
+    pointer-events: none; 
+    /* Changed 8% -> 15% and 92% -> 85% */
+    clip-path: polygon(0% 0%, 100% 15%, 100% 85%, 0% 100%);
+}
+
+/* --- LEFT SIDEBAR (Offset increased to -230px) --- */
+#sidebar-left {
+    /* Pushed further back to hide the 5px glow */
+    left: -230px; 
+}
+
+#sidebar-left:hover {
+    left: 0 !important;
+}
+
+/* --- RIGHT SIDEBAR (Offset increased to -230px) --- */
+#sidebar-right {
+    right: -230px; 
+}
+
+/* Mirror effects for right side */
+#sidebar-right::before,
+#sidebar-right::after {
+    transform: scaleX(-1); 
+}
+
+#sidebar-right .matrix-canvas {
+    transform: none; 
+    /* Adjusted to match the new steeper angle on the right side */
+    clip-path: polygon(0% 15%, 100% 0%, 100% 100%, 0% 85%);
+}
+
+#sidebar-right .sidebar-content {
+    transform: scaleX(1); 
+}
+
+#sidebar-right:hover {
+    right: 0 !important;
+}
+
+/* --- CONTENT CONTAINER --- */
+.sidebar-content {
+    width: 80%; 
+    height: 75%; 
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 15px; 
+    z-index: 2; 
+    padding: 0;
+}
+
+/* --- BUTTONS --- */
+.sidebar-btn {
+    width: 100%;
+    height: 50px; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    background: rgba(20, 20, 20, 0.8) !important; 
+    border: 2px solid var(--theme-color) !important; 
+    border-radius: 10px; 
+    box-shadow: 0 0 5px var(--theme-color), inset 0 0 10px rgba(0,0,0,0.8) !important; 
+    color: var(--theme-color);
+    font-family: 'Orbitron', sans-serif; 
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin: 0;
+}
+
+.sidebar-btn:hover {
+    background: var(--theme-color) !important;
+    color: #000;
+    box-shadow: 0 0 15px var(--theme-color) !important;
+    transform: scale(1.02);
+}
+
+/* --- TRIGGER ZONE (REDUCED) --- */
+.sidebar-trigger {
+    position: absolute;
+    top: 0;
+    /* Reduced width to prevent overlapping widgets */
+    width: 60px; 
+    height: 100%;
+    z-index: 9999;
+    background: transparent;
+    cursor: pointer;
+}
+
+/* CALCULATION:
+   Sidebar is at -230px. Its edge is at -30px (relative to screen).
+   Setting right: -50px pushes the trigger 20px onto the screen (-30 + 50 = 20).
+   This creates a 20px "safe zone" for activation without blocking clicks.
+*/
+#sidebar-left .sidebar-trigger { 
+    right: -50px; 
+}
+
+#sidebar-right .sidebar-trigger { 
+    left: -50px; 
+}
