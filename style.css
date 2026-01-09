@@ -2211,3 +2211,97 @@ div[class*="puter-alert"],
 #sidebar-right .sidebar-trigger { 
     left: -50px; 
 }
+
+/* --- ZION ROOT EXPLORER UI (CORRECTED) --- */
+
+/* 1. TERMINAL CONTAINER OVERRIDE 
+   Forces the main output area to align to the top, not center. */
+#terminal-output {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important; /* Pushes content to top */
+    flex: 1 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important; /* Lets the inner container handle scroll */
+}
+
+/* 2. EXPLORER CONTAINER 
+   Matches your structure but ensures it fills the space correctly */
+#explorer-grid-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start; /* Aligns grid to top */
+    overflow-y: auto;
+    width: 100%;
+    padding-top: 10px;
+}
+
+/* 3. PATH BAR (BREADCRUMBS) 
+   Removes the "Frame" borders you disliked */
+.explorer-path-bar {
+    padding: 10px 20px;
+    font-family: 'Orbitron', sans-serif;
+    color: var(--theme-color);
+    font-size: 0.9rem;
+    text-shadow: 0 0 5px var(--theme-color);
+    border: none !important; /* REMOVED BORDER FRAME */
+    background: transparent !important;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* 4. THE GRID 
+   Aligns files to the top-left */
+.explorer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 15px;
+    padding: 0 20px 20px 20px;
+    align-content: start; /* PREVENTS VERTICAL CENTERING GAP */
+}
+
+.explorer-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.explorer-node:hover {
+    background: rgba(0, 242, 255, 0.1);
+    border-color: var(--theme-color);
+    box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
+}
+
+.explorer-icon {
+    font-size: 2rem;
+    margin-bottom: 5px;
+}
+
+.explorer-label {
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    text-align: center;
+    color: var(--theme-color);
+    word-break: break-all;
+}
+
+/* 5. STORAGE BAR 
+   Removes the border frame above the input box */
+.storage-status-container {
+    padding: 8px 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.7rem;
+    color: var(--theme-color);
+    opacity: 0.8;
+    margin-top: auto; /* Pushes to bottom */
+    border: none !important; /* REMOVED BORDER FRAME */
+    background: transparent !important;
+}

@@ -49,6 +49,12 @@ let isOracleEnabled = DEFAULTS.isOracleEnabled;
 let oracleChatHistory = [];
 let isOracleTerminalActive = false;
 
+// --- EXPLORER STATE MANAGEMENT ---
+let isExplorerActive = false;
+let explorerDataCache = {};
+let explorerStack = []; // Added for navigation depth tracking
+let explorerPath = ["root"]; // Tracks folder names for breadcrumbs
+window.isExplorerDeleteMode = false;
 
 // --- 3D VERTICAL RAIN SPECIFIC SETTINGS ---
 let verticalRainAlphabet = MATRIX_ALPHABET;
@@ -902,7 +908,7 @@ function drawZionRain() {
 }
 
 const CLI_COMMANDS = {
-    '/help': () => showZionMessage("SYSTEM COMMANDS:\n/weather [city] - Satellite Uplink\n/ghost [0-1] - UI Transparency\n/speed [10-100] - Rain Velocity\n/color [hex] - System/Rain Color Update\n/alphabet [matrix|binary|hex] - Character Swap\n/font [cyber|classic] - Change Typography\n/glitch - Trigger System Distortion\n/night - Toggle Stealth Mode\n/quote [text] - Broadcast Custom Mantra\n/whoami - Advanced Identity Trace\n/jackin - Overclock Stream\n/clear - Flush Terminal\n/white-rabbit - Random Mantra\n/nodes - Link Count\n/reset - Factory Reset\n/space - Open NASA Solar System Viewer\n/earth - Open NASA Eyes on the Earth\n/asteroid - Open NASA Eyes on Asteroids\n/tunnel - Play Tunnel Recon\n/rampage - Play Matrix: Rampage\n/play zion - Play Citizens of Zion\n/play pandemonium - Play Matrix: Pandemonium\n/play dock - Play Dock Defence\n\nWEB UPLINKS:\n/yt, /twitch, /kick, /ig, /x, /reddit, /ebay, /amz, /ps, /xbox, /git, /ds, /gemini, /gpt"),    
+    '/help': () => showZionMessage("SYSTEM COMMANDS:\n/weather [city] - Satellite Uplink\n/ghost [0-1] - UI Transparency\n/speed [10-100] - Rain Velocity\n/color [hex] - System/Rain Color Update\n/alphabet [matrix|binary|hex] - Character Swap\n/font [cyber|classic] - Change Typography\n/glitch - Trigger System Distortion\n/night - Toggle Stealth Mode\n/quote [text] - Broadcast Custom Mantra\n/whoami - Advanced Identity Trace\n/jackin - Overclock Stream\n/clear - Flush Terminal\n/white-rabbit - Random Mantra\n/nodes - Link Count\n/reset - Factory Reset\n/root - System Root Explorer\n/mkdir [name] - Create Directory\n/space - Open NASA Solar System Viewer\n/earth - Open NASA Eyes on the Earth\n/asteroid - Open NASA Eyes on Asteroids\n/tunnel - Play Tunnel Recon\n/rampage - Play Matrix: Rampage\n/play zion - Play Citizens of Zion\n/play pandemonium - Play Matrix: Pandemonium\n/play dock - Play Dock Defence\n/uplink - Initiate Data Upload\n/vault - Access Secure Vault\n\nWEB UPLINKS:\n/yt, /twitch, /kick, /ig, /x, /reddit, /ebay, /amz, /ps, /xbox, /git, /ds, /gemini, /gpt"),    
     // --- VIDEO & STREAMING ---
     '/youtube': () => { showZionMessage("UPLINKING TO YOUTUBE..."); window.open("https://youtube.com", "_blank"); },
     '/yt': () => CLI_COMMANDS['/youtube'](),
@@ -1100,6 +1106,23 @@ const CLI_COMMANDS = {
         });
     },
     '/reset': () => { if(confirm("Hard Reset?")) { chrome.storage.sync.clear(); location.reload(); }},
+    '/root': () => { openRootExplorer(); showZionMessage("ACCESSING ROOT DIRECTORY..."); },
+    '/mkdir': (folderName) => {
+        if (!folderName) return showZionMessage("USAGE: /mkdir [folder_name]");
+        const cleanName = folderName.replace(/\s+/g, '_');
+        const storageKey = `folder_${Date.now()}_${cleanName}`;
+        
+        chrome.storage.local.set({ [storageKey]: {} }, () => {
+            showZionMessage(`DIRECTORY CREATED: ${cleanName}`);
+            if (isExplorerActive) {
+                chrome.storage.local.get(null, (updatedData) => {
+                    explorerDataCache = updatedData;
+                    explorerStack[0] = updatedData;
+                    renderExplorerGrid();
+                });
+            }
+        });
+    },
     
     // --- SPACE & NASA COMMANDS ---
     '/space': () => { openSpaceTerminal(); },
@@ -1129,8 +1152,18 @@ const CLI_COMMANDS = {
         } else {
             showZionMessage("ERROR: GAME '" + gameName + "' NOT FOUND.");
         }
-    }
+    },
+    '/uplink': () => {
+        showZionMessage("COMMAND OBSOLETE.\nPLEASE USE THE [⬆ UPLOAD] BUTTON IN THE ROOT DIRECTORY.");
+        openRootExplorer();
+    },
+    '/vault': () => { 
+        // Pass the filter directly to the opener
+        openRootExplorer("vault_"); 
+        showZionMessage("ACCESSING SECURE VAULT..."); 
+    },
 };
+
 // --- ORACLE AI SYSTEM ---
 const oracleStates = new Map(); 
 let oracleCursor = null;
@@ -1173,13 +1206,6 @@ function injectOracleStyles() {
         
         @keyframes thinking-dots { 0%, 20% { content: ''; } 40% { content: '.'; } 60% { content: '..'; } 80%, 100% { content: '...'; } }
 
-        /* --- FIX: TERMINAL SCROLL CUSHION --- */
-        #terminal-output {
-            /* 20px cushion ensures text is visible above the input box */
-            padding-bottom: 20px !important; 
-            scroll-behavior: auto !important;
-        }
-
         .oracle-scan-container::after {
             content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%), 
@@ -1218,6 +1244,110 @@ function injectOracleStyles() {
             transition: all 0.3s; line-height: 1;
         }
         .oracle-expand-btn:hover { opacity: 1; text-shadow: 0 0 8px var(--theme-color); transform: scale(1.1); }
+
+        /* --- EXPLORER STYLES --- */
+        .explorer-node {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 10px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        .explorer-node:hover {
+            border-color: var(--theme-color);
+            background: rgba(0, 242, 255, 0.1);
+        }
+        .explorer-node.node-type-back {
+            border-color: var(--theme-color);
+            background: rgba(0, 242, 255, 0.05);
+        }
+        .explorer-icon {
+            font-size: 2rem;
+            margin-bottom: 5px;
+            text-shadow: 0 0 10px var(--theme-color);
+        }
+        .explorer-label {
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            text-align: center;
+            color: var(--theme-color);
+            word-break: break-all;
+            max-width: 100%;
+        }
+        
+        /* FORCE TOP ALIGNMENT: Prevents content from floating in the middle */
+        #terminal-output {
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: flex-start !important; 
+            align-items: stretch !important;
+            padding: 10px 0 !important;
+            height: 100% !important;
+            overflow-y: auto !important;
+        }
+
+        /* CLEAN BREADCRUMBS: Removed background/borders that create "frames" */
+        .explorer-path-bar {
+            padding: 5px 20px !important;
+            color: var(--theme-color);
+            font-family: 'Orbitron', sans-serif;
+            border-bottom: 1px solid rgba(0, 242, 255, 0.3) !important;
+            margin-bottom: 15px !important;
+            font-size: 0.8rem;
+            width: 100%;
+            text-shadow: 0 0 5px var(--theme-color);
+        }
+
+        .path-segment {
+            cursor: pointer;
+            text-decoration: underline;
+            opacity: 0.7;
+            transition: all 0.2s;
+        }
+
+        .path-segment:hover {
+            opacity: 1;
+            text-shadow: 0 0 8px var(--theme-color);
+        }
+
+        /* CLEAN GRID: Ensure it spans the full width without centered gaps */
+        .explorer-grid {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)) !important;
+            gap: 20px !important;
+            padding: 0 20px 20px 20px !important;
+            width: 100% !important;
+            background: transparent !important; /* Removes the "black box" frame effect */
+        }
+
+        /* STORAGE BAR: Fixed to bottom of content area */
+        .storage-status-container {
+            padding: 10px 20px;
+            border-top: 1px solid rgba(0, 242, 255, 0.2);
+            font-family: 'Courier New', monospace;
+            font-size: 0.7rem;
+            margin-top: auto; /* Pushes to bottom of the flex list */
+        }
+
+        .storage-bar-bg {
+            width: 100%;
+            height: 4px;
+            background: rgba(0, 242, 255, 0.1);
+            margin-top: 5px;
+            border-radius: 2px;
+        }
+
+        .storage-bar-fill {
+            height: 100%;
+            background: var(--theme-color);
+            box-shadow: 0 0 8px var(--theme-color);
+            transition: width 0.5s ease-in-out;
+        }
+        .drag-hover { background: rgba(0, 255, 65, 0.3) !important; border: 1px dashed var(--theme-color); }
     `;
     document.head.appendChild(style);
 }
@@ -2751,18 +2881,450 @@ function purgeTerminalMedia() {
         iframe.remove();
     });
 
-    // 2. Kill Videos
+    // 2. Kill Videos & URL Cleanup
     const videos = output.querySelectorAll('video');
     videos.forEach(video => {
         video.pause();
+        if(video.src && video.src.startsWith('blob:')) {
+            URL.revokeObjectURL(video.src);
+        }
         video.removeAttribute('src');
         video.load(); 
         video.remove();
     });
     
-    // 3. Remove Game Containers specifically to prevent visual stacking
+    // 3. Kill Images (if blob)
+    const images = output.querySelectorAll('img');
+    images.forEach(img => {
+        if(img.src && img.src.startsWith('blob:')) {
+            URL.revokeObjectURL(img.src);
+        }
+    });
+
+    // 4. Remove Game Containers specifically to prevent visual stacking
     const frames = output.querySelectorAll('.ascii-media-frame');
     frames.forEach(frame => frame.remove());
+}
+// --- VAULT STORAGE FUNCTIONS (FIXED) ---
+function triggerVaultUpload() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) { input.remove(); return; }
+
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            const sizeKB = (file.size / 1024).toFixed(1);
+            const storageKey = `vault_${Date.now()}_(${sizeKB}KB)_${file.name.replace(/\s+/g, '_')}`;
+            
+            chrome.storage.local.set({ [storageKey]: evt.target.result }, () => {
+                showZionMessage(`DATA UPLOADED: ${file.name}\nSIZE: ${sizeKB} KB`);
+                if (isExplorerActive) {
+                    chrome.storage.local.get(null, (updatedData) => {
+                        explorerDataCache = updatedData;
+                        explorerStack[0] = updatedData; 
+                        renderExplorerGrid();
+                    });
+                }
+                input.remove();
+            });
+        };
+        file.type.startsWith('image/') || file.type.startsWith('audio/') || file.type.startsWith('video/') 
+            ? reader.readAsDataURL(file) : reader.readAsText(file);
+    };
+    input.click();
+}
+
+function extractVaultData(filename, data) {
+    let blob;
+    if (typeof data === 'string' && data.startsWith('data:')) {
+        const byteString = atob(data.split(',')[1]);
+        const mimeString = data.split(',')[0].split(':')[1].split(';')[0];
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+        blob = new Blob([ab], {type: mimeString});
+    } else {
+        const strData = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
+        blob = new Blob([strData], {type: 'text/plain'});
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+    showZionMessage(`EXTRACTING: ${filename}`);
+}
+
+async function openRootExplorer(startFilter = "") {
+    const modal = document.getElementById('matrix-modal');
+    const output = document.getElementById('terminal-output');
+    const input = document.getElementById('terminal-cmd-input');
+    
+    if (!modal || !output || !input) return;
+
+    isExplorerActive = true;
+    modal.classList.remove('hidden');
+    
+    // Clear standard terminal output
+    output.innerHTML = "";
+    
+    // Initialize Background Rain
+    initTerminalRain(); 
+    window.addEventListener('resize', initTerminalRain);
+    
+    // Create Layout
+    const pathBar = document.createElement('div');
+    pathBar.id = 'explorer-path-bar';
+    pathBar.className = 'explorer-path-bar';
+    
+    const container = document.createElement('div');
+    container.id = 'explorer-grid-container'; 
+    
+    const grid = document.createElement('div');
+    grid.id = 'explorer-grid';
+    grid.className = 'explorer-grid';
+    
+    container.appendChild(grid);
+    output.appendChild(pathBar); 
+    output.appendChild(container); 
+
+    // Initialize controls
+    initTerminalCursor();
+    initExplorerControls(); 
+    updateStorageUI(); 
+
+    // --- FIX: LOAD DATA THEN APPLY FILTER ---
+    explorerStack = []; 
+    explorerPath = ["root"]; 
+    
+    chrome.storage.local.get(null, (data) => {
+        explorerDataCache = data; 
+        explorerStack.push(data); 
+        
+        // Render immediately with the requested filter (No timeouts needed)
+        renderExplorerGrid(startFilter);
+        
+        // Update input to match context
+        if (startFilter === "vault_") {
+            input.placeholder = "Filtering Secure Vault...";
+        } else {
+            input.placeholder = "Type filename to filter...";
+        }
+    });
+    
+    input.focus();
+}
+
+function renderExplorerGrid(filter = "") {
+    const grid = document.getElementById('explorer-grid');
+    const pathBar = document.getElementById('explorer-path-bar');
+    if (!grid || !pathBar) return;
+    grid.innerHTML = "";
+
+    // --- 1. CRITICAL STARTUP CHECK ---
+    // If the stack is empty (race condition on load), stop immediately.
+    // This prevents the code from trying to read undefined data.
+    if (!explorerStack || explorerStack.length === 0) {
+        // Try to recover from cache if available
+        if (typeof explorerDataCache !== 'undefined' && explorerDataCache) {
+            explorerStack = [explorerDataCache];
+            explorerPath = ["root"];
+        } else {
+            // Data is truly not ready. Render loading state and EXIT.
+            grid.innerHTML = `<div class="explorer-empty" style="grid-column:1/-1; padding:20px; text-align:center; opacity:0.7;">INITIALIZING STORAGE STREAM...</div>`;
+            return; 
+        }
+    }
+    // ------------------------------------------------
+
+    // 2. Render Path Breadcrumbs
+    pathBar.innerHTML = explorerPath.map((p, i) => 
+        `<span class="path-segment" onclick="navigateToPath(${i})" style="cursor:pointer; text-decoration:underline;">${p.toUpperCase()}</span>`
+    ).join(' <span style="opacity:0.3">/</span> ');
+
+    const viewDepth = explorerStack.length - 1;
+    let currentData = explorerStack[viewDepth];
+
+    // --- 3. DATA INTEGRITY CHECK ---
+    // Ensure currentData is a valid object before using Object.keys()
+    if (!currentData || typeof currentData !== 'object') {
+        console.warn("Explorer data corrupted. Defaulting to empty object.");
+        currentData = {}; 
+    }
+    // -------------------------------------
+
+    const isArray = Array.isArray(currentData);
+
+    // 4. Render Return Button (if deep)
+    if (viewDepth > 0) {
+        const backNode = document.createElement('div');
+        backNode.className = 'explorer-node node-type-back';
+        backNode.innerHTML = `<div class="explorer-icon">↩</div><div class="explorer-label">RETURN</div>`;
+        backNode.onclick = () => {
+            explorerStack.pop();
+            explorerPath.pop();
+            renderExplorerGrid(filter);
+        };
+        grid.appendChild(backNode);
+    }
+
+    // 5. Generate Keys (Now safe because currentData is guaranteed to be an object)
+    let keys = isArray ? currentData.map((_, i) => i) : Object.keys(currentData);
+    
+    // Empty Folder Message
+    if (keys.length === 0 && viewDepth === 0) {
+         grid.innerHTML += `<div class="explorer-empty" style="grid-column: 1/-1; text-align:center; opacity:0.5; padding:20px;">NO FILES FOUND<br><span style="font-size:0.8em">CLICK 'UPLOAD' TO BEGIN</span></div>`;
+    }
+
+    keys.forEach(key => {
+        const value = currentData[key];
+        if (filter && !String(key).toLowerCase().includes(filter.toLowerCase())) return;
+
+        const isFolder = (typeof value === 'object' && value !== null);
+        const node = document.createElement('div');
+        node.className = 'explorer-node';
+        node.setAttribute('draggable', !isFolder); 
+
+        // --- LABEL CLEANUP ---
+        let displayLabel = String(key);
+        if (isArray && typeof value === 'string' && value.startsWith('http')) {
+            try { displayLabel = new URL(value).hostname.replace('www.', ''); } catch(e) { displayLabel = "LINK"; }
+        } else if (displayLabel.startsWith('vault_') || displayLabel.startsWith('folder_')) {
+            displayLabel = displayLabel.split('_').slice(2).join('_');
+        }
+        if (displayLabel.length > 22) displayLabel = displayLabel.substring(0, 19) + '...';
+
+        // --- ICON LOGIC ---
+        let icon = '📄'; 
+        if (isFolder) {
+            icon = '📁';
+        } else if (isArray && typeof value === 'string' && value.startsWith('http')) {
+            icon = '🔗';
+        } else {
+            const lowerKey = String(key).toLowerCase();
+            if (lowerKey.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/)) {
+                icon = '🖼️';
+            } else if (lowerKey.match(/\.(mp4|webm|ogg|mov|avi|mkv)$/)) {
+                icon = '🎬';
+            } else if (lowerKey.match(/\.(mp3|wav|aac|flac|m4a)$/)) {
+                icon = '🎵';
+            } else if (lowerKey.match(/\.(zip|rar|7z|tar|gz)$/)) {
+                icon = '📦';
+            } else if (lowerKey.match(/\.(html|htm|js|css|json|py|cpp|txt)$/)) {
+                icon = '📜';
+            }
+        }
+
+        node.innerHTML = `
+            <div class="explorer-icon">${icon}</div>
+            <div class="explorer-label">${displayLabel}</div>
+        `;
+
+        // --- DRAG START ---
+        if (!isFolder) {
+            node.ondragstart = (e) => {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', key); 
+                node.style.opacity = '0.4';
+            };
+            node.ondragend = () => { node.style.opacity = '1'; };
+        }
+
+        // --- DROP TARGET ---
+        if (isFolder) {
+            node.ondragover = (e) => {
+                e.preventDefault(); 
+                e.dataTransfer.dropEffect = 'move';
+                node.classList.add('drag-hover');
+            };
+            node.ondragleave = () => { node.classList.remove('drag-hover'); };
+            node.ondrop = (e) => {
+                e.preventDefault(); e.stopPropagation();
+                node.classList.remove('drag-hover');
+                const sourceKey = e.dataTransfer.getData('text/plain');
+                if (sourceKey && sourceKey !== key) {
+                    moveFileToFolder(sourceKey, key);
+                }
+            };
+        }
+
+        // --- CLICK HANDLER ---
+        node.onclick = () => {
+            if (window.isExplorerDeleteMode) {
+                if (confirm(`PURGE: ${displayLabel}?`)) {
+                    if (isArray) currentData.splice(key, 1);
+                    else delete currentData[key];
+
+                    // Persist Changes
+                    if (viewDepth === 0) {
+                        chrome.storage.local.remove(key, () => {
+                            renderExplorerGrid(); 
+                            updateStorageUI();
+                        });
+                    } else {
+                        const parentData = explorerStack[viewDepth - 1];
+                        let folderKey = null;
+                        for (const k in parentData) {
+                            if (parentData[k] === currentData) { folderKey = k; break; }
+                        }
+                        
+                        if (folderKey) {
+                            chrome.storage.local.set({ [folderKey]: currentData }, () => { renderExplorerGrid(); updateStorageUI(); });
+                        } else if (explorerPath[viewDepth] === 'userNavLinks') {
+                            chrome.storage.local.set({ userNavLinks: currentData }, () => { renderExplorerGrid(); updateStorageUI(); });
+                        } else {
+                            chrome.storage.local.get(null, (updated) => {
+                                explorerDataCache = updated;
+                                explorerStack[0] = updated;
+                                renderExplorerGrid();
+                            });
+                        }
+                    }
+                }
+            } else {
+                if (isFolder) {
+                    explorerStack.push(value); 
+                    explorerPath.push(displayLabel);
+                    renderExplorerGrid();
+                } else if (typeof value === 'string' && value.startsWith('http')) {
+                    window.open(value, '_blank');
+                } else {
+                    const type = icon === '🖼️' ? 'image' : 'text';
+                    showExplorerPreview(key, value, type);
+                }
+            }
+        };
+        grid.appendChild(node);
+    });
+    updateStorageUI();
+}
+
+function updateStorageUI() {
+    let storageContainer = document.getElementById('storage-status-container');
+    if (!storageContainer) {
+        storageContainer = document.createElement('div');
+        storageContainer.id = 'storage-status-container';
+        storageContainer.className = 'storage-status-container';
+        const inputArea = document.querySelector('.terminal-input-area');
+        if (inputArea && inputArea.parentNode) {
+            inputArea.parentNode.insertBefore(storageContainer, inputArea);
+        }
+    }
+
+    chrome.storage.local.getBytesInUse(null, (bytes) => {
+        // --- FIX: Increased Visual Quota to 1GB ---
+        // 1GB = 1024 * 1024 * 1024 bytes
+        const totalQuota = 1073741824; 
+        
+        const usedMB = (bytes / (1024 * 1024)).toFixed(2);
+        // Calculate percentage, maxing out at 100% visually
+        const percent = Math.min((bytes / totalQuota) * 100, 100).toFixed(1);
+        
+        storageContainer.innerHTML = `
+            <div style="display:flex; justify-content:space-between;">
+                <span>STORAGE_USED: ${usedMB} MB</span>
+                <span>${percent}% (of 1GB)</span>
+            </div>
+            <div class="storage-bar-bg">
+                <div class="storage-bar-fill" style="width: ${percent}%"></div>
+            </div>
+        `;
+    });
+}
+
+function navigateToPath(index) {
+    if (index < explorerStack.length - 1) {
+        explorerStack = explorerStack.slice(0, index + 1);
+        explorerPath = explorerPath.slice(0, index + 1);
+        renderExplorerGrid();
+    }
+}
+
+function moveFileToFolder(fileKey, folderKey) {
+    if (folderKey === 'userNavLinks') {
+        showZionMessage("ACCESS DENIED: SYSTEM DIRECTORY.\nTHIS FOLDER ACCEPTS LINKS ONLY.");
+        return;
+    }
+
+    // Fetch all data
+    chrome.storage.local.get(null, (allData) => {
+        const fileData = allData[fileKey];
+        
+        // --- FIX: Check for undefined specifically (allows empty files) ---
+        if (fileData === undefined) {
+            showZionMessage("SYSTEM OUT OF SYNC.\nREFRESHING DATA...");
+            // Force refresh to clear real ghost files
+            chrome.storage.local.get(null, (updated) => {
+                explorerDataCache = updated;
+                explorerStack[0] = updated; 
+                renderExplorerGrid();
+            });
+            return;
+        }
+
+        let folderData = allData[folderKey];
+        
+        // Ensure folder is valid
+        if (!folderData || typeof folderData !== 'object' || Array.isArray(folderData)) {
+            folderData = {};
+        }
+
+        // Add file to folder
+        folderData[fileKey] = fileData;
+
+        // 1. Update Folder
+        chrome.storage.local.set({ [folderKey]: folderData }, () => {
+            // 2. Delete Original File
+            chrome.storage.local.remove(fileKey, () => {
+                showZionMessage("RELOCATION COMPLETE");
+                
+                // 3. Refresh Root
+                chrome.storage.local.get(null, (updated) => {
+                    explorerDataCache = updated;
+                    explorerStack[0] = updated; 
+                    renderExplorerGrid();
+                });
+            });
+        });
+    });
+}
+
+function showExplorerPreview(key, value, type) {
+    const previewOverlay = document.createElement('div');
+    previewOverlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:11000; display:flex; align-items:center; justify-content:center; backdrop-filter: blur(8px);";
+    
+    const cleanTitle = (key.startsWith('vault_') || key.startsWith('folder_')) 
+        ? key.split('_').slice(2).join('_') : key;
+
+    previewOverlay.innerHTML = `
+        <div style="background:#000; padding:30px; border: 1px solid var(--theme-color); width: 80vw; max-width: 800px; display: flex; flex-direction: column; gap: 20px; border-radius: 4px; box-shadow: 0 0 20px rgba(0,242,255,0.2);">
+            <div style="font-family:'Orbitron'; color:var(--theme-color); border-bottom: 1px solid rgba(0,242,255,0.3); padding-bottom: 10px; font-size: 0.9rem;">
+                FILE_DATA: ${cleanTitle.toUpperCase()}
+            </div>
+            <div style="color:var(--theme-color); font-family:monospace; white-space:pre-wrap; max-height:50vh; overflow:auto; padding:15px; background:rgba(0,0,0,0.5); border: 1px solid rgba(0,242,255,0.1);">
+                ${typeof value === 'object' ? JSON.stringify(value, null, 2) : value}
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:15px;">
+                <button id="extract-btn" style="background:var(--theme-color); color:#000; border:none; padding:8px 20px; cursor:pointer; font-weight:bold; border-radius:4px;">EXTRACT</button>
+                <button id="close-preview-btn" style="background:transparent; color:var(--theme-color); border:1px solid var(--theme-color); padding:8px 20px; cursor:pointer; font-weight:bold; border-radius:4px;">CLOSE</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(previewOverlay);
+    document.getElementById('extract-btn').onclick = () => extractVaultData(cleanTitle, value);
+    document.getElementById('close-preview-btn').onclick = () => previewOverlay.remove();
 }
 
 async function openTerminalModal(permalink) {
@@ -3464,8 +4026,20 @@ function closeTerminalModal() {
     // Use centralized purge logic
     purgeTerminalMedia();
     
+    // --- UPDATED: Remove Controls ---
+    removeExplorerControls();
+    // --------------------------------
+    
     const output = document.getElementById('terminal-output');
-    if (output) output.innerHTML = "";
+    if (output) {
+        output.innerHTML = "";
+        output.style.display = "block"; // Restore visibility if it was hidden by Explorer
+    }
+    
+    // Remove Explorer Grid if exists
+    const grid = document.getElementById('explorer-grid');
+    if(grid) grid.remove();
+    isExplorerActive = false;
     
     if (isOracleTerminalActive) {
         const toolsContainer = document.getElementById('oracle-tools-container');
@@ -3620,6 +4194,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.value = "";
                 const event = new Event('input'); this.dispatchEvent(event);
                 
+                if (isExplorerActive) {
+                    if (rawInput === 'exit') {
+                        closeTerminalModal();
+                    } else if (rawInput.startsWith('/')) {
+                        // --- FIX: Allow Commands in Explorer ---
+                        const cmdParts = rawInput.split(' ');
+                        const baseCmd = cmdParts[0].toLowerCase();
+                        const args = cmdParts.slice(1).join(' ');
+                        
+                        if (CLI_COMMANDS[baseCmd]) {
+                            CLI_COMMANDS[baseCmd](args);
+                        } else {
+                            showZionMessage("COMMAND UNKNOWN");
+                        }
+                        
+                        // Clear filter and refresh grid to show new folders immediately
+                        renderExplorerGrid(""); 
+                    } else {
+                        // Normal Filter Behavior
+                        renderExplorerGrid(rawInput);
+                    }
+                    return;
+                }
+
                 if (isOracleTerminalActive) {
                     const output = document.getElementById('terminal-output');
                     if (rawInput === 'exit') { closeTerminalModal(); return; }
@@ -3726,18 +4324,25 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.key === 'Escape') closeTerminalModal();
         });
         
-        if (modal) {
+       if (modal) {
             modal.addEventListener('click', (e) => {
-                if (e.target.tagName !== 'BUTTON' && e.target.parentElement.tagName !== 'BUTTON') {
+                // Fixed: Using optional chaining to prevent the "tagName" null error
+                const isButton = e.target?.tagName === 'BUTTON';
+                const isParentButton = e.target?.parentElement?.tagName === 'BUTTON';
+
+                if (!isButton && !isParentButton) {
                     cmdInput.focus();
                 }
             });
         }
-    }
+    } // This closes the 'if (cmdInput)' block
+
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) closeTerminalModal();
+        if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+            closeTerminalModal();
+        }
     });
-});
+}); // This closes the 'DOMContentLoaded' block
 
 let settingsRainInterval = null;
 let settingsDrops = [];
@@ -3947,4 +4552,74 @@ function openNasa(mode) {
     } else if (mode === 'asteroids') {
         openAsteroidTerminal();
     }
+}
+
+// --- NEW EXPLORER CONTROLS (UPLOAD & PURGE) ---
+window.isExplorerDeleteMode = false;
+
+function initExplorerControls() {
+    const inputArea = document.querySelector('.terminal-input-area');
+    if (!inputArea || document.getElementById('explorer-controls-container')) return;
+
+    // Container to hold buttons
+    const container = document.createElement('div');
+    container.id = 'explorer-controls-container';
+    container.style.cssText = "position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: flex; gap: 8px; z-index: 20000;";
+
+    // Common Button Style
+    const btnStyle = "background: var(--theme-color); color: #000; border: none; padding: 6px 12px; font-family: 'Courier New', monospace; font-weight: bold; cursor: pointer; font-size: 12px; opacity: 0.9; border-radius: 4px; transition: all 0.2s ease;";
+
+    // 1. UPLOAD BUTTON
+    const upBtn = document.createElement('button');
+    upBtn.innerHTML = "⬆ UPLOAD";
+    upBtn.style.cssText = btnStyle;
+    upBtn.onmouseover = () => { upBtn.style.opacity = '1'; upBtn.style.boxShadow = "0 0 8px var(--theme-color)"; };
+    upBtn.onmouseout = () => { upBtn.style.opacity = '0.9'; upBtn.style.boxShadow = "none"; };
+    
+    upBtn.onclick = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        triggerVaultUpload(); 
+    };
+
+    // 2. PURGE BUTTON
+    const delBtn = document.createElement('button');
+    delBtn.innerHTML = "🗑 PURGE";
+    delBtn.style.cssText = btnStyle; 
+    
+    // Toggle Logic
+    delBtn.onclick = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        window.isExplorerDeleteMode = !window.isExplorerDeleteMode;
+        
+        if (window.isExplorerDeleteMode) {
+            delBtn.style.background = "#ff0000";
+            delBtn.style.color = "#fff";
+            delBtn.innerHTML = "✖ CANCEL";
+            showZionMessage("PURGE MODE ACTIVE\nCLICK FILE TO DELETE");
+        } else {
+            delBtn.style.background = "var(--theme-color)";
+            delBtn.style.color = "#000";
+            delBtn.innerHTML = "🗑 PURGE";
+        }
+    };
+
+    container.appendChild(upBtn);
+    container.appendChild(delBtn);
+
+    if (getComputedStyle(inputArea).position === 'static') {
+        inputArea.style.position = 'relative';
+    }
+    inputArea.appendChild(container);
+}
+
+function removeExplorerControls() {
+    const container = document.getElementById('explorer-controls-container');
+    const pathBar = document.getElementById('explorer-path-bar');
+    const storage = document.getElementById('storage-status-container');
+    
+    if (container) container.remove();
+    if (pathBar) pathBar.remove();
+    if (storage) storage.remove();
+    
+    window.isExplorerDeleteMode = false;
 }
