@@ -2,7 +2,8 @@
 <img width="3840" height="1904" alt="Root-Explorer" src="https://github.com/user-attachments/assets/10cdf6d3-5d8f-4a35-b973-a7c501c150ba" />
 <img width="3840" height="1909" alt="AI chat Expanded" src="https://github.com/user-attachments/assets/806ea96e-2894-4cb9-81de-0bf038cbd8b8" />
 <img width="3840" height="1906" alt="Retro Matrix Flash Games" src="https://github.com/user-attachments/assets/fb7f8d79-6918-429f-9d54-d42d9e916a79" />
-<img width="3840" height="1912" alt="Sidebar Navigation" src="https://github.com/user-attachments/assets/5d66ba98-9528-493a-bd7f-9e9022d2bae2" />
+<img width="2560" height="1243" alt="Screenshot 2026-01-09 131611" src="https://github.com/user-attachments/assets/4098c5d3-319a-41b0-8882-7a3538d65363" />
+
 
 
 
@@ -117,6 +118,7 @@ It is intended for personal use and customization. "There is no spoon."*
 ---
 
 **Operator:** *Link established. You are free to move.*
+
 
 
 
