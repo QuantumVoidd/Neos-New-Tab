@@ -3033,20 +3033,15 @@ function renderExplorerGrid(filter = "") {
     grid.innerHTML = "";
 
     // --- 1. CRITICAL STARTUP CHECK ---
-    // If the stack is empty (race condition on load), stop immediately.
-    // This prevents the code from trying to read undefined data.
     if (!explorerStack || explorerStack.length === 0) {
-        // Try to recover from cache if available
         if (typeof explorerDataCache !== 'undefined' && explorerDataCache) {
             explorerStack = [explorerDataCache];
             explorerPath = ["root"];
         } else {
-            // Data is truly not ready. Render loading state and EXIT.
             grid.innerHTML = `<div class="explorer-empty" style="grid-column:1/-1; padding:20px; text-align:center; opacity:0.7;">INITIALIZING STORAGE STREAM...</div>`;
             return; 
         }
     }
-    // ------------------------------------------------
 
     // 2. Render Path Breadcrumbs
     pathBar.innerHTML = explorerPath.map((p, i) => 
@@ -3057,12 +3052,10 @@ function renderExplorerGrid(filter = "") {
     let currentData = explorerStack[viewDepth];
 
     // --- 3. DATA INTEGRITY CHECK ---
-    // Ensure currentData is a valid object before using Object.keys()
     if (!currentData || typeof currentData !== 'object') {
         console.warn("Explorer data corrupted. Defaulting to empty object.");
         currentData = {}; 
     }
-    // -------------------------------------
 
     const isArray = Array.isArray(currentData);
 
@@ -3079,7 +3072,7 @@ function renderExplorerGrid(filter = "") {
         grid.appendChild(backNode);
     }
 
-    // 5. Generate Keys (Now safe because currentData is guaranteed to be an object)
+    // 5. Generate Keys
     let keys = isArray ? currentData.map((_, i) => i) : Object.keys(currentData);
     
     // Empty Folder Message
@@ -3105,24 +3098,28 @@ function renderExplorerGrid(filter = "") {
         }
         if (displayLabel.length > 22) displayLabel = displayLabel.substring(0, 19) + '...';
 
-        // --- ICON LOGIC ---
+        // --- ICON & TYPE LOGIC (UPDATED) ---
         let icon = '📄'; 
+        let fileType = 'text'; // Default type
+        
         if (isFolder) {
             icon = '📁';
+            fileType = 'folder';
         } else if (isArray && typeof value === 'string' && value.startsWith('http')) {
             icon = '🔗';
+            fileType = 'link';
         } else {
             const lowerKey = String(key).toLowerCase();
             if (lowerKey.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/)) {
-                icon = '🖼️';
+                icon = '🖼️'; fileType = 'image';
             } else if (lowerKey.match(/\.(mp4|webm|ogg|mov|avi|mkv)$/)) {
-                icon = '🎬';
+                icon = '🎬'; fileType = 'video';
             } else if (lowerKey.match(/\.(mp3|wav|aac|flac|m4a)$/)) {
-                icon = '🎵';
+                icon = '🎵'; fileType = 'audio';
             } else if (lowerKey.match(/\.(zip|rar|7z|tar|gz)$/)) {
-                icon = '📦';
+                icon = '📦'; fileType = 'archive';
             } else if (lowerKey.match(/\.(html|htm|js|css|json|py|cpp|txt)$/)) {
-                icon = '📜';
+                icon = '📜'; fileType = 'code';
             }
         }
 
@@ -3159,37 +3156,23 @@ function renderExplorerGrid(filter = "") {
             };
         }
 
-        // --- CLICK HANDLER ---
+        // --- CLICK HANDLER (Updated to use fileType) ---
         node.onclick = () => {
             if (window.isExplorerDeleteMode) {
                 if (confirm(`PURGE: ${displayLabel}?`)) {
                     if (isArray) currentData.splice(key, 1);
                     else delete currentData[key];
 
-                    // Persist Changes
                     if (viewDepth === 0) {
-                        chrome.storage.local.remove(key, () => {
-                            renderExplorerGrid(); 
-                            updateStorageUI();
-                        });
+                        chrome.storage.local.remove(key, () => { renderExplorerGrid(); updateStorageUI(); });
                     } else {
                         const parentData = explorerStack[viewDepth - 1];
                         let folderKey = null;
-                        for (const k in parentData) {
-                            if (parentData[k] === currentData) { folderKey = k; break; }
-                        }
+                        for (const k in parentData) { if (parentData[k] === currentData) { folderKey = k; break; } }
                         
-                        if (folderKey) {
-                            chrome.storage.local.set({ [folderKey]: currentData }, () => { renderExplorerGrid(); updateStorageUI(); });
-                        } else if (explorerPath[viewDepth] === 'userNavLinks') {
-                            chrome.storage.local.set({ userNavLinks: currentData }, () => { renderExplorerGrid(); updateStorageUI(); });
-                        } else {
-                            chrome.storage.local.get(null, (updated) => {
-                                explorerDataCache = updated;
-                                explorerStack[0] = updated;
-                                renderExplorerGrid();
-                            });
-                        }
+                        if (folderKey) chrome.storage.local.set({ [folderKey]: currentData }, () => { renderExplorerGrid(); updateStorageUI(); });
+                        else if (explorerPath[viewDepth] === 'userNavLinks') chrome.storage.local.set({ userNavLinks: currentData }, () => { renderExplorerGrid(); updateStorageUI(); });
+                        else chrome.storage.local.get(null, (updated) => { explorerDataCache = updated; explorerStack[0] = updated; renderExplorerGrid(); });
                     }
                 }
             } else {
@@ -3200,8 +3183,8 @@ function renderExplorerGrid(filter = "") {
                 } else if (typeof value === 'string' && value.startsWith('http')) {
                     window.open(value, '_blank');
                 } else {
-                    const type = icon === '🖼️' ? 'image' : 'text';
-                    showExplorerPreview(key, value, type);
+                    // Send the detected fileType (video, audio, etc) to the previewer
+                    showExplorerPreview(key, value, fileType);
                 }
             }
         };
@@ -3302,27 +3285,66 @@ function moveFileToFolder(fileKey, folderKey) {
 
 function showExplorerPreview(key, value, type) {
     const previewOverlay = document.createElement('div');
-    previewOverlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:11000; display:flex; align-items:center; justify-content:center; backdrop-filter: blur(8px);";
+    // Darker background (0.95) and blur for better focus on media
+    previewOverlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:11000; display:flex; align-items:center; justify-content:center; backdrop-filter: blur(5px);";
     
     const cleanTitle = (key.startsWith('vault_') || key.startsWith('folder_')) 
         ? key.split('_').slice(2).join('_') : key;
 
+    // --- NEW: CONTENT RENDERING LOGIC ---
+    let contentHtml = '';
+    
+    if (type === 'image') {
+        contentHtml = `
+            <div style="display:flex; justify-content:center; align-items:center; width:100%; height:100%; min-height:300px; overflow:hidden;">
+                <img src="${value}" style="max-width:100%; max-height:60vh; object-fit:contain; border: 1px solid var(--theme-color); box-shadow: 0 0 15px rgba(0,242,255,0.2);">
+            </div>`;
+    } else if (type === 'video') {
+        contentHtml = `
+            <div style="display:flex; justify-content:center; align-items:center; width:100%; height:100%; min-height:300px;">
+                <video src="${value}" controls autoplay style="max-width:100%; max-height:60vh; border: 1px solid var(--theme-color); box-shadow: 0 0 15px rgba(0,242,255,0.2);"></video>
+            </div>`;
+    } else if (type === 'audio') {
+        contentHtml = `
+            <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; width:100%; padding: 40px; border: 1px solid rgba(0,242,255,0.1); background:rgba(0,0,0,0.5);">
+                <div style="font-size: 3rem; margin-bottom: 20px;">🎵</div>
+                <audio src="${value}" controls style="width:100%; max-width:500px;"></audio>
+            </div>`;
+    } else {
+        // Default Text/Code View
+        const textContent = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value).replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        contentHtml = `
+            <div style="color:var(--theme-color); font-family:monospace; white-space:pre-wrap; max-height:50vh; overflow:auto; padding:15px; background:rgba(0,0,0,0.5); border: 1px solid rgba(0,242,255,0.1); width: 100%;">
+                ${textContent}
+            </div>`;
+    }
+    // ------------------------------------
+
     previewOverlay.innerHTML = `
-        <div style="background:#000; padding:30px; border: 1px solid var(--theme-color); width: 80vw; max-width: 800px; display: flex; flex-direction: column; gap: 20px; border-radius: 4px; box-shadow: 0 0 20px rgba(0,242,255,0.2);">
-            <div style="font-family:'Orbitron'; color:var(--theme-color); border-bottom: 1px solid rgba(0,242,255,0.3); padding-bottom: 10px; font-size: 0.9rem;">
-                FILE_DATA: ${cleanTitle.toUpperCase()}
+        <div style="background:#000; padding:20px; border: 1px solid var(--theme-color); width: 85vw; max-width: 900px; display: flex; flex-direction: column; gap: 15px; border-radius: 4px; box-shadow: 0 0 30px rgba(0,242,255,0.15);">
+            <div style="font-family:'Orbitron'; color:var(--theme-color); border-bottom: 1px solid rgba(0,242,255,0.3); padding-bottom: 10px; font-size: 1rem; display:flex; justify-content:space-between; align-items:center;">
+                <span>FILE: ${cleanTitle.toUpperCase()}</span>
+                <span style="font-size:0.7em; opacity:0.7; border:1px solid var(--theme-color); padding:2px 6px; border-radius:2px;">${type ? type.toUpperCase() : 'UNKNOWN'}</span>
             </div>
-            <div style="color:var(--theme-color); font-family:monospace; white-space:pre-wrap; max-height:50vh; overflow:auto; padding:15px; background:rgba(0,0,0,0.5); border: 1px solid rgba(0,242,255,0.1);">
-                ${typeof value === 'object' ? JSON.stringify(value, null, 2) : value}
-            </div>
-            <div style="display:flex; justify-content:flex-end; gap:15px;">
-                <button id="extract-btn" style="background:var(--theme-color); color:#000; border:none; padding:8px 20px; cursor:pointer; font-weight:bold; border-radius:4px;">EXTRACT</button>
-                <button id="close-preview-btn" style="background:transparent; color:var(--theme-color); border:1px solid var(--theme-color); padding:8px 20px; cursor:pointer; font-weight:bold; border-radius:4px;">CLOSE</button>
+            
+            ${contentHtml}
+            
+            <div style="display:flex; justify-content:flex-end; gap:15px; margin-top:10px;">
+                <button id="extract-btn" style="background:var(--theme-color); color:#000; border:none; padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">DOWNLOAD</button>
+                <button id="close-preview-btn" style="background:transparent; color:var(--theme-color); border:1px solid var(--theme-color); padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">CLOSE</button>
             </div>
         </div>
     `;
     
     document.body.appendChild(previewOverlay);
+    
+    // Add hover effects for buttons
+    const btns = previewOverlay.querySelectorAll('button');
+    btns.forEach(btn => {
+        btn.onmouseover = () => { btn.style.boxShadow = "0 0 10px var(--theme-color)"; btn.style.opacity = "1"; };
+        btn.onmouseout = () => { btn.style.boxShadow = "none"; btn.style.opacity = "0.9"; };
+    });
+
     document.getElementById('extract-btn').onclick = () => extractVaultData(cleanTitle, value);
     document.getElementById('close-preview-btn').onclick = () => previewOverlay.remove();
 }
