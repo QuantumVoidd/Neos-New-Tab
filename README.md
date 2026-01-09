@@ -3,6 +3,10 @@ Neo's New Tab is a highly customizable, Matrix-themed browser extension that tra
 
 
 <img width="3832" height="1913" alt="Screenshot 2026-01-05 125347" src="https://github.com/user-attachments/assets/86e363c3-2212-4964-8051-863ec57a2ab4" />
+<img width="3840" height="1904" alt="Root-Explorer" src="https://github.com/user-attachments/assets/10cdf6d3-5d8f-4a35-b973-a7c501c150ba" />
+<img width="3840" height="1909" alt="AI chat Expanded" src="https://github.com/user-attachments/assets/806ea96e-2894-4cb9-81de-0bf038cbd8b8" />
+<img width="3840" height="1906" alt="Retro Matrix Flash Games" src="https://github.com/user-attachments/assets/fb7f8d79-6918-429f-9d54-d42d9e916a79" />
+<img width="3840" height="1906" alt="Retro Matrix Flash Games" src="https://github.com/user-attachments/assets/d79212d7-2a27-4144-b714-1ab354b9631a" />
 
 
 
@@ -72,6 +76,7 @@ Atmosphere & Customization
 \## ⚠️ Disclaimer
 
 This is a non-commercial fan project created for aesthetic purposes. It is not affiliated with, endorsed by, or sponsored by Warner Bros. or the creators of The Matrix franchise.
+
 
 
 
