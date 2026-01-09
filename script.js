@@ -4369,57 +4369,6 @@ document.addEventListener('DOMContentLoaded', () => {
 let settingsRainInterval = null;
 let settingsDrops = [];
 
-function initSettingsRain() {
-    const canvas = document.getElementById('settings-rain-canvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = canvas.offsetWidth * dpr;
-    canvas.height = canvas.offsetHeight * dpr;
-    ctx.scale(dpr, dpr);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const columnSpacing = fontSize * 0.6;
-    const columns = Math.floor(canvas.offsetWidth / columnSpacing);
-    settingsDrops = Array(columns).fill(0).map(() => Math.floor(Math.random() * (canvas.height / fontSize)));
-    if (settingsRainInterval) clearInterval(settingsRainInterval);
-    drawSettingsRain(); 
-    settingsRainInterval = setInterval(drawSettingsRain, rainSpeed); 
-}
-
-function drawSettingsRain() {
-    const canvas = document.getElementById('settings-rain-canvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = "rgba(0, 0, 0, 0.15)"; 
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = rainColor; 
-    ctx.font = fontSize + "px 'Courier New', monospace";
-    const columnSpacing = fontSize * 0.6;
-    for (let i = 0; i < settingsDrops.length; i++) {
-        const text = MATRIX_ALPHABET.charAt(Math.floor(Math.random() * MATRIX_ALPHABET.length));
-        ctx.globalAlpha = 0.2 + (Math.random() * 0.5); 
-        ctx.fillText(text, i * columnSpacing, settingsDrops[i] * fontSize);
-        if (settingsDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-            settingsDrops[i] = 0;
-        }
-        settingsDrops[i]++;
-    }
-    ctx.globalAlpha = 1.0; 
-}
-
-const settingsIconContainer = document.getElementById('settings-icon-container');
-if (settingsIconContainer) {
-    settingsIconContainer.addEventListener('click', () => {
-        if (!modal.classList.contains('hidden')) {
-            initSettingsRain();
-            window.addEventListener('resize', initSettingsRain);
-        } else {
-            if (settingsRainInterval) clearInterval(settingsRainInterval);
-            window.removeEventListener('resize', initSettingsRain);
-        }
-    });
-}
-
 function initSidebarRain(sidebarId) {
     const sidebar = document.getElementById(sidebarId);
     if (!sidebar) return;
@@ -4429,48 +4378,45 @@ function initSidebarRain(sidebarId) {
     if (!canvas) {
         canvas = document.createElement('canvas');
         canvas.className = 'matrix-canvas';
-        // Insert before content so it stays in the background
         sidebar.insertBefore(canvas, sidebar.firstChild); 
     }
 
     const ctx = canvas.getContext('2d');
+    const fontSize = 16; 
     
-    // 2. Configuration
-    // Removed the "fat" characters so all columns are the same width
-    const chars = "0123456789ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜｦﾝ";
-    const fontSize = 12;
     let columns = 0;
     let drops = [];
 
-    // Helper to reset drops with random negative offsets
     const initDrops = () => {
-        columns = Math.floor(canvas.width / fontSize);
+        // Calculate columns based on visual width, not physical pixels
+        columns = Math.floor(sidebar.offsetWidth / fontSize);
         drops = [];
         for (let i = 0; i < columns; i++) {
-            // Random start between -100 and 0
-            // This spreads them out vertically above the screen so they don't fall as a line
             drops[i] = Math.floor(Math.random() * -50); 
         }
     };
 
-    // 3. Resize Logic
+    // 2. High-DPI Resize Logic (The "Blurry Font" Fix)
     const resizeCanvas = () => {
-        canvas.width = sidebar.offsetWidth;
-        canvas.height = sidebar.offsetHeight;
+        const dpr = window.devicePixelRatio || 1;
+        
+        // Set physical pixel size (higher res)
+        canvas.width = sidebar.offsetWidth * dpr;
+        canvas.height = sidebar.offsetHeight * dpr;
+        
+        // Normalize coordinate system
+        ctx.scale(dpr, dpr);
+        
         initDrops();
     };
     
-    // Initial setup
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    // 4. Get Settings Inputs
     const speedSlider = document.getElementById('speed-slider');
     const colorPicker = document.getElementById('color-picker');
 
-    // 5. The Animation Loop
     function draw() {
-        // --- SYNC COLOR ---
         let currentColor = '#0F0';
         if (colorPicker) {
             currentColor = colorPicker.value;
@@ -4478,29 +4424,35 @@ function initSidebarRain(sidebarId) {
             currentColor = getComputedStyle(document.documentElement).getPropertyValue('--theme-color').trim();
         }
 
-        // Fade out previous frame (Trail Effect)
-        ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Fade out previous frame (Using 0.15 to match main rain exactly)
+        ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+        // Clear based on visual dimensions
+        ctx.fillRect(0, 0, sidebar.offsetWidth, sidebar.offsetHeight);
 
-        // Draw new characters
+        const fontFamily = getFontFamilyForAlphabet(isMathSymbols);
+        // Explicitly set font weight to normal/400 to prevent bolding
+        ctx.font = `400 ${fontSize}px ${fontFamily}`;
         ctx.fillStyle = currentColor;
-        ctx.font = `${fontSize}px monospace`;
 
         for (let i = 0; i < drops.length; i++) {
-            // Only draw if the drop is actually on screen (y > 0)
             if (drops[i] * fontSize > 0) {
-                const text = chars.charAt(Math.floor(Math.random() * chars.length));
+                const text = currentAlphabet.charAt(Math.floor(Math.random() * currentAlphabet.length));
+                
+                // Match opacity variance
+                ctx.globalAlpha = 0.8 + (Math.random() * 0.2);
+                
                 ctx.fillText(text, i * fontSize, drops[i] * fontSize);
             }
 
-            // Reset logic: If it hits bottom, reset to top (0)
-            if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+            // Random reset logic
+            if (drops[i] * fontSize > sidebar.offsetHeight && Math.random() > 0.975) {
                 drops[i] = 0;
             }
             drops[i]++;
         }
+        
+        ctx.globalAlpha = 1.0; 
 
-        // --- SYNC SPEED ---
         let speedVal = speedSlider ? parseInt(speedSlider.value) : 35;
         let timeout = Math.max(10, 120 - speedVal); 
 

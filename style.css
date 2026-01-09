@@ -2045,7 +2045,7 @@ div[class*="puter-alert"],
     height: 0 !important;
 }
 
-/* --- SLIDING SIDEBARS (NO GLOW LEAK) --- */
+/* --- SLIDING SIDEBARS (FIXED EDGES) --- */
 .cyber-sidebar {
     position: fixed;
     top: 50%;
@@ -2067,7 +2067,7 @@ div[class*="puter-alert"],
     filter: drop-shadow(0 0 5px var(--theme-color)); 
 }
 
-/* --- THE SHAPE CONTAINER (Green Border) --- */
+/* --- THE SHAPE CONTAINER (Green Frame Layer) --- */
 .cyber-sidebar::before {
     content: '';
     position: absolute;
@@ -2076,68 +2076,87 @@ div[class*="puter-alert"],
     width: 100%;
     height: 100%;
     background: var(--theme-color); 
-    /* Changed 8% -> 15% and 92% -> 85% for steeper angle */
-    clip-path: polygon(0% 0%, 100% 15%, 100% 85%, 0% 100%);
     z-index: -2;
+    /* Default Shape (Left Sidebar) */
+    clip-path: polygon(0% 0%, 100% 15%, 100% 85%, 0% 100%);
 }
 
-/* --- THE INNER BLACK BODY (Solid Black) --- */
+/* --- THE INNER BLACK BODY (Cover Layer) --- */
 .cyber-sidebar::after {
     content: '';
     position: absolute;
     top: 3px; 
-    left: 3px;
-    width: calc(100% - 6px);
     height: calc(100% - 6px);
     background: #000; 
-    /* Changed 8% -> 15% and 92% -> 85% */
-    clip-path: polygon(0% 0%, 100% 15%, 100% 85%, 0% 100%);
     z-index: -1;
+    /* Default Shape (Left Sidebar) */
+    clip-path: polygon(0% 0%, 100% 15%, 100% 85%, 0% 100%);
+    
+    /* LEFT SIDEBAR DEFAULT: 
+       Touch Left Edge (0), Leave 3px Gap on Right */
+    left: 0;
+    width: calc(100% - 3px);
 }
 
 /* --- MATRIX RAIN CANVAS --- */
 .matrix-canvas {
     position: absolute;
     top: 3px !important;
-    left: 3px !important;
-    width: calc(100% - 6px) !important;
     height: calc(100% - 6px) !important;
     z-index: 1; 
     opacity: 0.3; 
     pointer-events: none; 
-    /* Changed 8% -> 15% and 92% -> 85% */
+    
+    /* Match Left Sidebar Default */
+    left: 0 !important;
+    width: calc(100% - 3px) !important;
     clip-path: polygon(0% 0%, 100% 15%, 100% 85%, 0% 100%);
 }
 
-/* --- LEFT SIDEBAR (Offset increased to -230px) --- */
+/* --- LEFT SIDEBAR POSITION --- */
 #sidebar-left {
-    /* Pushed further back to hide the 5px glow */
     left: -230px; 
 }
-
 #sidebar-left:hover {
     left: 0 !important;
 }
 
-/* --- RIGHT SIDEBAR (Offset increased to -230px) --- */
+/* --- RIGHT SIDEBAR OVERRIDES (MANUAL FIX) --- */
 #sidebar-right {
     right: -230px; 
 }
 
-/* Mirror effects for right side */
+/* 1. Reset Transforms (Stop using scaleX) */
 #sidebar-right::before,
 #sidebar-right::after {
-    transform: scaleX(-1); 
+    transform: none !important; 
 }
 
+/* 2. Invert the Polygon Shape manually for Right Side */
+#sidebar-right::before,
+#sidebar-right::after {
+    clip-path: polygon(0% 15%, 100% 0%, 100% 100%, 0% 85%) !important;
+}
+
+/* 3. Fix Black Cover Position for Right Side 
+   (Touch Right Edge (0), Leave 3px Gap on Left) */
+#sidebar-right::after {
+    left: auto !important;
+    right: 0 !important; 
+    width: calc(100% - 3px);
+}
+
+/* 4. Fix Matrix Rain Position for Right Side */
 #sidebar-right .matrix-canvas {
-    transform: none; 
-    /* Adjusted to match the new steeper angle on the right side */
-    clip-path: polygon(0% 15%, 100% 0%, 100% 100%, 0% 85%);
+    transform: none !important;
+    left: auto !important;
+    right: 0 !important;
+    width: calc(100% - 3px) !important;
+    clip-path: polygon(0% 15%, 100% 0%, 100% 100%, 0% 85%) !important;
 }
 
 #sidebar-right .sidebar-content {
-    transform: scaleX(1); 
+    transform: none !important;
 }
 
 #sidebar-right:hover {
@@ -2187,11 +2206,10 @@ div[class*="puter-alert"],
     transform: scale(1.02);
 }
 
-/* --- TRIGGER ZONE (REDUCED) --- */
+/* --- TRIGGER ZONE --- */
 .sidebar-trigger {
     position: absolute;
     top: 0;
-    /* Reduced width to prevent overlapping widgets */
     width: 60px; 
     height: 100%;
     z-index: 9999;
@@ -2199,11 +2217,6 @@ div[class*="puter-alert"],
     cursor: pointer;
 }
 
-/* CALCULATION:
-   Sidebar is at -230px. Its edge is at -30px (relative to screen).
-   Setting right: -50px pushes the trigger 20px onto the screen (-30 + 50 = 20).
-   This creates a 20px "safe zone" for activation without blocking clicks.
-*/
 #sidebar-left .sidebar-trigger { 
     right: -50px; 
 }
