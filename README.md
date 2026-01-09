@@ -62,7 +62,7 @@ Powered by **Puter.js**, the Oracle is a real-time AI interface capable of answe
 * **Dual-Core Architecture:** Primary intelligence is driven by Puter.js for high-fidelity responses.
 * **Robust Fallback System:** Integrated `oracle_engine.js` ensures 100% uptime by automatically rerouting failed queries to **Pollinations AI**. If the main link is severed, the backup system engages instantly.
 * **Image Generation:** Type `/image [prompt]` or `draw me a...` to generate AI art directly in the feed.
-* **Personality:** Responds with cryptic, Matrix-themed wisdom.
+* **Personality:** Roleplays as The Oracle, Responds with cryptic, Matrix-themed wisdom.
 
 ### 📡 Network & Tools
 * **Zion RSS Feed:** Live Reddit feed (configurable subreddits) with "Digital Decryption" text effects on hover.
@@ -119,6 +119,7 @@ It is intended for personal use and customization. "There is no spoon."*
 ---
 
 **Operator:** *Link established. You are free to move.*
+
 
 
 
