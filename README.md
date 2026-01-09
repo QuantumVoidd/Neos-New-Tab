@@ -86,7 +86,7 @@ Type these commands into the main input bar:
 | `/space` | Launch NASA Solar System Viewer |
 | `/play zion` | Launch "Citizens of Zion" game |
 | `/reset` | Factory reset all settings |
-
+| `/image [prompt]` | Generate an AI image via Oracle |
 ---
 
 ## 🎛️ Customization
@@ -117,6 +117,7 @@ It is intended for personal use and customization. "There is no spoon."*
 ---
 
 **Operator:** *Link established. You are free to move.*
+
 
 
 
