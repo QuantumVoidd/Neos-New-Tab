@@ -1136,6 +1136,10 @@ const CLI_COMMANDS = {
     '/zion': () => { openCitizensOfZionGame(); },
     '/pandemonium': () => { openMatrixPandemoniumGame(); },
     '/dock': () => { openDockDefenceGame(); },
+    '/overloaded': () => { openMatrixOverloadedGame(); },
+    '/rampage2': () => { openMatrixRampage2Game(); },
+    '/bullet': () => { openMatrixBulletTimeGame(); },
+    '/fighter': () => { openMatrixFighterGame(); },
     '/play': (gameName) => {
         if(!gameName) return showZionMessage("USAGE: /play [zion|rampage|tunnel]");
         const target = gameName.toLowerCase().trim();
@@ -1149,6 +1153,14 @@ const CLI_COMMANDS = {
             openMatrixPandemoniumGame();
         } else if (target === 'dock') {
             openDockDefenceGame();
+        } else if (target === 'overloaded') {
+            openMatrixOverloadedGame();
+        } else if (target === 'rampage2') {
+            openMatrixRampage2Game();
+        } else if (target === 'bullettime') {
+            openMatrixBulletTimeGame();
+        } else if (target === 'matrixfighter') {
+            openMatrixFighterGame();
         } else {
             showZionMessage("ERROR: GAME '" + gameName + "' NOT FOUND.");
         }
@@ -3783,8 +3795,8 @@ async function openMatrixRampageGame() {
     await streamText(output, "> LOADING COMBAT TRAINING PROGRAM: RELOADED...\n> ACCESSING MAINFRAME...\n");
 
     const frame = createMediaFrame(); 
-    frame.style.width = "101%";
-    frame.style.maxWidth = "103%";
+    frame.style.width = "100%";
+    frame.style.maxWidth = "100%";
     frame.style.boxSizing = "border-box";
     frame.style.marginTop = "5px"; 
     frame.style.marginBottom = "5px";
@@ -3810,6 +3822,8 @@ async function openMatrixRampageGame() {
     iframe.style.display = "block";
     iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
     
+    addFullscreenOverlay(wrapper, iframe);
+
     wrapper.appendChild(iframe);
     frame.appendChild(wrapper);
     output.appendChild(frame);
@@ -3842,8 +3856,8 @@ async function openMatrixPandemoniumGame() {
     await streamText(output, "> LOADING COMBAT TRAINING PROGRAM: RELOADED...\n> ACCESSING MAINFRAME...\n");
 
     const frame = createMediaFrame(); 
-    frame.style.width = "101%";
-    frame.style.maxWidth = "103%";
+    frame.style.width = "100%";
+    frame.style.maxWidth = "100%";
     frame.style.boxSizing = "border-box";
     frame.style.marginTop = "5px"; 
     frame.style.marginBottom = "5px";
@@ -3868,7 +3882,9 @@ async function openMatrixPandemoniumGame() {
     iframe.style.border = "none";
     iframe.style.display = "block";
     iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
-    
+
+    addFullscreenOverlay(wrapper, iframe);
+
     wrapper.appendChild(iframe);
     frame.appendChild(wrapper);
     output.appendChild(frame);
@@ -3900,8 +3916,8 @@ async function openMatrixPandemoniumGame() {
     await streamText(output, "> LOADING COMBAT TRAINING PROGRAM: RELOADED...\n> ACCESSING MAINFRAME...\n");
 
     const frame = createMediaFrame(); 
-    frame.style.width = "101%";
-    frame.style.maxWidth = "103%";
+    frame.style.width = "100%";
+    frame.style.maxWidth = "100%";
     frame.style.boxSizing = "border-box";
     frame.style.marginTop = "5px"; 
     frame.style.marginBottom = "5px";
@@ -3926,7 +3942,10 @@ async function openMatrixPandemoniumGame() {
     iframe.style.border = "none";
     iframe.style.display = "block";
     iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
-    
+
+    addFullscreenOverlay(wrapper, iframe);
+
+
     wrapper.appendChild(iframe);
     frame.appendChild(wrapper);
     output.appendChild(frame);
@@ -3985,7 +4004,277 @@ async function openDockDefenceGame() {
     iframe.style.border = "none";
     iframe.style.display = "block";
     iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
+
+    addFullscreenOverlay(wrapper, iframe);
+
+    wrapper.appendChild(iframe);
+    frame.appendChild(wrapper);
+    output.appendChild(frame);
+
+    input.focus();
+    await streamText(output, `> PROGRAM READY. FREE YOUR MIND.\n`);
+}
+
+async function openMatrixOverloadedGame() {
+    const modal = document.getElementById('matrix-modal');
+    const output = document.getElementById('terminal-output');
+    const input = document.getElementById('terminal-cmd-input');
+
+    if (!modal || !output || !input) return;
     
+    input.placeholder = "Type 'exit' to close...";
+
+    // Purge previous
+    purgeTerminalMedia();
+
+    modal.classList.remove('hidden');
+    output.innerHTML = "";
+    input.value = "";
+    terminalCurrentData = null;
+    
+    initTerminalRain();
+    window.addEventListener('resize', initTerminalRain);
+    initTerminalCursor();
+    
+    await streamText(output, "> LOADING COMBAT TRAINING PROGRAM: RELOADED...\n> ACCESSING MAINFRAME...\n");
+
+    const frame = createMediaFrame(); 
+    frame.style.width = "100%";
+    frame.style.maxWidth = "100%";
+    frame.style.boxSizing = "border-box";
+    frame.style.marginTop = "5px"; 
+    frame.style.marginBottom = "5px";
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = 'media-wrapper';
+    wrapper.style.position = 'relative'; 
+    wrapper.style.width = '100%';
+    wrapper.style.height = '61vh'; // Matching our perfected height
+    wrapper.style.minHeight = '300px'; 
+    wrapper.style.backgroundColor = '#000'; 
+    wrapper.style.overflow = 'hidden'; // Prevents bottom leaking
+    wrapper.style.borderRadius = '2px';
+
+    const iframe = document.createElement('iframe');
+    
+    // --- LOCAL LINK FIX ---
+    iframe.src = chrome.runtime.getURL("Games/overloaded.html");
+    
+    iframe.style.width = "100%";
+    iframe.style.height = "103%";
+    iframe.style.border = "none";
+    iframe.style.display = "block";
+    iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
+
+    addFullscreenOverlay(wrapper, iframe);
+
+    wrapper.appendChild(iframe);
+    frame.appendChild(wrapper);
+    output.appendChild(frame);
+
+    input.focus();
+    await streamText(output, `> PROGRAM READY. FREE YOUR MIND.\n`);
+}
+
+async function openMatrixRampage2Game() {
+    const modal = document.getElementById('matrix-modal');
+    const output = document.getElementById('terminal-output');
+    const input = document.getElementById('terminal-cmd-input');
+
+    if (!modal || !output || !input) return;
+    
+    input.placeholder = "Type 'exit' to close...";
+    purgeTerminalMedia();
+
+    modal.classList.remove('hidden');
+    output.innerHTML = "";
+    input.value = "";
+    terminalCurrentData = null;
+    
+    initTerminalRain();
+    window.addEventListener('resize', initTerminalRain);
+    initTerminalCursor();
+    
+    await streamText(output, "> LOADING COMBAT TRAINING PROGRAM: RAMPAGE V2...\n> ACCESSING MAINFRAME...\n");
+
+    // --- CROP CONFIGURATION ---
+    // This controls how much is cut off from the BOTTOM.
+    // Increase if you still see the ad (e.g., "80px").
+    const cutAmount = "35px"; 
+    // --------------------------
+
+    const frame = createMediaFrame(); 
+    frame.style.width = "100%";
+    frame.style.maxWidth = "100%";
+    frame.style.boxSizing = "border-box";
+    frame.style.marginTop = "5px"; 
+    frame.style.marginBottom = "5px";
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = 'media-wrapper';
+    wrapper.style.position = 'relative'; 
+    wrapper.style.width = '100%';
+    wrapper.style.height = '61vh'; 
+    wrapper.style.minHeight = '300px'; 
+    wrapper.style.backgroundColor = '#000'; 
+    wrapper.style.overflow = 'hidden'; 
+    wrapper.style.borderRadius = '2px';
+
+    const iframe = document.createElement('iframe');
+    iframe.src = chrome.runtime.getURL("Games/rampage2.html");
+    
+    // --- THE BOTTOM CROP LOGIC ---
+    iframe.style.width = "100%";
+    
+    // 1. Make the iframe taller (Game + Ad area)
+    iframe.style.height = `calc(100% + ${cutAmount})`; 
+    
+    // 2. Ensure the top stays aligned (The extra height spills off the bottom)
+    iframe.style.marginTop = "0px";
+    iframe.style.border = "none";
+    iframe.style.display = "block";
+    iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
+
+    addFullscreenOverlay(wrapper, iframe);
+
+    wrapper.appendChild(iframe);
+    frame.appendChild(wrapper);
+    output.appendChild(frame);
+
+    input.focus();
+    await streamText(output, `> PROGRAM READY. FREE YOUR MIND.\n`);
+}
+
+async function openMatrixBulletTimeGame() {
+    const modal = document.getElementById('matrix-modal');
+    const output = document.getElementById('terminal-output');
+    const input = document.getElementById('terminal-cmd-input');
+
+    if (!modal || !output || !input) return;
+    
+    input.placeholder = "Type 'exit' to close...";
+    purgeTerminalMedia();
+
+    modal.classList.remove('hidden');
+    output.innerHTML = "";
+    input.value = "";
+    terminalCurrentData = null;
+    
+    initTerminalRain();
+    window.addEventListener('resize', initTerminalRain);
+    initTerminalCursor();
+    
+    await streamText(output, "> LOADING COMBAT TRAINING PROGRAM: RAMPAGE V2...\n> ACCESSING MAINFRAME...\n");
+
+    // --- CROP CONFIGURATION ---
+    // This controls how much is cut off from the BOTTOM.
+    // Increase if you still see the ad (e.g., "80px").
+    const cutAmount = "35px"; 
+    // --------------------------
+
+    const frame = createMediaFrame(); 
+    frame.style.width = "100%";
+    frame.style.maxWidth = "100%";
+    frame.style.boxSizing = "border-box";
+    frame.style.marginTop = "5px"; 
+    frame.style.marginBottom = "5px";
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = 'media-wrapper';
+    wrapper.style.position = 'relative'; 
+    wrapper.style.width = '100%';
+    wrapper.style.height = '61vh'; 
+    wrapper.style.minHeight = '300px'; 
+    wrapper.style.backgroundColor = '#000'; 
+    wrapper.style.overflow = 'hidden'; 
+    wrapper.style.borderRadius = '2px';
+
+    const iframe = document.createElement('iframe');
+    iframe.src = chrome.runtime.getURL("Games/bullettime.html");
+    
+    // --- THE BOTTOM CROP LOGIC ---
+    iframe.style.width = "100%";
+    
+    // 1. Make the iframe taller (Game + Ad area)
+    iframe.style.height = `calc(100% + ${cutAmount})`; 
+    
+    // 2. Ensure the top stays aligned (The extra height spills off the bottom)
+    iframe.style.marginTop = "0px";
+    iframe.style.border = "none";
+    iframe.style.display = "block";
+    iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
+
+    addFullscreenOverlay(wrapper, iframe);
+
+    wrapper.appendChild(iframe);
+    frame.appendChild(wrapper);
+    output.appendChild(frame);
+
+    input.focus();
+    await streamText(output, `> PROGRAM READY. FREE YOUR MIND.\n`);
+}
+
+async function openMatrixFighterGame() {
+    const modal = document.getElementById('matrix-modal');
+    const output = document.getElementById('terminal-output');
+    const input = document.getElementById('terminal-cmd-input');
+
+    if (!modal || !output || !input) return;
+    
+    input.placeholder = "Type 'exit' to close...";
+    purgeTerminalMedia();
+
+    modal.classList.remove('hidden');
+    output.innerHTML = "";
+    input.value = "";
+    terminalCurrentData = null;
+    
+    initTerminalRain();
+    window.addEventListener('resize', initTerminalRain);
+    initTerminalCursor();
+    
+    await streamText(output, "> LOADING COMBAT TRAINING PROGRAM: RAMPAGE V2...\n> ACCESSING MAINFRAME...\n");
+
+    // --- CROP CONFIGURATION ---
+    // This controls how much is cut off from the BOTTOM.
+    // Increase if you still see the ad (e.g., "80px").
+    const cutAmount = "0px"; 
+    // --------------------------
+
+    const frame = createMediaFrame(); 
+    frame.style.width = "100%";
+    frame.style.maxWidth = "100%";
+    frame.style.boxSizing = "border-box";
+    frame.style.marginTop = "5px"; 
+    frame.style.marginBottom = "5px";
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = 'media-wrapper';
+    wrapper.style.position = 'relative'; 
+    wrapper.style.width = '100%';
+    wrapper.style.height = '61vh'; 
+    wrapper.style.minHeight = '300px'; 
+    wrapper.style.backgroundColor = '#000'; 
+    wrapper.style.overflow = 'hidden'; 
+    wrapper.style.borderRadius = '2px';
+
+    const iframe = document.createElement('iframe');
+    iframe.src = chrome.runtime.getURL("Games/matrixfighter.html");
+    
+    // --- THE BOTTOM CROP LOGIC ---
+    iframe.style.width = "100%";
+    
+    // 1. Make the iframe taller (Game + Ad area)
+    iframe.style.height = `calc(100% + ${cutAmount})`; 
+    
+    // 2. Ensure the top stays aligned (The extra height spills off the bottom)
+    iframe.style.marginTop = "0px";
+    iframe.style.border = "none";
+    iframe.style.display = "block";
+    iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
+
+    addFullscreenOverlay(wrapper, iframe);
+
     wrapper.appendChild(iframe);
     frame.appendChild(wrapper);
     output.appendChild(frame);
@@ -4482,6 +4771,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const game2048Btn = document.getElementById('btn-2048');
     if (game2048Btn) game2048Btn.addEventListener('click', () => openGame('2048'));
 
+    const overloadedBtn = document.getElementById('btn-overloaded');
+    if (overloadedBtn) overloadedBtn.addEventListener('click', () => openGame('overloaded'));
+
+    // NEW: Matrix Rampage 2 Listener
+    const rampage2Btn = document.getElementById('btn-rampage2');
+    if (rampage2Btn) rampage2Btn.addEventListener('click', () => openGame('rampage2'));
+
+    const bullettimeBtn = document.getElementById('btn-bullettime');
+    if (bullettimeBtn) bullettimeBtn.addEventListener('click', () => openGame('bullettime'));
+
+  const matrixfighterBtn = document.getElementById('btn-matrixfighter');
+    if (matrixfighterBtn) matrixfighterBtn.addEventListener('click', () => openGame('matrixfighter'));
 
     // --- ATTACH NASA BUTTON LISTENERS ---
     const solarBtn = document.getElementById('btn-solar');
@@ -4493,8 +4794,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const asteroidBtn = document.getElementById('btn-asteroids');
     if (asteroidBtn) asteroidBtn.addEventListener('click', () => openNasa('asteroids'));
 });
-
-/* --- ADD THIS TO THE VERY BOTTOM OF script.js --- */
 
 // 1. Router for Game Buttons
 function openGame(gameName) {
@@ -4510,7 +4809,15 @@ function openGame(gameName) {
         openCitizensOfZionGame();
     } else if (gameName === '2048') {
         openDockDefenceGame();
-    }
+    } else if (gameName === 'overloaded') {
+        openMatrixOverloadedGame();
+    } else if (gameName === 'rampage2') { // <--- THIS WAS MISSING
+        openMatrixRampage2Game();
+    } else if (gameName === 'bullettime') { // <--- THIS WAS MISSING
+        openMatrixBulletTimeGame();
+    } else if (gameName === 'matrixfighter') { // <--- THIS WAS MISSING
+        openMatrixFighterGame();
+  }
 }
 
 // 2. Router for NASA Buttons
@@ -4596,4 +4903,74 @@ function removeExplorerControls() {
     if (storage) storage.remove();
     
     window.isExplorerDeleteMode = false;
+}
+
+// --- FULLSCREEN OVERLAY HELPER ---
+function addFullscreenOverlay(wrapper, targetElement) {
+    const btn = document.createElement('button');
+    btn.innerHTML = '⛶'; 
+    btn.title = "Maximize Construct";
+    
+    // Exact styling logic from your RSS .video-fullscreen-btn
+    btn.style.cssText = `
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        z-index: 100;
+        
+        /* CIRCLE DIMENSIONS */
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        
+        /* CENTERING */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        line-height: 1;
+        
+        /* VISUALS */
+        background: rgba(0, 0, 0, 0.6);
+        color: var(--theme-color);
+        border: 1px solid var(--theme-color);
+        cursor: pointer;
+        font-family: 'Courier New', monospace;
+        font-size: 1.2rem;
+        opacity: 0.5;
+        transition: all 0.2s ease;
+        
+        /* REFINED BASE SHADOW: Tight and subtle */
+        box-shadow: 0 0 2px rgba(0,0,0,0.8); 
+    `;
+
+    // Glow Effects
+    btn.onmouseover = () => {
+        btn.style.opacity = '1';
+        
+        /* REFINED HOVER GLOW: 
+           Reduced from 10px to 6px for a sharper look.
+           Added 'inset' to make the button look illuminated from within. 
+        */
+        btn.style.boxShadow = '0 0 6px var(--theme-color), inset 0 0 3px var(--theme-color)';
+        
+        btn.style.background = 'rgba(0, 0, 0, 0.9)';
+        btn.style.transform = 'scale(1.1)';
+    };
+    btn.onmouseout = () => {
+        btn.style.opacity = '0.5';
+        btn.style.boxShadow = '0 0 2px rgba(0,0,0,0.8)';
+        btn.style.background = 'rgba(0, 0, 0, 0.6)';
+        btn.style.transform = 'scale(1)';
+    };
+
+    // Click Logic
+    btn.onclick = (e) => {
+        e.stopPropagation();
+        if (targetElement.requestFullscreen) targetElement.requestFullscreen();
+        else if (targetElement.webkitRequestFullscreen) targetElement.webkitRequestFullscreen();
+        else if (targetElement.msRequestFullscreen) targetElement.msRequestFullscreen();
+    };
+
+    wrapper.appendChild(btn);
 }
