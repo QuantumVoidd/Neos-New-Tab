@@ -113,11 +113,12 @@ Access the **System Settings** via the gear icon in the top right.
 
 This is a non-commercial fan project created for aesthetic purposes. It is not affiliated with, endorsed by, or sponsored by Warner Bros. or the creators of The Matrix franchise.
 
-It is intended for personal use and customization. "There is no spoon."*
+It is intended for personal use and customization. *"There is no spoon."*
 
 ---
 
 **Operator:** *Link established. You are free to move.*
+
 
 
 
