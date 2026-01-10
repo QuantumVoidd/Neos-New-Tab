@@ -22,14 +22,22 @@
         
         <div class="settings-scroll-area">
             
-            <div class="setting-item">
-                <label>UI Scale</label>
-                <input type="range" id="size-slider" min="0.5" max="1.5" step="0.01" value="1">
-            </div>
+            <div class="setting-group">
+                <h4 class="sub-menu-title">UI Config</h4>
+                
+                <div class="setting-item">
+                    <label>UI Scale</label>
+                    <input type="range" id="size-slider" min="0.5" max="1.5" step="0.01" value="1">
+                </div>
 
-            <div class="setting-item">
-                <label>Global Theme Color</label>
-                <input type="color" id="theme-color-picker" value="#00f2ff">
+                <div class="setting-item">
+                    <label>Global Theme Color</label>
+                    <input type="color" id="theme-color-picker" value="#00f2ff">
+                </div>
+
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="bg-toggle"> Transparent UI</label>
+                </div>
             </div>
 
             <div class="setting-group">
@@ -40,7 +48,7 @@
             </div>
 
             <div class="setting-group">
-                <h4 class="sub-menu-title">Time Configuration</h4>
+                <h4 class="sub-menu-title">Time Config</h4>
                 <div class="checkbox-group">
                     <label><input type="checkbox" id="show-minutes" checked> Show Minutes</label>
                     <label><input type="checkbox" id="show-seconds"> Show Seconds</label>
@@ -57,18 +65,9 @@
                     <label>Favourite Subreddits (+ separated)</label>
                     <input type="text" id="rss-input" placeholder="matrix+cyberpunk+tech">
                 </div>
-            </div>
-
-            <div class="setting-group">
-                <h4 class="sub-menu-title">Intelligence</h4>
                 <div class="checkbox-group">
                     <label><input type="checkbox" id="chat-toggle" checked> Secure Chat Terminal</label>
-                    <label><input type="checkbox" id="oracle-toggle"> Enable Oracle Link <span style="opacity: 0.6; font-size: 0.8em;">(Real AI)</span></label>
-                    <label><input type="checkbox" id="phone-toggle" checked> Enable Rotary Link</label>
-                </div>
-                <div class="setting-item" style="margin-top: 5px;">
-                    <label>Signal Frequency: <span id="phone-freq-value">3</span> Minutes</label>
-                    <input type="range" id="phone-freq-slider" min="1" max="30" step="1" value="3">
+                    <label><input type="checkbox" id="oracle-toggle"> Enable Oracle Link <span style="opacity: 0.6; font-size: 0.8em;">(REAL AI)</span></label>
                 </div>
             </div>
 
@@ -86,12 +85,11 @@
                     </div>
                     <label><input type="checkbox" id="scanline-toggle"> Scanline CRT Overlay</label>
                     <label><input type="checkbox" id="bg-filter-toggle"> Green Backdrop Filter</label>
-                    <label><input type="checkbox" id="bg-toggle"> Transparent UI</label>
                 </div>
             </div>
 
             <div class="setting-group">
-                <h4 class="sub-menu-title">2D Rain Configuration</h4>
+                <h4 class="sub-menu-title">2D Rain Config</h4>
                 <div class="setting-item">
                     <label>Rain Speed</label>
                     <input type="range" id="speed-slider" min="10" max="100" step="5" value="35">
@@ -112,7 +110,7 @@
             </div>
 
             <div class="setting-group">
-                <h4 class="sub-menu-title">3D Rain Configuration</h4>
+                <h4 class="sub-menu-title">3D Rain Config</h4>
                 <div class="checkbox-group">
                     <label><input type="checkbox" id="vertical-rain-toggle"> Vertical Rain</label>
                     <hr class="separator-3d-rain">
@@ -178,8 +176,15 @@
             </div>
 
             <div class="setting-group">
-                <h4 class="sub-menu-title">Audio Transmissions</h4>
-                <div class="button-group">
+                <h4 class="sub-menu-title">Phone Config</h4>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="phone-toggle" checked> Enable Rotary Link</label>
+                </div>
+                <div class="setting-item" style="margin-top: 5px;">
+                    <label>Signal Frequency: <span id="phone-freq-value">3</span> Minutes</label>
+                    <input type="range" id="phone-freq-slider" min="1" max="30" step="1" value="3">
+                </div>
+                <div class="button-group" style="margin-top: 10px;">
                     <button id="upload-audio-btn">Upload MP3 Message</button>
                     <button id="clear-audios" style="background: #333; color: #999;">Purge Messages</button>
                     <input type="file" id="audio-input" accept="audio/mpeg" class="hidden" multiple>

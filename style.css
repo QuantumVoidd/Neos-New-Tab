@@ -630,56 +630,194 @@ body, html {
 #search-input::placeholder { color: var(--theme-color); opacity: 0.45; text-shadow: 0 0 5px var(--theme-color); text-align: left; }
 
 .quote { font-style: italic; font-size: calc(1.4rem * var(--text-scale)); margin-top: 20px; opacity: 0.9; transition: opacity 0.5s; }
+/* --- SETTINGS MODAL: Flexbox Stack --- */
+/* --- SETTINGS MODAL: Final Layout (Stable Grid + Original Aesthetics) --- */
+/* --- SETTINGS MODAL: Final Layout (Stable Grid + Normal Size Sliders) --- */
+/* --- SETTINGS MODAL: Final Layout --- */
+/* --- SETTINGS MODAL: Final Polished Layout --- */
+/* --- SETTINGS MODAL: Final Polished Layout --- */
+/* --- SETTINGS MODAL: Final Polished Layout --- */
+/* --- SETTINGS MODAL: Final Polished Layout --- */
+/* --- SETTINGS MODAL: Final Fixed Layout --- */
 #settings-modal { 
     position: fixed; 
     top: 10%; 
-    left: 10%; 
+    left: 50%;
+    /* Center and shift left to clear cog */
+    transform: translateX(calc(-50% - 120px));
+    
+    width: 750px; 
+    height: 85vh; 
+    
     background: #000; 
     border: 2px solid var(--theme-color); 
     z-index: 3000; 
     color: white; 
     border-radius: 15px; 
-    width: 330px; 
+    
+    /* VERTICAL STACK: Header Top, Content Bottom */
     display: flex; 
     flex-direction: column; 
-    max-height: 85vh; 
-    overflow: hidden;
-    /* ADDED GLOW ONLY */
+    overflow: hidden; 
+    padding: 0 !important;
+    
     box-shadow: 0 0 5px var(--theme-color), 
                 0 0 10px var(--theme-color), 
                 inset 0 0 5px var(--theme-color);
 }
-.settings-scroll-area { 
-    padding: 20px; 
-    overflow-y: auto; 
-    flex-grow: 1; 
+
+/* --- HEADER SECTION --- */
+.settings-header-wrapper {
+    flex-shrink: 0; 
+    position: relative; 
+    z-index: 20;
+    background: transparent !important;
+    width: 100%;
+    padding-top: 15px;
+    padding-bottom: 5px;
+    border: none !important;
 }
+
+#settings-header {
+    font-size: 1.8rem !important;
+    margin: 0;
+    text-align: center;
+    letter-spacing: 4px;
+    text-shadow: 0 0 10px var(--theme-color);
+    background: transparent !important;
+    position: relative !important;
+    top: auto !important;
+}
+
+.settings-separator {
+    width: 90%;
+    height: 1px;
+    background: var(--theme-color);
+    margin: 5px auto 0 auto;
+    opacity: 0.5;
+    box-shadow: none;
+}
+
+/* Clean up */
+#settings-header::after,
+#settings-header::before,
+.settings-scroll-area::before,
+.settings-header-wrapper::after {
+    content: none !important;
+    display: none !important;
+}
+
+/* --- SCROLL AREA (Restored Grid to fix missing content) --- */
+.settings-scroll-area { 
+    flex-grow: 1; 
+    height: 100%; 
+    overflow-y: auto; 
+    
+    padding: 20px 30px 30px 30px; 
+    
+    /* GRID LAYOUT: Ensures nothing gets pushed off screen */
+    display: grid;
+    grid-template-columns: 1fr 1fr; 
+    gap: 15px 40px; 
+    align-content: start;
+    
+    mask-image: none !important;
+    border: none !important;
+    margin-top: 0 !important;
+    opacity: 0.99;
+}
+
+/* --- SLIDERS (Centered & Matrix Style) --- */
+input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%; 
+    max-width: 220px; 
+    
+    height: 8px;
+    background: #111;
+    border-radius: 5px;
+    outline: none;
+    border: 1px solid #333;
+    margin: 10px 0;
+    
+    box-shadow: inset 0 0 5px #000;
+    transition: all 0.3s ease;
+    box-sizing: content-box; 
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    
+    height: 18px; 
+    width: 18px;
+    
+    /* Vertical Alignment: 1px positive moves it down slightly */
+    margin-top: 1px; 
+
+    border-radius: 50%;
+    background: var(--theme-color);
+    cursor: pointer;
+    
+    box-shadow: 0 0 10px var(--theme-color), 0 0 20px var(--theme-color);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 15px var(--theme-color), 0 0 30px var(--theme-color);
+    background: #fff;
+}
+
+/* --- SUB-HEADERS & ITEMS --- */
+.sub-menu-title { 
+    color: var(--theme-color); 
+    font-size: 1.1rem; 
+    font-weight: bold;
+    text-transform: uppercase; 
+    letter-spacing: 2px; 
+    border-bottom: 1px solid #333; 
+    padding-bottom: 5px; 
+    margin: 25px 0 15px 0; 
+    width: 100%;
+    
+    /* ADDED: Centers the text in the column */
+    text-align: center;
+}
+
+.setting-group {
+    width: 100%;
+    margin-bottom: 10px;
+    position: relative;
+    /* Removed 'break-inside' since Grid handles this better */
+}
+
 .checkbox-group { 
     display: flex; 
     flex-direction: column; 
     gap: 12px; 
     padding: 10px 0; 
 }
+
 .checkbox-group label { 
     display: flex; 
     align-items: center; 
     gap: 10px; 
     cursor: pointer; 
     font-size: 0.9rem; 
+    transition: color 0.3s ease;
 }
-.sub-menu-title { 
-    color: var(--theme-color); 
-    font-size: 0.7rem; 
-    text-transform: uppercase; 
-    letter-spacing: 2px; 
-    border-bottom: 1px solid #333; 
-    padding-bottom: 5px; 
-    margin: 20px 0 10px 0; 
+
+.checkbox-group label:hover {
+    color: var(--theme-color);
+    text-shadow: 0 0 5px var(--theme-color);
 }
+
 .setting-item { 
     margin-bottom: 15px; 
     text-align: left; 
 }
+
 input[type="text"], select { 
     width: 100%; 
     box-sizing: border-box; 
@@ -688,7 +826,33 @@ input[type="text"], select {
     color: white; 
     padding: 8px; 
     border-radius: 4px; 
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
+
+input[type="text"]:focus, select:focus {
+    border-color: var(--theme-color);
+    box-shadow: 0 0 8px var(--theme-color);
+    outline: none;
+}
+
+/* --- BUTTON GROUPS --- */
+.button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 5px;
+    border: none !important; 
+    padding-top: 0;
+}
+
+/* Bottom Save/Reset Buttons Span Full Width */
+.settings-scroll-area > .button-group:last-child {
+    grid-column: 1 / -1; 
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(0, 242, 255, 0.3) !important; 
+}
+
 .button-group button { 
     width: 100%; 
     padding: 12px; 
@@ -698,12 +862,21 @@ input[type="text"], select {
     font-weight: bold; 
     border-radius: 4px; 
     color: black; 
-    margin-bottom: 10px; 
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
+
+.button-group button:hover {
+    background: white;
+    box-shadow: 0 0 15px var(--theme-color);
+}
+
 .hidden { 
     display: none !important; 
 }
 
+/* --- SETTINGS ICON --- */
 #settings-icon-container {
     position: absolute;
     top: 15px;
@@ -735,7 +908,6 @@ input[type="text"], select {
 #settings-icon-container:hover #settings-icon {
     transform: rotate(90deg);
 }
-
 /* DYNAMIC NAV BAR STYLES - RESTORED FIXED SIZE */
 #nav-bar-container {
     position: fixed;

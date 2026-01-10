@@ -2326,7 +2326,15 @@ function syncThemeColor() {
     if (!videoBackground) startRain();
 }
 
-get('settings-icon-container').onclick = () => modal.classList.toggle('hidden');
+get('settings-icon-container').onclick = () => {
+    modal.classList.toggle('hidden');
+    if (!modal.classList.contains('hidden')) {
+        setTimeout(initSettingsRain, 50); 
+    } else {
+        if (settingsRainInterval) clearInterval(settingsRainInterval);
+    }
+};
+
 greenT.onchange = (e) => { isMatrixGreen = e.target.checked; syncThemeColor(); };
 
 colorP.oninput = (e) => { 
@@ -2498,7 +2506,10 @@ saveB.onclick = () => {
         isMatrixSfxEnabled: matrixSfxT.checked, envVolume: envVolS.value,
         isOracleEnabled: oracleT ? oracleT.checked : false
     };
-    chrome.storage.sync.set(s, () => modal.classList.add('hidden'));
+    chrome.storage.sync.set(s, () => {
+        modal.classList.add('hidden');
+        if (settingsRainInterval) clearInterval(settingsRainInterval);
+    });
 };
 
 resetB.onclick = () => { 
@@ -4657,6 +4668,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
 let settingsRainInterval = null;
 let settingsDrops = [];
+
+function initSettingsRain() {
+    const settingsCanvas = document.getElementById('settings-rain-canvas');
+    if (!settingsCanvas) return;
+    const sCtx = settingsCanvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    settingsCanvas.width = settingsCanvas.offsetWidth * dpr;
+    settingsCanvas.height = settingsCanvas.offsetHeight * dpr;
+    sCtx.scale(dpr, dpr);
+    
+    const columnSpacing = fontSize * 0.6;
+    const columns = Math.floor(settingsCanvas.offsetWidth / columnSpacing);
+    settingsDrops = Array(columns).fill(0).map(() => Math.floor(Math.random() * (settingsCanvas.height / fontSize)));
+    
+    if (settingsRainInterval) clearInterval(settingsRainInterval);
+    drawSettingsRain();
+    settingsRainInterval = setInterval(drawSettingsRain, rainSpeed);
+}
+
+function drawSettingsRain() {
+    const settingsCanvas = document.getElementById('settings-rain-canvas');
+    if (!settingsCanvas) return;
+    const sCtx = settingsCanvas.getContext('2d');
+    sCtx.fillStyle = "rgba(0, 0, 0, 0.15)";
+    sCtx.fillRect(0, 0, settingsCanvas.width, settingsCanvas.height);
+    sCtx.fillStyle = rainColor;
+    sCtx.font = fontSize + "px 'Courier New', monospace";
+    const columnSpacing = fontSize * 0.6;
+    
+    for (let i = 0; i < settingsDrops.length; i++) {
+        const text = MATRIX_ALPHABET.charAt(Math.floor(Math.random() * MATRIX_ALPHABET.length));
+        sCtx.globalAlpha = 0.3 + (Math.random() * 0.7);
+        sCtx.fillText(text, i * columnSpacing, settingsDrops[i] * fontSize);
+        if (settingsDrops[i] * fontSize > settingsCanvas.height && Math.random() > 0.975) {
+            settingsDrops[i] = 0;
+        }
+        settingsDrops[i]++;
+    }
+    sCtx.globalAlpha = 1.0;
+}
 
 function initSidebarRain(sidebarId) {
     const sidebar = document.getElementById(sidebarId);
