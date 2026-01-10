@@ -40,6 +40,9 @@ let isPhoneEnabled = DEFAULTS.isPhoneEnabled, phoneFrequency = DEFAULTS.phoneFre
     ringCycleInterval = null;
 let isChatEnabled = DEFAULTS.isChatEnabled;
 
+// --- GLOBAL SANDBOX REFERENCE ---
+let sandboxFrame = null; 
+
 // --- CALENDAR STATE MANAGEMENT ---
 let currentCalDate = new Date();
 let isCalendarOpen = false;
@@ -831,9 +834,19 @@ function startAllAnimations() {
 let lastCpuInfo = null;
 let networkData = { sent: 0, received: 0, lastUpdate: Date.now() };
 
+// Global tracker to ensure we clean up the previous message before showing a new one
+let activeZionMessageCleanup = null;
+
 const showZionMessage = (msg) => {
+    // 1. Safety Check: If a message is already open, close it properly first
+    if (activeZionMessageCleanup) {
+        activeZionMessageCleanup();
+    }
+
     const overlay = document.createElement('div');
-    overlay.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10000; font-family:'Orbitron', sans-serif; color:var(--theme-color); text-align:center; padding:20px; box-sizing: border-box;";
+    overlay.id = 'zion-active-overlay'; 
+    // UPDATED: Changed z-index from 10000 to 20000 to sit ABOVE the apps (which are 10005)
+    overlay.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:20000; font-family:'Orbitron', sans-serif; color:var(--theme-color); text-align:center; padding:20px; box-sizing: border-box;";
     
     overlay.innerHTML = `
         <style>
@@ -853,15 +866,21 @@ const showZionMessage = (msg) => {
     const innerModal = document.getElementById('zion-modal-inner');
     const resizeObserver = new ResizeObserver(() => initZionRain());
     resizeObserver.observe(innerModal);
+    
     const resizeHandler = () => initZionRain();
     window.addEventListener('resize', resizeHandler);
 
-    document.getElementById('zion-close').onclick = () => {
-        clearInterval(zionRainInterval);
+    // Define the cleanup function
+    const closeMessage = () => {
+        if (zionRainInterval) clearInterval(zionRainInterval);
         window.removeEventListener('resize', resizeHandler);
         resizeObserver.disconnect();
-        overlay.remove();
+        if (overlay && overlay.parentNode) overlay.remove();
+        activeZionMessageCleanup = null; 
     };
+
+    activeZionMessageCleanup = closeMessage;
+    document.getElementById('zion-close').onclick = closeMessage;
 };
 
 let zionRainInterval = null;
@@ -3334,14 +3353,30 @@ function showExplorerPreview(key, value, type) {
                 <audio src="${value}" controls style="width:100%; max-width:500px;"></audio>
             </div>`;
     } else {
-        // Default Text/Code View
-        const textContent = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value).replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        // --- DECODE BASE64 FOR CODE/TEXT PREVIEW ---
+        let textContent = "";
+        
+        // Check if the value is a Data URL (standard for saved text in this extension)
+        if (typeof value === 'string' && value.startsWith('data:')) {
+            try {
+                // Extract the Base64 payload and decode it back to a string
+                const base64Data = value.split(',')[1];
+                textContent = atob(base64Data);
+            } catch (e) {
+                textContent = "ERROR: Could not decode neural stream.";
+            }
+        } else {
+            textContent = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
+        }
+
+        // Sanitize for HTML display to prevent accidental execution/formatting issues
+        const sanitizedText = textContent.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
         contentHtml = `
             <div style="color:var(--theme-color); font-family:monospace; white-space:pre-wrap; max-height:50vh; overflow:auto; padding:15px; background:rgba(0,0,0,0.5); border: 1px solid rgba(0,242,255,0.1); width: 100%;">
-                ${textContent}
+                ${sanitizedText}
             </div>`;
     }
-    // ------------------------------------
 
     previewOverlay.innerHTML = `
         <div style="background:#000; padding:20px; border: 1px solid var(--theme-color); width: 85vw; max-width: 900px; display: flex; flex-direction: column; gap: 15px; border-radius: 4px; box-shadow: 0 0 30px rgba(0,242,255,0.15);">
@@ -3371,7 +3406,6 @@ function showExplorerPreview(key, value, type) {
     document.getElementById('extract-btn').onclick = () => extractVaultData(cleanTitle, value);
     document.getElementById('close-preview-btn').onclick = () => previewOverlay.remove();
 }
-
 async function openTerminalModal(permalink) {
     const modal = document.getElementById('matrix-modal');
     const output = document.getElementById('terminal-output');
@@ -4722,13 +4756,13 @@ function initSidebarRain(sidebarId) {
     }
 
     const ctx = canvas.getContext('2d');
-    const fontSize = 16; 
+    
+    // Note: We use the GLOBAL 'fontSize' variable here so it matches the main matrix
     
     let columns = 0;
     let drops = [];
 
     const initDrops = () => {
-        // Calculate columns based on visual width, not physical pixels
         columns = Math.floor(sidebar.offsetWidth / fontSize);
         drops = [];
         for (let i = 0; i < columns; i++) {
@@ -4736,55 +4770,38 @@ function initSidebarRain(sidebarId) {
         }
     };
 
-    // 2. High-DPI Resize Logic (The "Blurry Font" Fix)
     const resizeCanvas = () => {
         const dpr = window.devicePixelRatio || 1;
-        
-        // Set physical pixel size (higher res)
         canvas.width = sidebar.offsetWidth * dpr;
         canvas.height = sidebar.offsetHeight * dpr;
-        
-        // Normalize coordinate system
         ctx.scale(dpr, dpr);
-        
         initDrops();
     };
     
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    const speedSlider = document.getElementById('speed-slider');
-    const colorPicker = document.getElementById('color-picker');
-
     function draw() {
-        let currentColor = '#0F0';
-        if (colorPicker) {
-            currentColor = colorPicker.value;
-        } else {
-            currentColor = getComputedStyle(document.documentElement).getPropertyValue('--theme-color').trim();
-        }
-
-        // Fade out previous frame (Using 0.15 to match main rain exactly)
+        // 1. Fade out previous frame
         ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
-        // Clear based on visual dimensions
         ctx.fillRect(0, 0, sidebar.offsetWidth, sidebar.offsetHeight);
 
+        // 2. Set Font & Color using GLOBAL variables for SYNC
         const fontFamily = getFontFamilyForAlphabet(isMathSymbols);
-        // Explicitly set font weight to normal/400 to prevent bolding
         ctx.font = `400 ${fontSize}px ${fontFamily}`;
-        ctx.fillStyle = currentColor;
+        
+        // This is the magic line that syncs color:
+        ctx.fillStyle = rainColor; 
 
+        // 3. Draw Drops
         for (let i = 0; i < drops.length; i++) {
             if (drops[i] * fontSize > 0) {
+                // Uses GLOBAL 'currentAlphabet'
                 const text = currentAlphabet.charAt(Math.floor(Math.random() * currentAlphabet.length));
-                
-                // Match opacity variance
                 ctx.globalAlpha = 0.8 + (Math.random() * 0.2);
-                
                 ctx.fillText(text, i * fontSize, drops[i] * fontSize);
             }
 
-            // Random reset logic
             if (drops[i] * fontSize > sidebar.offsetHeight && Math.random() > 0.975) {
                 drops[i] = 0;
             }
@@ -4793,10 +4810,8 @@ function initSidebarRain(sidebarId) {
         
         ctx.globalAlpha = 1.0; 
 
-        let speedVal = speedSlider ? parseInt(speedSlider.value) : 35;
-        let timeout = Math.max(10, 120 - speedVal); 
-
-        setTimeout(() => requestAnimationFrame(draw), timeout);
+        // 4. Loop using GLOBAL rainSpeed for SYNC
+        setTimeout(() => requestAnimationFrame(draw), rainSpeed);
     }
     
     draw();
@@ -4804,8 +4819,30 @@ function initSidebarRain(sidebarId) {
 
 // Initialize on load
 document.addEventListener('DOMContentLoaded', () => {
+    // --- INITIALIZE OPERATOR SANDBOX ---
+    // Create the hidden sandbox iframe for CSP-compliant code execution
+    sandboxFrame = document.createElement('iframe');
+    sandboxFrame.id = 'zion-sandbox';
+    sandboxFrame.src = 'sandbox.html'; // Ensure this file exists in your root folder
+    sandboxFrame.style.display = 'none';
+    sandboxFrame.sandbox = "allow-scripts"; // Lockdown for security
+    document.body.appendChild(sandboxFrame);
+
+    // Listen for the "Execution Complete" signal back from the sandbox
+    window.addEventListener('message', (event) => {
+        if (event.data.taskId === 'operator-exec') {
+            if (event.data.success) {
+                showZionMessage("SANDBOX EXECUTION COMPLETE\nRESULT: " + event.data.result);
+            } else {
+                showZionMessage("CRITICAL ERROR IN SANDBOX:\n" + event.data.error);
+            }
+        }
+    });
+
     initSidebarRain('sidebar-left');
     initSidebarRain('sidebar-right');
+    initSidebarRain('app-dock-container');
+    
 });
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -4844,6 +4881,164 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const asteroidBtn = document.getElementById('btn-asteroids');
     if (asteroidBtn) asteroidBtn.addEventListener('click', () => openNasa('asteroids'));
+
+    // --- NEW: DOCK EVENT LISTENERS (Requested Addition) ---
+    const dockExplorer = document.getElementById('dock-explorer');
+    if (dockExplorer) dockExplorer.onclick = () => openRootExplorer();
+
+    const dockOracle = document.getElementById('dock-oracle');
+    if (dockOracle) dockOracle.onclick = () => openOracleTerminal();
+
+    // --- WORDPAD LOGIC ---
+const wordpadModal = document.getElementById('wordpad-modal');
+const wordpadEditor = document.getElementById('wordpad-editor');
+
+document.getElementById('dock-wordpad').onclick = () => wordpadModal.classList.remove('hidden');
+document.getElementById('close-wordpad-btn').onclick = () => wordpadModal.classList.add('hidden');
+
+// --- ADVANCED WORDPAD LOGIC ---
+const codeToggle = document.getElementById('code-mode-toggle');
+const wordpadFrame = document.querySelector('.wordpad-frame');
+const editor = document.getElementById('wordpad-editor');
+
+codeToggle.addEventListener('change', (e) => {
+    if (e.target.checked) {
+        wordpadFrame.classList.add('coding-mode');
+        editor.placeholder = "// Initialize Zion Coding Environment...\n// Root access granted.\nfunction matrix() {\n  return 'Free your mind';\n}";
+        showZionMessage("NEURAL LINK ESTABLISHED: CODING ENV ACTIVE");
+    } else {
+        wordpadFrame.classList.remove('coding-mode');
+        editor.placeholder = "Initialize data stream...";
+        showZionMessage("NEURAL LINK SEVERED: WORDPAD ACTIVE");
+    }
+});
+
+// --- NEURAL HISTORY LOGIC ---
+const historyBtn = document.getElementById('neural-history-btn');
+
+// Show/Hide History button based on Neural Link
+codeToggle.addEventListener('change', (e) => {
+    historyBtn.style.display = e.target.checked ? 'block' : 'none';
+});
+
+// Save Logic: Save with 'hack_' prefix for easy filtering
+const originalSaveBtn = document.getElementById('save-wordpad-btn');
+originalSaveBtn.onclick = () => {
+    const text = wordpadEditor.value;
+    const isCode = codeToggle.checked;
+    const prefix = isCode ? "hack_" : "vault_";
+    const filename = isCode ? "reality_override.js" : "document.txt";
+    
+    // Convert to data URL for storage
+    const blob = new Blob([text], {type: isCode ? 'application/javascript' : 'text/plain'});
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const key = `${prefix}${Date.now()}_${filename}`;
+        chrome.storage.local.set({ [key]: e.target.result }, () => {
+            showZionMessage(isCode ? "HACK SAVED TO NEURAL HISTORY" : "DATA STREAM SAVED TO ROOT");
+        });
+    };
+    reader.readAsDataURL(blob);
+};
+
+// History Button: Opens Explorer pre-filtered for hacks
+historyBtn.onclick = () => {
+    openRootExplorer("hack_");
+    showZionMessage("ACCESSING NEURAL HISTORY...");
+};
+
+// Added Tab Key support for coding
+editor.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab' && wordpadFrame.classList.contains('coding-mode')) {
+        e.preventDefault();
+        const start = editor.selectionStart;
+        const end = editor.selectionEnd;
+        editor.value = editor.value.substring(0, start) + "    " + editor.value.substring(end);
+        editor.selectionStart = editor.selectionEnd = start + 4;
+    }
+});
+
+// --- OPERATOR CODE EXECUTION ENGINE ---
+const runBtn = document.getElementById('execute-code-btn');
+
+// 1. Show/Hide Run button based on Neural Link toggle
+document.getElementById('code-mode-toggle').addEventListener('change', (e) => {
+    if (e.target.checked) {
+        // Force visual visibility when active
+        runBtn.style.display = 'block';
+        runBtn.style.background = 'rgba(0, 0, 0, 0.6)'; // Dark visible background
+        runBtn.style.color = 'var(--theme-color)';     // Glowing text
+        runBtn.style.border = '1px solid var(--theme-color)'; // Clear border
+        runBtn.style.padding = '2px 10px';
+        runBtn.style.fontWeight = 'bold';
+    } else {
+        runBtn.style.display = 'none';
+    }
+});
+
+// --- OPERATOR RUN LOGIC (SANDBOXED) ---
+runBtn.addEventListener('click', () => {
+    const code = wordpadEditor.value;
+    if (!code.trim()) return;
+
+    if (isChatEnabled) {
+        const log = document.getElementById('chat-log');
+        const d = document.createElement('div');
+        d.className = 'chat-msg';
+        d.innerHTML = `<b class="morpheus">SYSTEM:</b> Passing signal to Sandbox...`;
+        log.appendChild(d);
+        log.scrollTop = log.scrollHeight;
+    }
+
+    // Transmit code string to sandbox
+    sandboxFrame.contentWindow.postMessage({ 
+        code: code, 
+        taskId: 'operator-exec' 
+    }, '*');
+
+    showZionMessage("SIGNAL TRANSMITTED\nAWAITING SANDBOX VALIDATION...");
+});
+// --- SKETCH LOGIC ---
+const sketchModal = document.getElementById('sketch-modal');
+const canvasSketch = document.getElementById('sketch-canvas');
+const ctxSketch = canvasSketch.getContext('2d');
+let drawing = false;
+
+document.getElementById('dock-paint').onclick = () => {
+    sketchModal.classList.remove('hidden');
+    canvasSketch.width = canvasSketch.offsetWidth;
+    canvasSketch.height = canvasSketch.offsetHeight;
+    ctxSketch.lineCap = 'round';
+    ctxSketch.lineWidth = 3;
+};
+
+document.getElementById('close-sketch-btn').onclick = () => sketchModal.classList.add('hidden');
+
+canvasSketch.onmousedown = (e) => { drawing = true; draw(e); };
+canvasSketch.onmousemove = (e) => draw(e);
+window.onmouseup = () => { drawing = false; ctxSketch.beginPath(); };
+
+function draw(e) {
+    if (!drawing) return;
+    const rect = canvasSketch.getBoundingClientRect();
+    ctxSketch.strokeStyle = document.getElementById('sketch-color').value;
+    ctxSketch.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+    ctxSketch.stroke();
+    ctxSketch.beginPath();
+    ctxSketch.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+}
+
+document.getElementById('clear-sketch-btn').onclick = () => {
+    ctxSketch.clearRect(0, 0, canvasSketch.width, canvasSketch.height);
+};
+
+document.getElementById('save-sketch-btn').onclick = () => {
+    const dataUrl = canvasSketch.toDataURL("image/png");
+    const key = `vault_${Date.now()}_sketch.png`;
+    chrome.storage.local.set({ [key]: dataUrl }, () => {
+        showZionMessage("VISUAL CONSTRUCT SAVED TO ROOT");
+    });
+};
 });
 
 // 1. Router for Game Buttons

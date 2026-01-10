@@ -364,6 +364,17 @@
         </div>
     </div>
 
+    <div id="dock-trigger"></div>
+    <div id="app-dock-container">
+        <canvas class="matrix-canvas"></canvas>
+        <div class="dock-content">
+            <div class="dock-app-icon" id="dock-explorer" title="Root Explorer">📂</div>
+            <div class="dock-app-icon" id="dock-wordpad" title="Zion Wordpad">📝</div>
+            <div class="dock-app-icon" id="dock-paint" title="Construct Sketch">🎨</div>
+            <div class="dock-app-icon" id="dock-oracle" title="Oracle Link">🧠</div>
+        </div>
+    </div>
+
     <div id="matrix-modal" class="hidden">
         <div class="modal-overlay"></div> 
         <div class="terminal-frame" style="position: relative;">
@@ -393,6 +404,42 @@
             <div id="space-loader" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #00FF41; font-family: 'Courier New', monospace; font-size: 1.5rem; text-shadow: 0 0 5px #00FF41;">ESTABLISHING UPLINK...</div>
 
             <iframe id="nasa-frame" allow="autoplay; fullscreen" style="flex-grow: 1; border: none; opacity: 0; transition: opacity 1s ease;"></iframe>
+        </div>
+    </div>
+
+    <div id="wordpad-modal" class="hidden">
+        <div class="modal-overlay"></div>
+        <div class="terminal-frame wordpad-frame">
+            <div class="app-header">
+                <span>> SYSTEM.APP.OPERATOR_TERMINAL</span>
+                <div class="app-controls">
+                    <div class="mode-switch-container">
+                        <span>NEURAL_LINK</span>
+                        <input type="checkbox" id="code-mode-toggle" class="operator-toggle" title="Toggle Coding Environment">
+                    </div>
+                    <button id="neural-history-btn" title="View Saved Hacks" style="display: none; background: rgba(0,0,0,0.5); color: var(--theme-color); border: 1px solid var(--theme-color);">⌛ HISTORY</button>
+                    <button id="execute-code-btn" title="Run Script" style="display: none; background: rgba(0, 242, 255, 0.2); color: var(--theme-color); border: 1px solid var(--theme-color);">▶ RUN</button>
+                    <button id="save-wordpad-btn" title="Save to Root">💾</button>
+                    <button id="close-wordpad-btn" title="Exit app">✖</button>
+                </div>
+            </div>
+            <textarea id="wordpad-editor" placeholder="Initialize data stream..." style="background: #000; color: var(--theme-color); border: none; padding: 20px; font-family: 'Courier New', monospace; font-size: 1.1rem; outline: none; resize: none;"></textarea>
+        </div>
+    </div>
+
+    <div id="sketch-modal" class="hidden">
+        <div class="modal-overlay"></div>
+        <div class="terminal-frame sketch-frame">
+            <div class="app-header">
+                <span>> SYSTEM.APP.CONSTRUCT_SKETCH</span>
+                <div class="app-controls">
+                    <input type="color" id="sketch-color" value="#00f2ff">
+                    <button id="save-sketch-btn" title="Export to Root">💾</button>
+                    <button id="clear-sketch-btn" title="Flush buffer">🗑</button>
+                    <button id="close-sketch-btn" title="Exit app">✖</button>
+                </div>
+            </div>
+            <canvas id="sketch-canvas"></canvas>
         </div>
     </div>
 
