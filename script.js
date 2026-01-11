@@ -3124,7 +3124,32 @@ function renderExplorerGrid(filter = "") {
 
     keys.forEach(key => {
         const value = currentData[key];
-        if (filter && !String(key).toLowerCase().includes(filter.toLowerCase())) return;
+     
+
+        // --- NEW SMART FILTER LOGIC ---
+        if (filter) {
+            const f = filter.toLowerCase();
+            const lowerKey = String(key).toLowerCase();
+            let isMatch = false;
+
+            // 1. Check File Types
+            if (f === 'image') isMatch = /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(lowerKey);
+            else if (f === 'video') isMatch = /\.(mp4|webm|ogg|mov|avi|mkv)$/i.test(lowerKey);
+            else if (f === 'audio') isMatch = /\.(mp3|wav|aac|flac|m4a)$/i.test(lowerKey);
+            else if (f === 'code') isMatch = /\.(html|htm|js|css|json|py|cpp|txt)$/i.test(lowerKey);
+            // 2. Check Prefixes (Vault/Hack)
+            else if (f === 'vault_') isMatch = lowerKey.startsWith('vault_');
+            else if (f === 'hack_') isMatch = lowerKey.startsWith('hack_');
+            // 3. Default to Name Search
+            else isMatch = lowerKey.includes(f);
+
+            // Always show folders so you can browse, otherwise respect the match
+            const isDir = (typeof value === 'object' && value !== null);
+            if (!isMatch && !isDir) return; 
+        }
+        // -----------------------------
+
+        // ... (Keep the rest of the code: const isFolder = ..., const node = ...)
 
         const isFolder = (typeof value === 'object' && value !== null);
         const node = document.createElement('div');
@@ -3327,21 +3352,22 @@ function moveFileToFolder(fileKey, folderKey) {
 
 function showExplorerPreview(key, value, type) {
     const previewOverlay = document.createElement('div');
-    // Darker background (0.95) and blur for better focus on media
     previewOverlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:11000; display:flex; align-items:center; justify-content:center; backdrop-filter: blur(5px);";
     
     const cleanTitle = (key.startsWith('vault_') || key.startsWith('folder_')) 
         ? key.split('_').slice(2).join('_') : key;
 
-    // --- NEW: CONTENT RENDERING LOGIC ---
     let contentHtml = '';
     
+    // --- UPDATED IMAGE PREVIEW WITH EDIT BUTTON LOGIC ---
     if (type === 'image') {
         contentHtml = `
             <div style="display:flex; justify-content:center; align-items:center; width:100%; height:100%; min-height:300px; overflow:hidden;">
                 <img src="${value}" style="max-width:100%; max-height:60vh; object-fit:contain; border: 1px solid var(--theme-color); box-shadow: 0 0 15px rgba(0,242,255,0.2);">
             </div>`;
-    } else if (type === 'video') {
+    } 
+    // ---------------------------------------------------
+    else if (type === 'video') {
         contentHtml = `
             <div style="display:flex; justify-content:center; align-items:center; width:100%; height:100%; min-height:300px;">
                 <video src="${value}" controls autoplay style="max-width:100%; max-height:60vh; border: 1px solid var(--theme-color); box-shadow: 0 0 15px rgba(0,242,255,0.2);"></video>
@@ -3353,13 +3379,9 @@ function showExplorerPreview(key, value, type) {
                 <audio src="${value}" controls style="width:100%; max-width:500px;"></audio>
             </div>`;
     } else {
-        // --- DECODE BASE64 FOR CODE/TEXT PREVIEW ---
         let textContent = "";
-        
-        // Check if the value is a Data URL (standard for saved text in this extension)
         if (typeof value === 'string' && value.startsWith('data:')) {
             try {
-                // Extract the Base64 payload and decode it back to a string
                 const base64Data = value.split(',')[1];
                 textContent = atob(base64Data);
             } catch (e) {
@@ -3368,8 +3390,6 @@ function showExplorerPreview(key, value, type) {
         } else {
             textContent = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
         }
-
-        // Sanitize for HTML display to prevent accidental execution/formatting issues
         const sanitizedText = textContent.replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
         contentHtml = `
@@ -3388,6 +3408,7 @@ function showExplorerPreview(key, value, type) {
             ${contentHtml}
             
             <div style="display:flex; justify-content:flex-end; gap:15px; margin-top:10px;">
+                ${type === 'image' ? `<button id="edit-paint-btn" style="background:rgba(0,255,65,0.2); color:var(--theme-color); border:1px solid var(--theme-color); padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">EDIT IN PAINT</button>` : ''}
                 <button id="extract-btn" style="background:var(--theme-color); color:#000; border:none; padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">DOWNLOAD</button>
                 <button id="close-preview-btn" style="background:transparent; color:var(--theme-color); border:1px solid var(--theme-color); padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">CLOSE</button>
             </div>
@@ -3405,6 +3426,20 @@ function showExplorerPreview(key, value, type) {
 
     document.getElementById('extract-btn').onclick = () => extractVaultData(cleanTitle, value);
     document.getElementById('close-preview-btn').onclick = () => previewOverlay.remove();
+
+    // LINK TO STANDALONE PAINT.JS APP
+    const editBtn = document.getElementById('edit-paint-btn');
+    if(editBtn) {
+        editBtn.onclick = () => {
+            previewOverlay.remove();
+            // This calls the function in your new paint.js file
+            if(window.PaintApp && window.PaintApp.loadImage) {
+                window.PaintApp.loadImage(value, key);
+            } else {
+                showZionMessage("ERROR: PAINT MODULE NOT LOADED");
+            }
+        };
+    }
 }
 async function openTerminalModal(permalink) {
     const modal = document.getElementById('matrix-modal');
@@ -4998,47 +5033,6 @@ runBtn.addEventListener('click', () => {
 
     showZionMessage("SIGNAL TRANSMITTED\nAWAITING SANDBOX VALIDATION...");
 });
-// --- SKETCH LOGIC ---
-const sketchModal = document.getElementById('sketch-modal');
-const canvasSketch = document.getElementById('sketch-canvas');
-const ctxSketch = canvasSketch.getContext('2d');
-let drawing = false;
-
-document.getElementById('dock-paint').onclick = () => {
-    sketchModal.classList.remove('hidden');
-    canvasSketch.width = canvasSketch.offsetWidth;
-    canvasSketch.height = canvasSketch.offsetHeight;
-    ctxSketch.lineCap = 'round';
-    ctxSketch.lineWidth = 3;
-};
-
-document.getElementById('close-sketch-btn').onclick = () => sketchModal.classList.add('hidden');
-
-canvasSketch.onmousedown = (e) => { drawing = true; draw(e); };
-canvasSketch.onmousemove = (e) => draw(e);
-window.onmouseup = () => { drawing = false; ctxSketch.beginPath(); };
-
-function draw(e) {
-    if (!drawing) return;
-    const rect = canvasSketch.getBoundingClientRect();
-    ctxSketch.strokeStyle = document.getElementById('sketch-color').value;
-    ctxSketch.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-    ctxSketch.stroke();
-    ctxSketch.beginPath();
-    ctxSketch.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-}
-
-document.getElementById('clear-sketch-btn').onclick = () => {
-    ctxSketch.clearRect(0, 0, canvasSketch.width, canvasSketch.height);
-};
-
-document.getElementById('save-sketch-btn').onclick = () => {
-    const dataUrl = canvasSketch.toDataURL("image/png");
-    const key = `vault_${Date.now()}_sketch.png`;
-    chrome.storage.local.set({ [key]: dataUrl }, () => {
-        showZionMessage("VISUAL CONSTRUCT SAVED TO ROOT");
-    });
-};
 });
 
 // 1. Router for Game Buttons
