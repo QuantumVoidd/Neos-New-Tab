@@ -14,11 +14,17 @@
 Since this is a custom-built construct, you must load it manually into your browser:
 
 Download/Clone this repository to a local folder.
+
 Open Google Chrome (or Brave/Edge).
+
 Navigate to chrome://extensions/.
+
 Toggle Developer mode in the top right corner.
+
 Click Load unpacked.
+
 Select the folder containing manifest.json, newtab.html, etc.
+
 Open a new tab and Enter the Matrix.
 
 
@@ -121,6 +127,7 @@ It is intended for personal use and customization. *"There is no spoon."*
 ---
 
 **Operator:** *Link established. You are free to move.*
+
 
 
 
