@@ -5,6 +5,55 @@
     <title>New Tab</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Video Editor Modal Styling */
+        #video-modal .terminal-frame {
+            background: #000;
+            border: 1px solid var(--theme-color, #00ff41); /* Fallback to green if var missing */
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.2);
+            max-width: 95vw;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Override Video Editor JS Internal Styles to match Cyberpunk Theme */
+        .ve-wrapper {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: var(--theme-color, #00ff41) !important;
+            font-family: 'Courier New', monospace !important;
+            width: 100% !important;
+            box-sizing: border-box;
+        }
+
+        .ve-canvas-box {
+            border: 1px solid #333 !important;
+            box-shadow: 0 0 10px rgba(0,0,0,0.8);
+            margin: 0 auto 10px auto;
+        }
+
+        .ve-toolbar button, .ve-controls button {
+            background: rgba(0, 20, 0, 0.9) !important;
+            border: 1px solid var(--theme-color, #00ff41) !important;
+            color: var(--theme-color, #00ff41) !important;
+            text-transform: uppercase;
+            font-family: 'Orbitron', sans-serif !important;
+            font-size: 10px !important;
+        }
+        
+        .ve-toolbar button:hover, .ve-controls button:hover {
+            background: var(--theme-color, #00ff41) !important;
+            color: #000 !important;
+        }
+
+        .ve-timeline {
+            background: rgba(0, 20, 0, 0.8) !important;
+            border: 1px solid #333;
+        }
+    </style>
 </head>
 <body>
     <canvas id="matrix"></canvas>
@@ -371,6 +420,7 @@
             <div class="dock-app-icon" id="dock-explorer" title="Root Explorer">📂</div>
             <div class="dock-app-icon" id="dock-wordpad" title="Zion Wordpad">📝</div>
             <div class="dock-app-icon" id="dock-paint" title="Construct Sketch">🎨</div>
+            <div class="dock-app-icon" id="dock-video" title="Signal Studio">🎬</div>
             <div class="dock-app-icon" id="dock-oracle" title="Oracle Link">🧠</div>
         </div>
     </div>
@@ -443,6 +493,19 @@
         </div>
     </div>
 
+    <div id="video-modal" class="hidden">
+        <div class="modal-overlay"></div>
+        <div class="terminal-frame video-frame" style="width: auto; height: auto; padding: 0;">
+            <div class="app-header">
+                <span>> SYSTEM.APP.SIGNAL_STUDIO</span>
+                <div class="app-controls">
+                    <button id="close-video-btn" title="Exit app">✖</button>
+                </div>
+            </div>
+            <div id="video-editor-root"></div> 
+        </div>
+    </div>
+
     <audio id="ring-audio" loop></audio>
     <audio id="hangup-audio"></audio>
     <audio id="signal-beep"></audio>
@@ -457,6 +520,7 @@
     <script src="oracle-engine.js"></script>
     <script src="puter.js"></script>
     <script src="paint.js"></script>
+    <script src="video-editor.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

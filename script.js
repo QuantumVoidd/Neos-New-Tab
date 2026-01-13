@@ -5214,3 +5214,41 @@ function addFullscreenOverlay(wrapper, targetElement) {
 
     wrapper.appendChild(btn);
 }
+
+// --- Signal Studio (Video Editor) Integration ---
+document.addEventListener('DOMContentLoaded', () => {
+    const dockVideo = document.getElementById('dock-video');
+    const videoModal = document.getElementById('video-modal');
+    const closeVideo = document.getElementById('close-video-btn');
+    const videoRoot = document.getElementById('video-editor-root');
+    let editorInstance = null;
+
+    if (dockVideo && videoModal) {
+        // Open App
+        dockVideo.addEventListener('click', () => {
+            videoModal.classList.remove('hidden');
+            videoModal.style.display = 'flex';
+            videoModal.style.alignItems = 'center';
+            videoModal.style.justifyContent = 'center';
+            videoModal.style.zIndex = '10006'; // Higher than Paint
+
+            // Initialize the class only once to save resources
+            if (!editorInstance) {
+                editorInstance = new VideoEditor(videoRoot);
+            }
+        });
+
+        // Close App
+        closeVideo.addEventListener('click', () => {
+            videoModal.classList.add('hidden');
+            videoModal.style.display = 'none';
+            
+            // Auto-pause video when closing window
+            if (editorInstance && editorInstance.video) {
+                editorInstance.video.pause();
+                editorInstance.playBtn.textContent = '▶';
+                editorInstance.isPlaying = false;
+            }
+        });
+    }
+});
