@@ -1,4 +1,18 @@
+<div align="center">
+
+# Neo's New Tab 💊
 [![Download Extension](https://img.shields.io/badge/Download-Unpacked_Extension-brightgreen)](https://github.com/QuantumVoidd/Neos-New-Tab/releases/latest)
+
+![Visitors](https://api.visitorbadge.io/api/VisitorHit?user=QuantumVoidd&repo=Neos-New-Tab&countColor=%237B1E7A)
+
+![GitHub stars](https://img.shields.io/github/stars/QuantumVoidd/Neos-New-Tab?style=social)
+
+![Clones](https://img.shields.io/badge/dynamic/json?color=success&label=clones&query=count&url=https://api.github.com/repos/QuantumVoidd/Neos-New-Tab/traffic/clones)
+
+</div>
+
+
+
 
 
 
@@ -127,6 +141,7 @@ It is intended for personal use and customization. *"There is no spoon."*
 ---
 
 **Operator:** *Link established. You are free to move.*
+
 
 
 
