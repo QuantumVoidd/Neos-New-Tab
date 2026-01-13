@@ -1,31 +1,23 @@
 [![Download Extension](https://img.shields.io/badge/Download-Unpacked_Extension-brightgreen)](https://github.com/QuantumVoidd/Neos-New-Tab/releases/latest)
+
+🛠️ Installation (Developer Mode)
+Since this is a custom-built construct, you must load it manually into your browser:
+
+Download/Clone this repository to a local folder.
+Open Google Chrome (or Brave/Edge).
+Navigate to chrome://extensions/.
+Toggle Developer mode in the top right corner.
+Click Load unpacked.
+Select the folder containing manifest.json, newtab.html, etc.
+Open a new tab and Enter the Matrix.
+
+
 <img width="3832" height="1913" alt="Screenshot 2026-01-05 125347" src="https://github.com/user-attachments/assets/86e363c3-2212-4964-8051-863ec57a2ab4" />
 <img width="3840" height="1904" alt="Root-Explorer" src="https://github.com/user-attachments/assets/10cdf6d3-5d8f-4a35-b973-a7c501c150ba" />
 <img width="3840" height="1909" alt="AI chat Expanded" src="https://github.com/user-attachments/assets/806ea96e-2894-4cb9-81de-0bf038cbd8b8" />
 <img width="3840" height="1906" alt="Retro Matrix Flash Games" src="https://github.com/user-attachments/assets/fb7f8d79-6918-429f-9d54-d42d9e916a79" />
 <img width="2560" height="1243" alt="Screenshot 2026-01-09 131611" src="https://github.com/user-attachments/assets/4098c5d3-319a-41b0-8882-7a3538d65363" />
 
-
-
-
-
-
-
-## 🛠️ Installation (Developer Mode)
-
-Since this is a custom-built construct, you must load it manually into your browser:
-
-1.  **Download/Clone** this repository to a local folder.
-2.  Open **Google Chrome** (or Brave/Edge).
-3.  Navigate to `chrome://extensions/`.
-4.  Toggle **Developer mode** in the top right corner.
-5.  Click **Load unpacked**.
-6.  Select the folder containing `manifest.json`, `newtab.html`, etc.
-7.  Open a new tab and **Enter the Matrix**.
-
-
-
-..........................................................................................................................................................................................................................................
 
 
 # 🟢 ZION // The Matrix New Tab Experience
@@ -119,6 +111,7 @@ It is intended for personal use and customization. *"There is no spoon."*
 ---
 
 **Operator:** *Link established. You are free to move.*
+
 
 
 
