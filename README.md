@@ -1,5 +1,15 @@
 [![Download Extension](https://img.shields.io/badge/Download-Unpacked_Extension-brightgreen)](https://github.com/QuantumVoidd/Neos-New-Tab/releases/latest)
+
+
+
+
 ![Visitors](https://api.visitorbadge.io/api/VisitorHit?user=QuantumVoidd&repo=Neos-New-Tab&countColor=%237B1E7A)
+
+
+
+
+
+
 🛠️ Installation (Developer Mode)
 Since this is a custom-built construct, you must load it manually into your browser:
 
@@ -111,6 +121,7 @@ It is intended for personal use and customization. *"There is no spoon."*
 ---
 
 **Operator:** *Link established. You are free to move.*
+
 
 
 
