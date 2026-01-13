@@ -1,3 +1,4 @@
+[![Download Extension](https://img.shields.io/badge/Download-Unpacked_Extension-brightgreen)](https://github.com/QuantumVoidd/Neos-New-Tab/releases/latest)
 <img width="3832" height="1913" alt="Screenshot 2026-01-05 125347" src="https://github.com/user-attachments/assets/86e363c3-2212-4964-8051-863ec57a2ab4" />
 <img width="3840" height="1904" alt="Root-Explorer" src="https://github.com/user-attachments/assets/10cdf6d3-5d8f-4a35-b973-a7c501c150ba" />
 <img width="3840" height="1909" alt="AI chat Expanded" src="https://github.com/user-attachments/assets/806ea96e-2894-4cb9-81de-0bf038cbd8b8" />
@@ -118,6 +119,7 @@ It is intended for personal use and customization. *"There is no spoon."*
 ---
 
 **Operator:** *Link established. You are free to move.*
+
 
 
 
