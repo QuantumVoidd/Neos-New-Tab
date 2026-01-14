@@ -7,10 +7,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
-        /* Video Editor Modal Styling */
+        /* --- Video Editor Modal Styling --- */
         #video-modal .terminal-frame {
             background: #000;
-            border: 1px solid var(--theme-color, #00ff41); /* Fallback to green if var missing */
+            border: 1px solid var(--theme-color, #00ff41);
             box-shadow: 0 0 20px rgba(0, 255, 65, 0.2);
             max-width: 95vw;
             padding: 0;
@@ -18,7 +18,114 @@
             flex-direction: column;
         }
 
-        /* Override Video Editor JS Internal Styles to match Cyberpunk Theme */
+        /* --- Media Player Modal Fixed Dimensions --- */
+        #media-player-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10007;
+        }
+        
+        #media-player-modal.hidden {
+            display: none !important;
+        }
+
+        .mp-frame {
+            width: 85vw !important;
+            height: 85vh !important;
+            background: #000;
+            border: 1px solid var(--theme-color);
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.2);
+            padding: 0 !important;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #media-player-root {
+            flex: 1;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        /* --- Media Player Internal Layout --- */
+        .mp-layout {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .mp-main {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            height: 100%;
+            overflow: hidden;
+            position: relative; /* Needed for absolute positioning of toggle */
+        }
+
+        /* --- STYLED TOGGLE BUTTON --- */
+        .mp-sidebar-toggle {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 200; /* Above video */
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid var(--theme-color);
+            color: var(--theme-color);
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+        
+        .mp-sidebar-toggle:hover {
+            box-shadow: 0 0 10px var(--theme-color);
+            background: rgba(0, 20, 0, 0.9);
+            transform: scale(1.1);
+        }
+
+        .mp-player-stage {
+            flex: 0 0 55%; 
+            min-height: 300px;
+            border-bottom: 1px solid var(--theme-color);
+            background: #000;
+            position: relative;
+        }
+
+        .mp-controls-bar {
+            flex: 0 0 60px;
+            background: rgba(0, 20, 0, 0.95);
+            border-bottom: 1px solid var(--theme-color);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 15px;
+        }
+
+        .mp-library-view {
+            flex: 1;
+            overflow-y: auto;
+            background: rgba(0, 10, 0, 0.9) !important;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px;
+            align-content: start;
+        }
+
+        /* --- Override Video Editor JS Internal Styles --- */
         .ve-wrapper {
             background: transparent !important;
             border: none !important;
@@ -114,9 +221,14 @@
                     <label>Favourite Subreddits (+ separated)</label>
                     <input type="text" id="rss-input" placeholder="matrix+cyberpunk+tech">
                 </div>
+                <div class="setting-item">
+                    <label>News Sources (RSS URLs, + separated)</label>
+                    <input type="text" id="news-input" placeholder="http://feeds.bbci.co.uk/news/rss.xml">
+                </div>
                 <div class="checkbox-group">
                     <label><input type="checkbox" id="chat-toggle" checked> Secure Chat Terminal</label>
                     <label><input type="checkbox" id="oracle-toggle"> Enable Oracle Link <span style="opacity: 0.6; font-size: 0.8em;">(REAL AI)</span></label>
+                    <label><input type="checkbox" id="system-monitor-toggle" checked> Enable System Monitor</label>
                 </div>
             </div>
 
@@ -326,6 +438,44 @@
             <div id="chat-log"></div>
         </div>
 
+        <div id="system-log-monitor" style="
+            position: absolute;
+            left: calc(100% + 30px); 
+            bottom: calc(50% + 42.5% + 30px); 
+            height: 25%; 
+            width: 300px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid var(--theme-color);
+            border-radius: 5px;
+            padding: 25px 15px 5px 15px;
+            box-shadow: 0 0 10px var(--theme-color);
+            z-index: 101;
+            box-sizing: border-box;
+            transition: box-shadow 0.3s ease, border 0.3s ease;
+            overflow: hidden;
+        ">
+            <div class="terminal-header" style="
+                position: absolute; top: 0; left: 0; width: 100%; 
+                background: var(--theme-color); color: black; 
+                font-size: 0.65rem; font-weight: bold; padding: 3px 10px; 
+                box-sizing: border-box; text-align: left; 
+                text-shadow: 0 0 5px rgba(0,0,0,0.5);
+            ">SYS.DAEMON.LOG // ROOT</div>
+            
+            <div id="system-log-content" style="
+                display: flex; 
+                flex-direction: column; 
+                gap: 2px; 
+                text-align: left; 
+                font-size: 0.65rem; 
+                height: 100%; 
+                width: 100%;
+                overflow-y: scroll;
+                padding: 0; 
+                box-sizing: border-box;
+                font-family: 'Courier New', monospace;
+            "></div>
+        </div>
         <div id="oracle-chat-container" class="hidden">
             <div id="oracle-header">ZION UPLINK</div>
             <div id="oracle-chat-history">
@@ -345,7 +495,11 @@
         </div>
 
         <div id="zion-rss-container" class="hidden">
-            <div id="rss-header">ZION NETWORK FEED</div>
+            <div id="rss-header-wrapper" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--theme-color); margin-bottom: 10px; padding-bottom: 5px;">
+                <button id="rss-prev-btn" class="matrix-btn" style="font-size: 12px; width: 24px; height: 24px; padding: 0; padding-top: 3px; margin: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; line-height: 1; box-shadow: 0 0 4px var(--theme-color);">◀</button>
+                <div id="rss-header" style="flex-grow: 1; text-align: center; border-bottom: none; margin: 0; padding: 0; height: 24px; display: flex; align-items: center; justify-content: center;">ZION NETWORK FEED</div>
+                <button id="rss-next-btn" class="matrix-btn" style="font-size: 12px; width: 24px; height: 24px; padding: 0; padding-top: 3px; margin: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; line-height: 1; box-shadow: 0 0 4px var(--theme-color);">▶</button>
+            </div>
             <div id="rss-loading-bar-container">
                 <div id="rss-loading-bar"></div>
             </div>
@@ -421,6 +575,7 @@
             <div class="dock-app-icon" id="dock-wordpad" title="Zion Wordpad">📝</div>
             <div class="dock-app-icon" id="dock-paint" title="Construct Sketch">🎨</div>
             <div class="dock-app-icon" id="dock-video" title="Signal Studio">🎬</div>
+            <div class="dock-app-icon" id="dock-media" title="Media Deck">▶️</div>
             <div class="dock-app-icon" id="dock-oracle" title="Oracle Link">🧠</div>
         </div>
     </div>
@@ -506,6 +661,19 @@
         </div>
     </div>
 
+    <div id="media-player-modal" class="hidden">
+        <div class="modal-overlay"></div>
+        <div class="terminal-frame mp-frame">
+            <div class="app-header">
+                <span>> SYSTEM.APP.MEDIA_DECK</span>
+                <div class="app-controls">
+                    <button id="close-mp-btn" title="Exit app">✖</button>
+                </div>
+            </div>
+            <div id="media-player-root"></div> 
+        </div>
+    </div>
+
     <audio id="ring-audio" loop></audio>
     <audio id="hangup-audio"></audio>
     <audio id="signal-beep"></audio>
@@ -517,10 +685,17 @@
     <audio id="custom-background-sfx" loop></audio>
     <audio id="sentinel-swarm-sfx" loop src="sentinel_swarm.mp3"></audio>
 
+    <script src="three.min.js"></script>
     <script src="oracle-engine.js"></script>
     <script src="puter.js"></script>
     <script src="paint.js"></script>
     <script src="video-editor.js"></script>
+    <script src="nebuchadnezzar-deck.js"></script>
+    <script src="media-player.js"></script>
     <script src="script.js"></script>
+    <script src="zion-network-feed.js"></script>
+    <script src="settings-page.js"></script>
+    <script src="wordpad.js"></script>
+    <script src="system-logs.js"></script>
 </body>
 </html>

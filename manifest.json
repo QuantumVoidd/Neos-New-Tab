@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Neo's New Tab",
-  "version": "3.35.0",
+  "version": "3.36.0",
   "description": "A high-performance Matrix-style new tab dashboard with customizable visuals and Sentinel Swarm.",
   "icons": {
     "16": "icon16.png",
@@ -21,7 +21,9 @@
     "https://text.pollinations.ai/*",
     "https://en.wikipedia.org/*",
     "https://api.open-meteo.com/*",
-    "https://geocoding-api.open-meteo.com/*"
+    "https://geocoding-api.open-meteo.com/*",
+    "http://*/*",
+    "https://*/*"
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; frame-src https://eyes.nasa.gov;",

@@ -25,7 +25,9 @@ const DEFAULTS = {
     isStatsEnabled: true, isRainAmbience: false, isHumEnabled: false, 
     isMatrixSfxEnabled: false, envVolume: 0.5, videoBackground: "",
     // Oracle Default
-    isOracleEnabled: false
+    isOracleEnabled: false,
+    // System Monitor
+    isSystemMonitorEnabled: false
 };
 
 let rainColor = DEFAULTS.rainColor, themeColor = DEFAULTS.themeColor, rainSpeed = DEFAULTS.rainSpeed, rainInterval, 
@@ -761,21 +763,6 @@ function stopBackgroundVideo() {
     startRain();
 }
 
-function handleVideoBackgroundToggle(videoType, isChecked) {
-    const videoTypes = ["journey2", "binary", "room", "movie-tunnel", "matrix-room", "combat-training", "meditation", "vertical-rain", "operator"];
-    if (isChecked) {
-        videoTypes.forEach(type => {
-            if (type !== videoType) {
-                const toggle = document.getElementById(`${type}-toggle`);
-                if (toggle) toggle.checked = false;
-            }
-        });
-        startBackgroundVideo(videoType);
-    } else {
-        if (videoBackground === videoType) stopBackgroundVideo();
-    }
-}
-
 let sentinelAnimationId = null;
 
 function animateSentinels() {
@@ -830,9 +817,6 @@ function startAllAnimations() {
         startRain();
     }
 }
-
-let lastCpuInfo = null;
-let networkData = { sent: 0, received: 0, lastUpdate: Date.now() };
 
 // Global tracker to ensure we clean up the previous message before showing a new one
 let activeZionMessageCleanup = null;
@@ -992,7 +976,11 @@ const CLI_COMMANDS = {
             isMatrixGreen = true;
             if(glowT) glowT.checked = true;
             if(greenT) greenT.checked = true;
-            syncThemeColor();
+            // Manual sync since syncThemeColor is removed
+            document.documentElement.style.setProperty('--theme-color', CLASSIC_GREEN);
+            rainColor = CLASSIC_GREEN;
+            themeColor = CLASSIC_GREEN;
+            
             chrome.storage.sync.set({ isGlow: true, isMatrixGreen: true });
             showZionMessage("STEALTH PROTOCOL ENGAGED\nVISUAL SIGNATURE MINIMIZED");
         } else {
@@ -1000,7 +988,19 @@ const CLI_COMMANDS = {
             const savedGlow = glowT ? glowT.checked : false;
             if (!savedGlow) document.body.classList.remove('glow-active');
             isMatrixGreen = greenT ? greenT.checked : false;
-            syncThemeColor();
+            
+            // Manual sync since syncThemeColor is removed
+            if (isMatrixGreen) {
+                document.documentElement.style.setProperty('--theme-color', CLASSIC_GREEN);
+                rainColor = CLASSIC_GREEN;
+                themeColor = CLASSIC_GREEN;
+            } else {
+                const pickerVal = document.getElementById('theme-color-picker').value;
+                document.documentElement.style.setProperty('--theme-color', pickerVal);
+                rainColor = document.getElementById('color-picker').value;
+                themeColor = pickerVal;
+            }
+            
             chrome.storage.sync.set({ isGlow: savedGlow, isMatrixGreen: isMatrixGreen });
             showZionMessage("STEALTH PROTOCOL DEACTIVATED");
         }
@@ -1027,12 +1027,23 @@ const CLI_COMMANDS = {
 
         glitchAudio.onended = () => {
             clearInterval(tearInterval);
-            if (!get('glitch-toggle').checked) body.classList.remove('glitch-enabled');
+            if (!document.getElementById('glitch-toggle').checked) body.classList.remove('glitch-enabled');
             root.style.setProperty('--glitch-intensity', oldIntensity || '5px');
             root.style.setProperty('--theme-color', oldColor);
             body.style.transform = "";
             body.style.filter = "";
-            syncThemeColor();
+            
+            // Restore theme color
+             if (isMatrixGreen) {
+                document.documentElement.style.setProperty('--theme-color', CLASSIC_GREEN);
+                rainColor = CLASSIC_GREEN;
+                themeColor = CLASSIC_GREEN;
+            } else {
+                const pickerVal = document.getElementById('theme-color-picker').value;
+                document.documentElement.style.setProperty('--theme-color', pickerVal);
+                rainColor = document.getElementById('color-picker').value;
+                themeColor = pickerVal;
+            }
         };
     },
     '/quote': (text) => {
@@ -1086,7 +1097,13 @@ const CLI_COMMANDS = {
         if(v) { 
             document.getElementById('color-picker').value = v; 
             document.getElementById('theme-color-picker').value = v; 
-            syncThemeColor(); 
+            // Manual sync since syncThemeColor is removed
+            if (!isMatrixGreen) {
+                themeColor = v;
+                rainColor = v;
+                document.documentElement.style.setProperty('--theme-color', v);
+                if (!videoBackground) startRain();
+            }
             chrome.storage.sync.set({ rainColor: v, themeColor: v }); 
         }
     },
@@ -1099,7 +1116,7 @@ const CLI_COMMANDS = {
         const physicalHeight = Math.round(window.screen.height * dpr);
         
         const idImage = chrome.runtime.getURL("neo_id.png");
-        const info = `IDENTITY TRACE: \nOS: ${platform}\nCORE: ${browserName}\nDPR: ${dpr.toFixed(2)}x (Scaling Factor)\nVIEWPORT: ${window.innerWidth}x${window.innerHeight}\nHARDWARE: ${physicalWidth}x${physicalHeight} (True Resolution)\nUPLINK: ${navigator.onLine ? "SECURE" : "DISCONNECTED"}\nNETWORK ACTIVITY: ${networkData.sent.toFixed(1)}KB sent, ${networkData.received.toFixed(1)}KB received<div style="margin: 5px 0; text-align: center;"><img src="${idImage}" style="max-width: 300px; width: 100%; background: transparent; display: inline-block;"></div>STATUS: YOU ARE THE ONE.`;
+        const info = `IDENTITY TRACE: \nOS: ${platform}\nCORE: ${browserName}\nDPR: ${dpr.toFixed(2)}x (Scaling Factor)\nVIEWPORT: ${window.innerWidth}x${window.innerHeight}\nHARDWARE: ${physicalWidth}x${physicalHeight} (True Resolution)\nUPLINK: ${navigator.onLine ? "SECURE" : "DISCONNECTED"}\nSTATUS: YOU ARE THE ONE.`;
         showZionMessage(info);
     },
     '/clear': () => { const log = document.getElementById('chat-log'); if(log) log.innerHTML = ""; },
@@ -1487,64 +1504,31 @@ async function initOracleChat() {
             
             try {
                 const lower = txt.toLowerCase();
-                const isSlashCmd = lower.startsWith('/image') || lower.startsWith('/img') || lower.startsWith('/draw');
-                const hasAction = /(draw|generate|create|make|visualize|show)/i.test(lower);
-                const hasObject = /(image|picture|photo|art|sketch|painting)/i.test(lower);
-                const isNaturalCmd = hasAction && hasObject;
+                const loadPhrases = ["Decrypting", "Accessing Source", "Tracing Signal", "Parsing", "Constructing"];
+                const randomPhrase = loadPhrases[Math.floor(Math.random() * loadPhrases.length)];
 
-                if (isSlashCmd || isNaturalCmd) {
-                    let imgPrompt = txt
-                        .replace(/^\/(image|img|draw)/i, '')
-                        .replace(/^(can you|please|kindly)\s+/i, '')
-                        .replace(/^(draw|generate|create|make|visualize|show)\s+(me\s+)?(an?\s+)?(image|picture|photo|art|sketch|painting)\s+(of\s+)?/i, '')
-                        .trim();
-                        
-                    if(!imgPrompt) imgPrompt = txt; 
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'oracle-loading';
+                loadingDiv.textContent = randomPhrase;
+                history.appendChild(loadingDiv);
+                history.scrollTop = history.scrollHeight;
 
-                    // Show temporary loading for image specifically
-                    const loadingDiv = document.createElement('div');
-                    loadingDiv.className = 'oracle-loading';
-                    loadingDiv.textContent = 'Constructing visual representation...';
-                    history.appendChild(loadingDiv);
-                    history.scrollTop = history.scrollHeight;
-
-                    const imgElement = await puter.ai.txt2img(imgPrompt, { model: 'black-forest-labs/FLUX.1-schnell' });
-                    const imgUrl = imgElement.src; 
-                    
+                // Call Engine
+                try {
+                    const resp = await OracleEngine.ask(txt);
                     loadingDiv.remove();
-                    
-                    addOracleImageResponse(imgUrl, `Rendering construct: "${imgPrompt}"`);
-                } else {
-                    // --- CHANGED LOGIC START ---
-                    // Add Loading UI
-                    // [NEW CODE]
-// Note: These strings have NO dots at the end. The CSS adds them.
-const loadPhrases = ["Decrypting", "Accessing Source", "Tracing Signal", "Parsing", "Constructing"];
-const randomPhrase = loadPhrases[Math.floor(Math.random() * loadPhrases.length)];
-
-const loadingDiv = document.createElement('div');
-loadingDiv.className = 'oracle-loading';
-loadingDiv.textContent = randomPhrase; 
-history.appendChild(loadingDiv);
-                    history.scrollTop = history.scrollHeight;
-                    
-                    // Call Engine
-                    try {
-                        const resp = await OracleEngine.ask(txt);
-                        loadingDiv.remove();
-                        addOracleResponse(resp);
-                    } catch (err) {
-                        loadingDiv.remove();
-                        addOracleResponse("The signal was lost.");
-                        console.error(err);
-                    }
-                    // --- CHANGED LOGIC END ---
+                    addOracleResponse(resp);
+                } catch (err) {
+                    loadingDiv.remove();
+                    addOracleResponse("The signal was lost.");
+                    console.error(err);
                 }
+                // --- CHANGED LOGIC END ---
             } catch (err) {
-                 // Fallback catch for image gen errors
+                 // Fallback catch
                 const loaders = history.querySelectorAll('.oracle-loading');
                 loaders.forEach(l => l.remove());
-                addOracleResponse("Signal lost. Construct loading failed.");
+                addOracleResponse("Signal lost.");
                 console.error(err);
             }
         }
@@ -1840,60 +1824,6 @@ async function clearSfxFromDB() {
     db.transaction("sfx", "readwrite").objectStore("sfx").clear();
 }
 
-// --- NETWORK MONITORING ---
-let networkHistory = [];
-const MAX_NETWORK_HISTORY = 60;
-
-function updateNetworkStats() {
-    const now = Date.now();
-    let netActivity = 0;
-    if (navigator.onLine) {
-        const randomPattern = Math.random();
-        if (randomPattern < 0.1) netActivity = 30 + Math.random() * 40;
-        else if (randomPattern < 0.3) netActivity = 10 + Math.random() * 20;
-        else netActivity = 2 + Math.random() * 8;
-    }
-    const bytesPerUpdate = netActivity * 1024;
-    networkData.sent += bytesPerUpdate * 0.4 / 1024;
-    networkData.received += bytesPerUpdate * 0.6 / 1024;
-    networkData.lastUpdate = now;
-    
-    networkHistory.push(netActivity);
-    if (networkHistory.length > MAX_NETWORK_HISTORY) networkHistory.shift();
-    
-    const netFill = get('net-fill');
-    const netLed = document.querySelector('#operator-console .deck-group:nth-child(3) .led');
-    
-    if (netFill) {
-        const avgActivity = networkHistory.length > 0 ? networkHistory.reduce((a, b) => a + b) / networkHistory.length : 0;
-        let netPercent = Math.min(avgActivity, 100);
-        if (navigator.onLine && netPercent < 5) netPercent = 5;
-        netFill.style.height = `${netPercent}%`;
-        
-        if (netLed) {
-            netLed.classList.remove('blink-fast', 'blink-slow', 'solid');
-            if (netPercent > 70) {
-                netLed.classList.add('blink-fast');
-                netLed.style.background = '#ff0';
-                netLed.style.boxShadow = '0 0 5px #ff0';
-            } else if (netPercent > 30) {
-                netLed.classList.add('blink-slow');
-                netLed.style.background = '#0f0';
-                netLed.style.boxShadow = '0 0 5px #0f0';
-            } else {
-                netLed.classList.add('solid');
-                netLed.style.background = '#00f';
-                netLed.style.boxShadow = '0 0 5px #00f';
-            }
-        }
-    }
-    const ioFill = get('io-fill');
-    if (ioFill) {
-        const ioPercent = Math.min(netActivity * 0.7 + Math.random() * 15, 100);
-        ioFill.style.height = `${ioPercent}%`;
-    }
-}
-
 // --- VISUALS & ANIMATION ---
 const sentinelVideo = document.createElement('video');
 sentinelVideo.src = 'sentinel.webm';
@@ -1995,225 +1925,11 @@ function updateUI() {
     clockEl.textContent = ts; clockEl.setAttribute('data-text', ts);
     document.getElementById('date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-    const cpuFill = get('cpu-fill'), memFill = get('mem-fill'), pwrFill = get('pwr-fill');
-    if (chrome.system && chrome.system.cpu) {
-        chrome.system.cpu.getInfo((info) => {
-            if (lastCpuInfo) {
-                let totalDiff = 0, idleDiff = 0;
-                for (let i = 0; i < info.processors.length; i++) {
-                    const usage = info.processors[i].usage, lastUsage = lastCpuInfo.processors[i].usage;
-                    totalDiff += (usage.user - lastUsage.user) + (usage.kernel - lastUsage.kernel) + (usage.idle - lastUsage.idle);
-                    idleDiff += (usage.idle - lastUsage.idle);
-                }
-                const cpuPercent = Math.max(Math.round((1 - (idleDiff / totalDiff)) * 100), 5);
-                if (cpuFill) cpuFill.style.height = `${cpuPercent}%`;
-            }
-            lastCpuInfo = info;
-        });
-    }
-    if (chrome.system && chrome.system.memory) {
-        chrome.system.memory.getInfo((info) => {
-            const memPercent = Math.round(((info.capacity - info.availableCapacity) / info.capacity) * 100);
-            if (memFill) memFill.style.height = `${memPercent}%`;
-        });
-    }
-    if (navigator.getBattery) {
-        navigator.getBattery().then(battery => {
-            const pwrPercent = Math.round(battery.level * 100);
-            if (pwrFill) pwrFill.style.height = `${pwrPercent}%`;
-        });
-    }
-    if (Date.now() - networkData.lastUpdate > 2000) updateNetworkStats();
+    // --- REPLACED STATS LOGIC WITH THIS SINGLE LINE ---
+    if (window.updateNebuchadnezzarDeck) window.updateNebuchadnezzarDeck();
 }
 
 // --- ZION NETWORK RSS ---
-const matrixTextIntervals = new Map(), matrixTextIterations = new Map();
-
-function decryptRssText(element, targetText, isHovering) {
-    if (matrixTextIntervals.has(element)) clearInterval(matrixTextIntervals.get(element));
-    let iteration = matrixTextIterations.get(element) || 0;
-    const interval = setInterval(() => {
-        element.innerText = targetText.split("").map((letter, index) => {
-            if (index < iteration) return targetText[index];
-            return MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)];
-        }).join("");
-        if (isHovering) {
-            iteration += 1/3;
-            if (iteration >= targetText.length) { iteration = targetText.length; element.innerText = targetText; clearInterval(interval); matrixTextIntervals.delete(element); }
-        } else {
-            iteration -= 1/2;
-            if (iteration <= 0) { iteration = 0; element.innerText = targetText.replace(/./g, () => MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]); clearInterval(interval); matrixTextIntervals.delete(element); }
-        }
-        matrixTextIterations.set(element, iteration);
-    }, 30);
-    matrixTextIntervals.set(element, interval);
-}
-
-async function updateZionFeed(isSilent = false) {
-    const data = await chrome.storage.sync.get(['isRssEnabled', 'rssSubs']);
-    const container = document.getElementById('zion-rss-container');
-    const list = document.getElementById('rss-feed-list');
-    const barCont = document.getElementById('rss-loading-bar-container');
-    const bar = document.getElementById('rss-loading-bar');
-    
-    if (!data.isRssEnabled) { container.classList.add('hidden'); return; }
-    container.classList.remove('hidden');
-    
-    if (!isSilent) {
-        list.innerHTML = '<div class="rss-meta">Establishing Uplink...</div>';
-        if (barCont && bar) {
-            barCont.style.display = 'block';
-            bar.style.width = '30%'; 
-        }
-    }
-    
-    try {
-        const subs = data.rssSubs || "matrix+cyberpunk";
-        const response = await fetch(`https://www.reddit.com/r/${subs}/hot.json?limit=50&raw_json=1`);
-        
-        if (!isSilent && bar) bar.style.width = '70%'; 
-        const contentType = response.headers.get("content-type");
-        if (!response.ok || !contentType || contentType.indexOf("application/json") === -1) {
-            throw new Error("Reddit Uplink Failed: Received HTML/Error instead of JSON");
-        }
-        const json = await response.json();
-        if (!isSilent && bar) bar.style.width = '100%'; 
-        list.innerHTML = "";
-
-        json.data.children.forEach(post => {
-            const item = post.data;
-            const link = document.createElement('a');
-            link.className = 'rss-item'; 
-            link.href = `https://reddit.com${item.permalink}`; 
-            
-            link.onclick = (e) => {
-                if (e.target.tagName !== 'BUTTON' && e.target.parentElement.tagName !== 'BUTTON') {
-                    e.preventDefault();
-                    if (typeof openTerminalModal === "function") {
-                        openTerminalModal(item.permalink);
-                    } else {
-                        window.open(link.href, '_blank');
-                    }
-                }
-            };
-
-            const title = document.createElement('div');
-            title.className = 'rss-title';
-            title.style.color = 'var(--theme-color)';
-            const originalTitle = item.title;
-            title.innerText = originalTitle.replace(/./g, () => MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]);
-            
-            const meta = document.createElement('div');
-            meta.className = 'rss-meta';
-            meta.style.color = 'var(--theme-color)';
-            meta.style.opacity = '0.7';
-            const subText = `r/${item.subreddit}`;
-            const authText = `u/${item.author}`;
-            const combinedMeta = `${subText} • ${authText}`;
-            meta.innerText = combinedMeta.replace(/./g, () => MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]);
-
-            link.appendChild(title);
-            link.appendChild(meta);
-
-            if (item.post_hint === 'image' || (item.url && item.url.match(/\.(jpg|jpeg|png|gif)$/))) {
-                const wrap = document.createElement('div');
-                wrap.className = 'rss-media-wrapper';
-                const img = document.createElement('img');
-                img.src = item.url;
-                img.className = 'rss-media-content';
-                const imgFsBtn = document.createElement('button');
-                imgFsBtn.className = 'video-fullscreen-btn'; 
-                imgFsBtn.innerHTML = '⛶';
-                imgFsBtn.title = "Maximize Visual";
-                imgFsBtn.onclick = (e) => {
-                    e.preventDefault(); e.stopPropagation(); 
-                    if (img.requestFullscreen) img.requestFullscreen();
-                    else if (img.webkitRequestFullscreen) img.webkitRequestFullscreen();
-                    else if (img.msRequestFullscreen) img.msRequestFullscreen();
-                };
-                wrap.appendChild(img);
-                wrap.appendChild(imgFsBtn);
-                link.appendChild(wrap);
-            } else if (item.is_video && item.media && item.media.reddit_video) {
-                const wrap = document.createElement('div');
-                wrap.className = 'rss-media-wrapper';
-                const video = document.createElement('video');
-                video.src = item.media.reddit_video.hls_url || item.media.reddit_video.fallback_url;
-                video.className = 'rss-media-content';
-                video.autoplay = true; video.loop = true; video.muted = true; video.playsInline = true;
-                const fsBtn = document.createElement('button');
-                fsBtn.className = 'video-fullscreen-btn';
-                fsBtn.innerHTML = '⛶';
-                fsBtn.title = "Maximize Transmission";
-                fsBtn.onclick = (e) => {
-                    e.preventDefault(); e.stopPropagation();
-                    if (video.requestFullscreen) video.requestFullscreen();
-                    else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
-                };
-                const volBtn = document.createElement('button');
-                volBtn.className = 'video-vol-btn';
-                volBtn.innerHTML = '🔇';
-                volBtn.title = "Toggle Audio";
-                volBtn.onclick = (e) => {
-                    e.preventDefault(); e.stopPropagation();
-                    video.muted = !video.muted;
-                    if (!video.muted) video.play().catch(() => {});
-                    volBtn.innerHTML = video.muted ? '🔇' : '🔊';
-                    volBtn.style.boxShadow = video.muted ? 'none' : '0 0 10px var(--theme-color)';
-                };
-                wrap.appendChild(video); wrap.appendChild(fsBtn); wrap.appendChild(volBtn);
-                link.appendChild(wrap);
-            }
-
-            const statsRow = document.createElement('div');
-            statsRow.className = 'rss-stats-row';
-            const format = (n) => (n > 999 ? (n/1000).toFixed(1) + 'k' : Math.floor(n) || 0);
-
-            const upDiv = document.createElement('div');
-            upDiv.className = 'rss-stat-item upvote-item';
-            upDiv.innerHTML = `<span class="rss-stat-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4L3 15H9V20H15V15H21L12 4Z" /></svg></span> ${format(item.ups)}`;
-            statsRow.appendChild(upDiv);
-
-            const ratio = item.upvote_ratio || 1;
-            const estimatedDowns = ratio < 1 ? Math.round((item.ups / ratio) - item.ups) : 0;
-            if (estimatedDowns > 0) {
-                const downDiv = document.createElement('div');
-                downDiv.className = 'rss-stat-item downvote-item';
-                downDiv.innerHTML = `<span class="rss-stat-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="transform: rotate(180deg);"><path d="M12 4L3 15H9V20H15V15H21L12 4Z" /></svg></span> ${format(estimatedDowns)}`;
-                statsRow.appendChild(downDiv);
-            }
-
-            const commDiv = document.createElement('div');
-            commDiv.className = 'rss-stat-item';
-            commDiv.innerHTML = `<span class="rss-stat-icon">💬</span> ${format(item.num_comments)}`;
-            statsRow.appendChild(commDiv);
-            link.appendChild(statsRow);
-
-            link.onmouseenter = () => {
-                decryptRssText(title, originalTitle, true);
-                decryptRssText(meta, combinedMeta, true);
-                const vid = link.querySelector('video');
-                if (vid) vid.play().catch(() => {});
-            };
-
-            link.onmouseleave = () => {
-                decryptRssText(title, originalTitle, false);
-                decryptRssText(meta, combinedMeta, false);
-                const vid = link.querySelector('video');
-                if (vid) vid.pause();
-            };
-
-            list.appendChild(link);
-        });
-
-        if (!isSilent && barCont) {
-            setTimeout(() => {
-                barCont.style.display = 'none';
-                if (bar) bar.style.width = '0%';
-            }, 800);
-        }
-    } catch (e) { console.error("Zion Feed Error:", e); }
-}
 
 // --- EXPANDED CHAT SCRIPTS ---
 const CHAT_SCRIPTS = [
@@ -2228,7 +1944,7 @@ const CHAT_SCRIPTS = [
 async function runChatTerminal() {
     if (!isChatEnabled) return;
     const s = CHAT_SCRIPTS[Math.floor(Math.random() * CHAT_SCRIPTS.length)]; 
-    const l = get('chat-log');
+    const l = document.getElementById('chat-log');
     const scrollTerminal = () => {
         if (!l) return;
         l.scrollTop = l.scrollHeight;
@@ -2298,82 +2014,10 @@ searchInput.addEventListener('keydown', (e) => {
     }
 });
 
-// --- SETTINGS CONTROLS ---
-const get = (id) => document.getElementById(id);
-const modal = get('settings-modal'), sizeS = get('size-slider'), textScaleS = get('text-scale-slider'), speedS = get('speed-slider');
-const colorP = get('color-picker'); 
-const themeColorP = get('theme-color-picker'); 
-
-const minT = get('show-minutes'), secT = get('show-seconds'), hour24T = get('use-24hour'), greenT = get('matrix-green'), binaryT = get('binary-mode'), hexT = get('hex-mode'), asciiT = get('ascii-mode'), bamumT = get('bamum-mode'), mathT = get('math-mode'), emojiT = get('emoji-mode'), snowT = get('snow-toggle'), fontT = get('font-toggle'), rainbowT = get('rainbow-toggle'), glowT = get('glow-toggle'), glitchT = get('glitch-toggle'), glitchS = get('glitch-slider'), scanlineT = get('scanline-toggle'), bgFilterT = get('bg-filter-toggle'), bgT = get('bg-toggle'), quoteI = get('quote-input'), saveB = get('save-settings'), scaleS = get('scale-mode'), cycleT = get('cycle-quotes'), resetB = get('restore-defaults');
-const imgI = get('image-input'), vidI = get('video-input'), upImgB = get('upload-image-btn'), upVidB = get('upload-video-btn'), clearB = get('clear-backdrop');
-const phoneT = get('phone-toggle'), phoneFreqS = get('phone-freq-slider'), phoneFreqVal = get('phone-freq-value'), chatT = get('chat-toggle');
-const audI = get('audio-input'), upAudB = get('upload-audio-btn'), clearAudB = get('clear-audios');
-const rssT = get('rss-toggle'), rssI = get('rss-input'), statsT = get('stats-toggle');
-const rainAmbT = get('rain-ambience-toggle'), humT = get('hum-toggle'), matrixSfxT = get('matrix-sfx-toggle'), envVolS = get('env-volume-slider');
-const upSfxB = get('upload-custom-sfx-btn'), sfxI = get('custom-sfx-input'), clearSfxB = get('clear-custom-sfx');
-const journey2T = get('journey2-toggle'), binaryTunnelT = get('binary-toggle'), matrixRoomT = get('room-toggle');
-const movieTunnelT = get('movie-tunnel-toggle'), matrixRoomNewT = get('matrix-room-toggle'), combatTrainingT = get('combat-training-toggle'), meditationT = get('meditation-toggle'), operatorT = get('operator-toggle');
-const verticalRainT = get('vertical-rain-toggle');
-
-const verticalRainBinaryT = get('vertical-rain-binary-mode');
-const verticalRainHexT = get('vertical-rain-hex-mode');
-const verticalRainAsciiT = get('vertical-rain-ascii-mode');
-const verticalRainMathT = get('vertical-rain-math-mode');
-const verticalRainRainbowT = get('vertical-rain-rainbow-toggle');
-const oracleT = get('oracle-toggle');
-
 function applyImg(s) { removeM(); const i = document.createElement('img'); i.id = 'bg-image-layer'; i.src = s; mainContainer.prepend(i); }
 function applyVid(file) { removeM(); const v = document.createElement('video'); v.id = 'bg-video'; v.src = URL.createObjectURL(file); v.autoplay = v.loop = v.muted = v.playsInline = true; mainContainer.prepend(v); }
-function removeM() { const v = get('bg-video'), i = get('bg-image-layer'); if(v) { URL.revokeObjectURL(v.src); v.remove(); } if(i) i.remove(); }
+function removeM() { const v = document.getElementById('bg-video'), i = document.getElementById('bg-image-layer'); if(v) { URL.revokeObjectURL(v.src); v.remove(); } if(i) i.remove(); }
 
-function syncThemeColor() {
-    if (isMatrixGreen) {
-        document.documentElement.style.setProperty('--theme-color', CLASSIC_GREEN);
-        rainColor = CLASSIC_GREEN;
-        themeColor = CLASSIC_GREEN;
-        colorP.value = CLASSIC_GREEN;
-        themeColorP.value = CLASSIC_GREEN;
-        colorP.disabled = true;
-        themeColorP.disabled = true;
-    } else {
-        document.documentElement.style.setProperty('--theme-color', themeColorP.value);
-        rainColor = colorP.value;
-        themeColor = themeColorP.value;
-        colorP.disabled = false;
-        themeColorP.disabled = false;
-    }
-    if (!videoBackground) startRain();
-}
-
-get('settings-icon-container').onclick = () => {
-    modal.classList.toggle('hidden');
-    if (!modal.classList.contains('hidden')) {
-        setTimeout(initSettingsRain, 50); 
-    } else {
-        if (settingsRainInterval) clearInterval(settingsRainInterval);
-    }
-};
-
-greenT.onchange = (e) => { isMatrixGreen = e.target.checked; syncThemeColor(); };
-
-colorP.oninput = (e) => { 
-    if (!isMatrixGreen) {
-        rainColor = e.target.value;
-        if (!videoBackground) startRain();
-    }
-};
-
-themeColorP.oninput = (e) => {
-    if (!isMatrixGreen) {
-        themeColor = e.target.value;
-        document.documentElement.style.setProperty('--theme-color', themeColor);
-    }
-};
-
-quoteI.oninput = (e) => { const val = e.target.value; if (val.trim() !== "") { stopQuoteCycling(); cycleT.checked = false; get('display-quote').textContent = `"${val}"`; } else if (!cycleT.checked) { get('display-quote').textContent = '"There is no spoon."'; } };
-minT.onchange = (e) => { showMinutes = e.target.checked; updateUI(); };
-secT.onchange = (e) => { showSeconds = e.target.checked; updateUI(); };
-hour24T.onchange = (e) => { use24Hour = e.target.checked; updateUI(); };
 
 function update2DAlphabet() {
     if (isBinary) currentAlphabet = BINARY_ALPHABET;
@@ -2382,31 +2026,6 @@ function update2DAlphabet() {
     else if (isMathSymbols) currentAlphabet = MATH_SYMBOLS_ALPHABET;
     else currentAlphabet = MATRIX_ALPHABET;
 }
-
-binaryT.onchange = (e) => { 
-    isBinary = e.target.checked; 
-    if(isBinary) { isHex = isAscii = isMathSymbols = false; hexT.checked = asciiT.checked = mathT.checked = false; }
-    update2DAlphabet();
-    if (!videoBackground) startRain();
-};
-hexT.onchange = (e) => { 
-    isHex = e.target.checked; 
-    if(isHex) { isBinary = isAscii = isMathSymbols = false; binaryT.checked = asciiT.checked = mathT.checked = false; }
-    update2DAlphabet();
-    if (!videoBackground) startRain();
-};
-asciiT.onchange = (e) => { 
-    isAscii = e.target.checked; 
-    if(isAscii) { isBinary = isHex = isMathSymbols = false; binaryT.checked = hexT.checked = mathT.checked = false; }
-    update2DAlphabet();
-    if (!videoBackground) startRain();
-};
-mathT.onchange = (e) => { 
-    isMathSymbols = e.target.checked; 
-    if(isMathSymbols) { isBinary = isHex = isAscii = false; binaryT.checked = hexT.checked = asciiT.checked = false; }
-    update2DAlphabet();
-    if (!videoBackground) startRain();
-};
 
 document.addEventListener('DOMContentLoaded', function() {
     const bamumToggle = document.getElementById('bamum-mode');
@@ -2423,12 +2042,6 @@ function update3DVerticalRainAlphabet() {
     else verticalRainAlphabet = MATRIX_ALPHABET;
 }
 
-verticalRainBinaryT.onchange = (e) => { isVerticalRainBinary = e.target.checked; if(isVerticalRainBinary) { isVerticalRainHex = isVerticalRainAscii = isVerticalRainMathSymbols = false; verticalRainHexT.checked = verticalRainAsciiT.checked = verticalRainMathT.checked = false; } update3DVerticalRainAlphabet(); if (videoBackground === "vertical-rain") startVerticalRainEffect(); };
-verticalRainHexT.onchange = (e) => { isVerticalRainHex = e.target.checked; if(isVerticalRainHex) { isVerticalRainBinary = isVerticalRainAscii = isVerticalRainMathSymbols = false; verticalRainBinaryT.checked = verticalRainAsciiT.checked = verticalRainMathT.checked = false; } update3DVerticalRainAlphabet(); if (videoBackground === "vertical-rain") startVerticalRainEffect(); };
-verticalRainAsciiT.onchange = (e) => { isVerticalRainAscii = e.target.checked; if(isVerticalRainAscii) { isVerticalRainBinary = isVerticalRainHex = isVerticalRainMathSymbols = false; verticalRainBinaryT.checked = verticalRainHexT.checked = verticalRainMathT.checked = false; } update3DVerticalRainAlphabet(); if (videoBackground === "vertical-rain") startVerticalRainEffect(); };
-verticalRainMathT.onchange = (e) => { isVerticalRainMathSymbols = e.target.checked; if(isVerticalRainMathSymbols) { isVerticalRainBinary = isVerticalRainHex = isVerticalRainAscii = false; verticalRainBinaryT.checked = verticalRainHexT.checked = verticalRainAsciiT.checked = false; } update3DVerticalRainAlphabet(); if (videoBackground === "vertical-rain") startVerticalRainEffect(); };
-verticalRainRainbowT.onchange = (e) => { isVerticalRainRainbow = e.target.checked; if (videoBackground === "vertical-rain") startVerticalRainEffect(); };
-
 document.addEventListener('DOMContentLoaded', function() {
     const verticalRainBamumToggle = document.getElementById('vertical-rain-bamum-mode');
     const verticalRainEmojiToggle = document.getElementById('vertical-rain-emoji-mode');
@@ -2436,120 +2049,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (verticalRainEmojiToggle) { verticalRainEmojiToggle.disabled = true; verticalRainEmojiToggle.checked = false; }
 });
 
-snowT.onchange = (e) => { 
-    isSnowing = e.target.checked; 
-    chrome.storage.sync.set({ isSnowing }); 
-    const swarmAudio = document.getElementById('sentinel-swarm-sfx');
-    if(isSnowing) { 
-        initSnow(); 
-        sCanvas.style.display = 'block';
-        if (swarmAudio) {
-            swarmAudio.volume = 0.4;
-            swarmAudio.play().catch(err => { console.log("Audio waiting for user interaction"); });
-        }
-    } else {
-        sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
-        sCanvas.style.display = 'none';
-        if (swarmAudio) { swarmAudio.pause(); swarmAudio.currentTime = 0; }
-    }
-};
-
-rainbowT.onchange = (e) => isFlashing = e.target.checked;
-fontT.onchange = (e) => document.body.classList.toggle('cyberpunk-font', e.target.checked);
-glowT.onchange = (e) => document.body.classList.toggle('glow-active', e.target.checked);
-glitchT.onchange = (e) => document.body.classList.toggle('glitch-enabled', e.target.checked);
-scanlineT.onchange = (e) => get('scanline-overlay').classList.toggle('hidden', !e.target.checked);
-bgFilterT.onchange = (e) => document.body.classList.toggle('bg-filter-active', e.target.checked);
-bgT.onchange = (e) => mainContainer.classList.toggle('transparent-bg', e.target.checked);
-cycleT.onchange = (e) => { if (e.target.checked) { quoteI.value = ""; startQuoteCycling(); } else stopQuoteCycling(); };
-speedS.oninput = (e) => { rainSpeed = parseInt(e.target.value); if (!videoBackground) startRain(); };
-sizeS.oninput = (e) => { mainContainer.style.transform = `translate(-50%, -50%) scale(${e.target.value})`; };
-textScaleS.oninput = (e) => document.documentElement.style.setProperty('--text-scale', e.target.value);
-glitchS.oninput = (e) => document.documentElement.style.setProperty('--glitch-intensity', e.target.value + 'px');
-scaleS.onchange = (e) => document.documentElement.style.setProperty('--bg-scale', e.target.value);
-
-journey2T.onchange = (e) => handleVideoBackgroundToggle('journey2', e.target.checked);
-binaryTunnelT.onchange = (e) => handleVideoBackgroundToggle('binary', e.target.checked);
-matrixRoomT.onchange = (e) => handleVideoBackgroundToggle('room', e.target.checked);
-movieTunnelT.onchange = (e) => handleVideoBackgroundToggle('movie-tunnel', e.target.checked);
-matrixRoomNewT.onchange = (e) => handleVideoBackgroundToggle('matrix-room', e.target.checked);
-combatTrainingT.onchange = (e) => handleVideoBackgroundToggle('combat-training', e.target.checked);
-meditationT.onchange = (e) => handleVideoBackgroundToggle('meditation', e.target.checked);
-verticalRainT.onchange = (e) => handleVideoBackgroundToggle('vertical-rain', e.target.checked);
-operatorT.onchange = (e) => handleVideoBackgroundToggle('operator', e.target.checked);
-
-phoneT.onchange = (e) => { 
-    isPhoneEnabled = e.target.checked; 
-    const phoneContainer = get('phone-container');
-    if (isPhoneEnabled) phoneContainer.classList.remove('hidden');
-    else {
-        phoneContainer.classList.add('hidden');
-        phoneContainer.classList.remove('ringing', 'receiving');
-        const ringAudio = get('ring-audio');
-        ringAudio.pause(); ringAudio.src = "";
-    }
-    setupPhoneInterval();
-    chrome.storage.sync.set({ isPhoneEnabled });
-};
-phoneFreqS.oninput = (e) => { phoneFrequency = parseInt(e.target.value); phoneFreqVal.textContent = phoneFrequency; setupPhoneInterval(); };
-chatT.onchange = (e) => { isChatEnabled = e.target.checked; get('transmission-terminal').classList.toggle('hidden', !isChatEnabled); };
-rssT.onchange = (e) => { chrome.storage.sync.set({ isRssEnabled: e.target.checked }); updateZionFeed(); };
-rssI.onchange = (e) => { const val = e.target.value.replace(/,/g, '+').replace(/\s/g, ''); rssI.value = val; chrome.storage.sync.set({ rssSubs: val }); updateZionFeed(); };
-statsT.onchange = (e) => get('operator-console').classList.toggle('stats-hidden', !e.target.checked);
-rainAmbT.onchange = (e) => { const a = get('ambience-rain'); e.target.checked ? a.play().catch(() => {}) : a.pause(); };
-humT.onchange = (e) => { const a = get('ambience-hum'); e.target.checked ? a.play().catch(() => {}) : a.pause(); };
-matrixSfxT.onchange = (e) => { const a = get('matrix-code-sfx'); e.target.checked ? a.play().catch(() => {}) : a.pause(); };
-envVolS.oninput = (e) => { const v = parseFloat(e.target.value); get('ambience-rain').volume = get('ambience-hum').volume = get('matrix-code-sfx').volume = get('custom-background-sfx').volume = v; };
-
-if (oracleT) {
-    oracleT.onchange = (e) => {
-        isOracleEnabled = e.target.checked;
-        chrome.storage.sync.set({ isOracleEnabled });
-        initOracleChat();
-    }
-}
-
-upSfxB.onclick = () => sfxI.click();
-sfxI.onchange = async (e) => { const f = e.target.files[0]; if(!f) return; await saveSfxToDB(f); const a = get('custom-background-sfx'); a.src = URL.createObjectURL(f); a.play().catch(() => {}); };
-clearSfxB.onclick = () => { if(confirm("Purge custom SFX?")) { clearSfxFromDB(); get('custom-background-sfx').pause(); get('custom-background-sfx').src = ""; } };
-
-saveB.onclick = () => {
-    const s = { 
-        rainColor: colorP.value, themeColor: themeColorP.value, rainSpeed, uiScale: sizeS.value, textScale: textScaleS.value, 
-        showMinutes, showSeconds, use24Hour, isMatrixGreen, isBinary, isHex, isAscii, isMathSymbols, videoBackground,
-        isSnowing, isCyberpunkFont: fontT.checked, isFlashing, isGlow: glowT.checked, isGlitch: glitchT.checked, 
-        glitchIntensity: glitchS.value, isScanline: scanlineT.checked, isBgFilter: bgFilterT.checked, 
-        isTransparent: bgT.checked, scaleMode: scaleS.value, isCycling: cycleT.checked, customQuote: quoteI.value, 
-        isPhoneEnabled, phoneFrequency, isChatEnabled, isRssEnabled: rssT.checked, rssSubs: rssI.value, 
-        isStatsEnabled: statsT.checked, isRainAmbience: rainAmbT.checked, isHumEnabled: humT.checked, 
-        isMatrixSfxEnabled: matrixSfxT.checked, envVolume: envVolS.value,
-        isOracleEnabled: oracleT ? oracleT.checked : false
-    };
-    chrome.storage.sync.set(s, () => {
-        modal.classList.add('hidden');
-        if (settingsRainInterval) clearInterval(settingsRainInterval);
-    });
-};
-
-resetB.onclick = () => { 
-    if(confirm("Hard Reset?")) { 
-        chrome.storage.sync.clear(); 
-        clearVideoFromDB().then(() => clearSfxFromDB()).then(() => {
-            stopAllAnimations();
-            location.reload(); 
-        }); 
-    } 
-};
-upImgB.onclick = () => imgI.click();
-imgI.onchange = (e) => { if(!e.target.files[0]) return; const r = new FileReader(); r.onload = (ev) => { applyImg(ev.target.result); chrome.storage.local.set({ customImg: ev.target.result }); clearVideoFromDB(); }; r.readAsDataURL(e.target.files[0]); };
-upVidB.onclick = () => vidI.click();
-vidI.onchange = (e) => { const f = e.target.files[0]; if(!f) return; applyVid(f); saveVideoToDB(f); chrome.storage.local.remove('customImg'); };
-clearB.onclick = () => { removeM(); chrome.storage.local.remove('customImg'); clearVideoFromDB(); };
-upAudB.onclick = () => audI.click();
-audI.onchange = async (e) => { for(let f of e.target.files) await saveAudioToDB(f); alert("Messages stored."); };
-clearAudB.onclick = () => { if(confirm("Purge all messages?")) clearAudiosFromDB(); };
-
-function startQuoteCycling() { stopQuoteCycling(); let idx = 0; quoteInterval = setInterval(() => { const q = get('display-quote'); q.style.opacity = 0; setTimeout(() => { q.textContent = `"${MATRIX_QUOTES[idx]}"`; q.style.opacity = 0.9; idx = (idx + 1) % MATRIX_QUOTES.length; }, 500); }, 15000); }
+function startQuoteCycling() { stopQuoteCycling(); let idx = 0; quoteInterval = setInterval(() => { const q = document.getElementById('display-quote'); q.style.opacity = 0; setTimeout(() => { q.textContent = `"${MATRIX_QUOTES[idx]}"`; q.style.opacity = 0.9; idx = (idx + 1) % MATRIX_QUOTES.length; }, 500); }, 15000); }
 function stopQuoteCycling() { clearInterval(quoteInterval); }
 
 function setupPhoneInterval() {
@@ -2561,17 +2061,17 @@ function setupPhoneInterval() {
 let isProcessingPhone = false;
 function triggerRinging() { 
     if (isProcessingPhone || !isPhoneEnabled) return; 
-    const a = get('ring-audio'); 
+    const a = document.getElementById('ring-audio'); 
     a.src = "ringing.mp3"; 
-    get('phone-container').classList.add('ringing'); 
+    document.getElementById('phone-container').classList.add('ringing'); 
     a.play().catch(() => {}); 
 }
 
 function initPhoneSystem() {
-    const phoneCont = get('phone-container'), 
-          transText = get('transmission-text'), 
-          transAudio = get('transmission-audio'), 
-          ringAudio = get('ring-audio');
+    const phoneCont = document.getElementById('phone-container'), 
+          transText = document.getElementById('transmission-text'), 
+          transAudio = document.getElementById('transmission-audio'), 
+          ringAudio = document.getElementById('ring-audio');
 
     const localPhoneFiles = [
         "phone_msg_1.mp3",
@@ -2614,7 +2114,7 @@ function initPhoneSystem() {
     };
 
     function finishCall() { 
-        const h = get('hangup-audio'); 
+        const h = document.getElementById('hangup-audio'); 
         h.src = "hangup.mp3"; 
         h.play(); 
         h.onended = () => h.src = ""; 
@@ -2628,7 +2128,7 @@ function initPhoneSystem() {
     setupPhoneInterval();
 }
 
-const navWrapper = get('dynamic-links-wrapper'), addLinkBtn = get('add-link-btn');
+const navWrapper = document.getElementById('dynamic-links-wrapper'), addLinkBtn = document.getElementById('add-link-btn');
 
 let draggedItem = null;
 let dragStartIndex = -1;
@@ -2755,99 +2255,6 @@ function loadNavLinks() {
     });
 }
 
-chrome.storage.sync.get(null, (d) => {
-    const data = { ...DEFAULTS, ...d };
-    initVerticalRainEffect();
-    rainSpeed = data.rainSpeed; speedS.value = rainSpeed; 
-    isMatrixGreen = data.isMatrixGreen; greenT.checked = isMatrixGreen; 
-    colorP.value = data.rainColor; themeColorP.value = data.themeColor || DEFAULTS.themeColor;
-    syncThemeColor(); 
-    
-    isBinary = data.isBinary; binaryT.checked = isBinary;
-    isHex = data.isHex; hexT.checked = isHex;
-    isAscii = data.isAscii; asciiT.checked = isAscii;
-    isMathSymbols = data.isMathSymbols; mathT.checked = isMathSymbols;
-    update2DAlphabet();
-    
-    videoBackground = data.videoBackground; 
-    if (videoBackground) {
-        const toggle = document.getElementById(`${videoBackground}-toggle`);
-        if (toggle) toggle.checked = true;
-        setTimeout(() => startBackgroundVideo(videoBackground), 100);
-    } else {
-        startRain();
-    }
-
-    isSnowing = data.isSnowing; snowT.checked = isSnowing; 
-    if(isSnowing) { initSnow(); const swarmAudio = document.getElementById('sentinel-swarm-sfx'); if (swarmAudio) { swarmAudio.volume = 0.4; swarmAudio.play().catch(() => {}); } }
-
-    isFlashing = data.isFlashing; rainbowT.checked = isFlashing;
-    showMinutes = data.showMinutes; minT.checked = showMinutes; 
-    showSeconds = data.showSeconds; secT.checked = showSeconds; 
-    use24Hour = data.use24Hour; hour24T.checked = use24Hour;
-    
-    isPhoneEnabled = data.isPhoneEnabled; phoneT.checked = isPhoneEnabled; phoneFrequency = data.phoneFrequency; phoneFreqS.value = phoneFrequency; phoneFreqVal.textContent = phoneFrequency;
-    const phoneContainer = get('phone-container');
-    if (isPhoneEnabled) phoneContainer.classList.remove('hidden'); else phoneContainer.classList.add('hidden');
-    
-    isChatEnabled = data.isChatEnabled; chatT.checked = isChatEnabled; 
-    get('transmission-terminal').classList.toggle('hidden', !isChatEnabled);
-    
-    document.body.classList.toggle('cyberpunk-font', data.isCyberpunkFont); fontT.checked = data.isCyberpunkFont;
-    document.body.classList.toggle('glow-active', data.isGlow); glowT.checked = data.isGlow;
-    document.body.classList.toggle('glitch-enabled', data.isGlitch); glitchT.checked = data.isGlitch;
-    document.body.classList.toggle('bg-filter-active', data.isBgFilter); bgFilterT.checked = data.isBgFilter;
-    mainContainer.classList.toggle('transparent-bg', data.isTransparent); bgT.checked = data.isTransparent;
-    get('scanline-overlay').classList.toggle('hidden', !data.isScanline); scanlineT.checked = data.isScanline;
-    
-    document.documentElement.style.setProperty('--text-scale', data.textScale); textScaleS.value = data.textScale;
-    document.documentElement.style.setProperty('--bg-scale', data.scaleMode); scaleS.value = data.scaleMode;
-    mainContainer.style.transform = `translate(-50%, -50%) scale(${data.uiScale})`; sizeS.value = data.uiScale;
-    
-    if (data.customQuote) { quoteI.value = data.customQuote; get('display-quote').textContent = `"${data.customQuote}"`; } else if (data.isCycling) { cycleT.checked = true; startQuoteCycling(); }
-    
-    rssT.checked = data.isRssEnabled; rssI.value = data.rssSubs; updateZionFeed();
-    
-    isOracleEnabled = data.isOracleEnabled;
-    if(oracleT) oracleT.checked = isOracleEnabled;
-    
-    const rA = get('ambience-rain'), hA = get('ambience-hum'), mA = get('matrix-code-sfx'), cA = get('custom-background-sfx');
-    rainAmbT.checked = data.isRainAmbience; humT.checked = data.isHumEnabled; matrixSfxT.checked = data.isMatrixSfxEnabled;
-    envVolS.value = data.envVolume; rA.volume = hA.volume = mA.volume = cA.volume = data.envVolume;
-    
-    if(data.isRainAmbience) rA.play().catch(() => {}); 
-    if(data.isHumEnabled) hA.play().catch(() => {}); 
-    if(data.isMatrixSfxEnabled) mA.play().catch(() => {});
-    loadSfxFromDB().then(f => { if(f) { cA.src = URL.createObjectURL(f); cA.play().catch(() => {}); } });
-    
-    statsT.checked = data.isStatsEnabled; get('operator-console').classList.toggle('stats-hidden', !data.isStatsEnabled);
-    
-    setTimeout(() => { initOracleChat(); }, 100);
-    
-    // --- MIGRATION: SYNC TO LOCAL FOR NAV LINKS ---
-    chrome.storage.sync.get(['userNavLinks'], (syncData) => {
-        if (syncData.userNavLinks && syncData.userNavLinks.length > 0) {
-            chrome.storage.local.get(['userNavLinks'], (localData) => {
-                // If local is empty but sync has data, migrate it
-                if (!localData.userNavLinks || localData.userNavLinks.length === 0) {
-                    chrome.storage.local.set({ userNavLinks: syncData.userNavLinks }, () => {
-                        console.log("Migrated Nav Links from Sync to Local Storage");
-                        // Remove from sync to prevent future conflicts (optional, but cleaner)
-                        chrome.storage.sync.remove('userNavLinks');
-                        loadNavLinks(); // Refresh UI
-                    });
-                }
-            });
-        }
-    });
-    
-    loadNavLinks(); resize(); animateSentinels(); updateUI(); 
-    initPhoneSystem(); runChatTerminal(); 
-    
-    setTimeout(() => { initCalendar(); }, 50);
-    mainContainer.style.opacity = "1";
-});
-
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         if (!isCalendarOpen && !window.calendarInitialized) {
@@ -2861,7 +2268,6 @@ setInterval(() => updateZionFeed(true), 120000);
 chrome.storage.local.get(['customImg'], (res) => { if(res.customImg) applyImg(res.customImg); else loadVideoFromDB().then(file => { if(file) applyVid(file); }); });
 window.onresize = resize;
 setInterval(updateUI, 1000);
-setInterval(updateNetworkStats, 2000);
 
 // --- MATRIX TERMINAL MODAL LOGIC ---
 terminalCurrentData = null;
@@ -4931,108 +4337,6 @@ const wordpadEditor = document.getElementById('wordpad-editor');
 document.getElementById('dock-wordpad').onclick = () => wordpadModal.classList.remove('hidden');
 document.getElementById('close-wordpad-btn').onclick = () => wordpadModal.classList.add('hidden');
 
-// --- ADVANCED WORDPAD LOGIC ---
-const codeToggle = document.getElementById('code-mode-toggle');
-const wordpadFrame = document.querySelector('.wordpad-frame');
-const editor = document.getElementById('wordpad-editor');
-
-codeToggle.addEventListener('change', (e) => {
-    if (e.target.checked) {
-        wordpadFrame.classList.add('coding-mode');
-        editor.placeholder = "// Initialize Zion Coding Environment...\n// Root access granted.\nfunction matrix() {\n  return 'Free your mind';\n}";
-        showZionMessage("NEURAL LINK ESTABLISHED: CODING ENV ACTIVE");
-    } else {
-        wordpadFrame.classList.remove('coding-mode');
-        editor.placeholder = "Initialize data stream...";
-        showZionMessage("NEURAL LINK SEVERED: WORDPAD ACTIVE");
-    }
-});
-
-// --- NEURAL HISTORY LOGIC ---
-const historyBtn = document.getElementById('neural-history-btn');
-
-// Show/Hide History button based on Neural Link
-codeToggle.addEventListener('change', (e) => {
-    historyBtn.style.display = e.target.checked ? 'block' : 'none';
-});
-
-// Save Logic: Save with 'hack_' prefix for easy filtering
-const originalSaveBtn = document.getElementById('save-wordpad-btn');
-originalSaveBtn.onclick = () => {
-    const text = wordpadEditor.value;
-    const isCode = codeToggle.checked;
-    const prefix = isCode ? "hack_" : "vault_";
-    const filename = isCode ? "reality_override.js" : "document.txt";
-    
-    // Convert to data URL for storage
-    const blob = new Blob([text], {type: isCode ? 'application/javascript' : 'text/plain'});
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const key = `${prefix}${Date.now()}_${filename}`;
-        chrome.storage.local.set({ [key]: e.target.result }, () => {
-            showZionMessage(isCode ? "HACK SAVED TO NEURAL HISTORY" : "DATA STREAM SAVED TO ROOT");
-        });
-    };
-    reader.readAsDataURL(blob);
-};
-
-// History Button: Opens Explorer pre-filtered for hacks
-historyBtn.onclick = () => {
-    openRootExplorer("hack_");
-    showZionMessage("ACCESSING NEURAL HISTORY...");
-};
-
-// Added Tab Key support for coding
-editor.addEventListener('keydown', (e) => {
-    if (e.key === 'Tab' && wordpadFrame.classList.contains('coding-mode')) {
-        e.preventDefault();
-        const start = editor.selectionStart;
-        const end = editor.selectionEnd;
-        editor.value = editor.value.substring(0, start) + "    " + editor.value.substring(end);
-        editor.selectionStart = editor.selectionEnd = start + 4;
-    }
-});
-
-// --- OPERATOR CODE EXECUTION ENGINE ---
-const runBtn = document.getElementById('execute-code-btn');
-
-// 1. Show/Hide Run button based on Neural Link toggle
-document.getElementById('code-mode-toggle').addEventListener('change', (e) => {
-    if (e.target.checked) {
-        // Force visual visibility when active
-        runBtn.style.display = 'block';
-        runBtn.style.background = 'rgba(0, 0, 0, 0.6)'; // Dark visible background
-        runBtn.style.color = 'var(--theme-color)';     // Glowing text
-        runBtn.style.border = '1px solid var(--theme-color)'; // Clear border
-        runBtn.style.padding = '2px 10px';
-        runBtn.style.fontWeight = 'bold';
-    } else {
-        runBtn.style.display = 'none';
-    }
-});
-
-// --- OPERATOR RUN LOGIC (SANDBOXED) ---
-runBtn.addEventListener('click', () => {
-    const code = wordpadEditor.value;
-    if (!code.trim()) return;
-
-    if (isChatEnabled) {
-        const log = document.getElementById('chat-log');
-        const d = document.createElement('div');
-        d.className = 'chat-msg';
-        d.innerHTML = `<b class="morpheus">SYSTEM:</b> Passing signal to Sandbox...`;
-        log.appendChild(d);
-        log.scrollTop = log.scrollHeight;
-    }
-
-    // Transmit code string to sandbox
-    sandboxFrame.contentWindow.postMessage({ 
-        code: code, 
-        taskId: 'operator-exec' 
-    }, '*');
-
-    showZionMessage("SIGNAL TRANSMITTED\nAWAITING SANDBOX VALIDATION...");
-});
 });
 
 // 1. Router for Game Buttons
@@ -5251,4 +4555,328 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // --- MEDIA PLAYER INTEGRATION ---
+    const dockMedia = document.getElementById('dock-media');
+    const mediaModal = document.getElementById('media-player-modal');
+    const closeMedia = document.getElementById('close-mp-btn');
+    let mediaPlayerInstance = null;
+
+    if (dockMedia && mediaModal) {
+        dockMedia.addEventListener('click', () => {
+            mediaModal.classList.remove('hidden');
+            
+            // Ensures it renders on top of everything
+            mediaModal.style.zIndex = '10007'; 
+
+            // Initialize class only once
+            if (!mediaPlayerInstance && window.ZionMediaPlayer) {
+                mediaPlayerInstance = new ZionMediaPlayer();
+            }
+        });
+
+        closeMedia.addEventListener('click', () => {
+            mediaModal.classList.add('hidden');
+            // Auto-pause when closing window
+            if(mediaPlayerInstance && mediaPlayerInstance.mediaElement) {
+                mediaPlayerInstance.mediaElement.pause();
+            }
+        });
+    }
 });
+
+// --- INITIALIZATION ---
+chrome.storage.sync.get(null, (d) => {
+    const data = { ...DEFAULTS, ...d };
+    
+    // 1. Initialize Engine State (Variables)
+    initVerticalRainEffect();
+    rainSpeed = data.rainSpeed;
+    isMatrixGreen = data.isMatrixGreen;
+    rainColor = data.rainColor;
+    themeColor = data.themeColor || DEFAULTS.themeColor;
+    
+    // Sync Global CSS Variables
+    if (isMatrixGreen) {
+        document.documentElement.style.setProperty('--theme-color', CLASSIC_GREEN);
+    } else {
+        document.documentElement.style.setProperty('--theme-color', themeColor);
+    }
+
+    isBinary = data.isBinary;
+    isHex = data.isHex;
+    isAscii = data.isAscii;
+    isMathSymbols = data.isMathSymbols;
+    update2DAlphabet();
+    
+    videoBackground = data.videoBackground; 
+    if (videoBackground) {
+        setTimeout(() => startBackgroundVideo(videoBackground), 100);
+    } else {
+        startRain();
+    }
+
+    isSnowing = data.isSnowing;
+    if(isSnowing) { initSnow(); const swarmAudio = document.getElementById('sentinel-swarm-sfx'); if (swarmAudio) { swarmAudio.volume = 0.4; swarmAudio.play().catch(() => {}); } }
+
+    isFlashing = data.isFlashing;
+    showMinutes = data.showMinutes;
+    showSeconds = data.showSeconds;
+    use24Hour = data.use24Hour;
+    
+    isPhoneEnabled = data.isPhoneEnabled;
+    phoneFrequency = data.phoneFrequency;
+    const phoneContainer = document.getElementById('phone-container');
+    if (isPhoneEnabled) phoneContainer.classList.remove('hidden'); else phoneContainer.classList.add('hidden');
+    
+    isChatEnabled = data.isChatEnabled;
+    document.getElementById('transmission-terminal').classList.toggle('hidden', !isChatEnabled);
+    
+    // Apply Visual Classes
+    document.body.classList.toggle('cyberpunk-font', data.isCyberpunkFont);
+    document.body.classList.toggle('glow-active', data.isGlow);
+    document.body.classList.toggle('glitch-enabled', data.isGlitch);
+    document.body.classList.toggle('bg-filter-active', data.isBgFilter);
+    mainContainer.classList.toggle('transparent-bg', data.isTransparent);
+    document.getElementById('scanline-overlay').classList.toggle('hidden', !data.isScanline);
+    
+    document.documentElement.style.setProperty('--text-scale', data.textScale);
+    document.documentElement.style.setProperty('--bg-scale', data.scaleMode);
+    mainContainer.style.transform = `translate(-50%, -50%) scale(${data.uiScale})`;
+    document.documentElement.style.setProperty('--glitch-intensity', data.glitchIntensity + 'px');
+    
+    if (data.customQuote) { document.getElementById('display-quote').textContent = `"${data.customQuote}"`; } 
+    else if (data.isCycling) { startQuoteCycling(); }
+    
+    if(data.isRssEnabled) updateZionFeed();
+    
+    isOracleEnabled = data.isOracleEnabled;
+    
+    // System Monitor State
+    const isSysMon = (data.isSystemMonitorEnabled !== undefined) ? data.isSystemMonitorEnabled : DEFAULTS.isSystemMonitorEnabled;
+    const monitor = document.getElementById('system-log-monitor');
+    if(monitor) monitor.style.display = isSysMon ? 'block' : 'none';
+    
+    // Audio
+    const rA = document.getElementById('ambience-rain'), hA = document.getElementById('ambience-hum'), mA = document.getElementById('matrix-code-sfx'), cA = document.getElementById('custom-background-sfx');
+    rA.volume = hA.volume = mA.volume = cA.volume = data.envVolume;
+    
+    if(data.isRainAmbience) rA.play().catch(() => {}); 
+    if(data.isHumEnabled) hA.play().catch(() => {}); 
+    if(data.isMatrixSfxEnabled) mA.play().catch(() => {});
+    loadSfxFromDB().then(f => { if(f) { cA.src = URL.createObjectURL(f); cA.play().catch(() => {}); } });
+    
+    document.getElementById('operator-console').classList.toggle('stats-hidden', !data.isStatsEnabled);
+    
+    setTimeout(() => { initOracleChat(); }, 100);
+    
+    // --- CALL SETTINGS PAGE UI INITIALIZER ---
+    if (window.initSettingsUI) window.initSettingsUI(data);
+    
+    // --- MIGRATION: SYNC TO LOCAL FOR NAV LINKS ---
+    chrome.storage.sync.get(['userNavLinks'], (syncData) => {
+        if (syncData.userNavLinks && syncData.userNavLinks.length > 0) {
+            chrome.storage.local.get(['userNavLinks'], (localData) => {
+                if (!localData.userNavLinks || localData.userNavLinks.length === 0) {
+                    chrome.storage.local.set({ userNavLinks: syncData.userNavLinks }, () => {
+                        chrome.storage.sync.remove('userNavLinks');
+                        loadNavLinks(); 
+                    });
+                }
+            });
+        }
+    });
+    
+    loadNavLinks(); resize(); animateSentinels(); updateUI(); 
+    initPhoneSystem(); runChatTerminal(); 
+    
+    setTimeout(() => { initCalendar(); }, 50);
+    mainContainer.style.opacity = "1";
+});
+
+// --- NEWS TERMINAL RENDERER (WITH DEEP SCANNING) ---
+async function openNewsInTerminal(article) {
+    const modal = document.getElementById('matrix-modal');
+    const output = document.getElementById('terminal-output');
+    const input = document.getElementById('terminal-cmd-input');
+
+    if (!modal || !output || !input) return;
+
+    // 1. Reset Modal UI
+    modal.classList.remove('hidden');
+    output.innerHTML = "";
+    input.value = "";
+    input.placeholder = "Type 'exit' to close...";
+    
+    // 2. Initialize Effects
+    if (typeof initTerminalRain === 'function') {
+        initTerminalRain();
+        window.addEventListener('resize', initTerminalRain);
+    }
+    if (typeof initTerminalCursor === 'function') initTerminalCursor();
+    setTimeout(() => { input.focus(); }, 50);
+
+    // 3. Stream Header Info
+    const dateStr = article.pubDate ? new Date(article.pubDate).toLocaleString().toUpperCase() : "UNKNOWN DATE";
+    await streamText(output, `> INCOMING NEWS TRANSMISSION...\n> SOURCE: ${article.source.toUpperCase()}\n> DATE:   ${dateStr}\n\n`);
+    await streamText(output, `> HEADLINE: ${article.title.toUpperCase()}\n`);
+    await streamText(output, `----------------------------------------\n\n`);
+
+    // 4. DEEP SCAN LOGIC (The Fix)
+    // First, check if the RSS feed gave us enough content (usually it doesn't)
+    let contentToDisplay = article.fullContent || article.description;
+    const isContentShort = !contentToDisplay || contentToDisplay.length < 500;
+
+    if (isContentShort) {
+        await streamText(output, "> RSS DATA FRAGMENTED. INITIATING DEEP SCAN OF SOURCE...\n");
+        await streamText(output, `> TARGET: ${article.link}\n`);
+        await streamText(output, "> BYPASSING FIREWALLS... ");
+        
+        try {
+            // Fetch the actual webpage
+            const res = await fetch(article.link);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            
+            await streamText(output, "ACCESS GRANTED.\n> PARSING HTML STRUCTURE... ");
+            
+            const htmlText = await res.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlText, 'text/html');
+            
+            // Heuristic: Find the article body
+            // We look for common tag names used by news sites
+            let container = doc.querySelector('article') || 
+                            doc.querySelector('[role="main"]') || 
+                            doc.querySelector('.story-body') || 
+                            doc.querySelector('.article-body') || 
+                            doc.querySelector('.post-content') || 
+                            doc.querySelector('#content') || 
+                            doc.body;
+
+            // Extract all paragraph text
+            const paragraphs = Array.from(container.querySelectorAll('p'));
+            
+            // Filter out junk (menus, copyrights, short blurbs)
+            const cleanParagraphs = paragraphs
+                .map(p => p.textContent.trim())
+                .filter(text => {
+                    if (text.length < 60) return false; // Too short to be news
+                    if (text.toLowerCase().includes("cookies")) return false;
+                    if (text.toLowerCase().includes("copyright")) return false;
+                    if (text.toLowerCase().includes("all rights reserved")) return false;
+                    return true;
+                });
+            
+            if (cleanParagraphs.length > 0) {
+                // Success! Use the scraped text
+                contentToDisplay = cleanParagraphs.join('\n\n');
+                await streamText(output, "SUCCESS.\n\n");
+            } else {
+                await streamText(output, "FAILED (NO DATA). USING SUMMARY.\n\n");
+            }
+
+        } catch (e) {
+            console.error("Deep Scan Error:", e);
+            await streamText(output, "CONNECTION LOST. FALLING BACK TO RSS SUMMARY.\n\n");
+        }
+    } else {
+        await streamText(output, "\n");
+    }
+
+    // 5. Stream the Final Content (Scraped or RSS)
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = contentToDisplay;
+    
+    // Remove scripts/styles just in case
+    const scripts = tempDiv.querySelectorAll('script, style');
+    scripts.forEach(s => s.remove());
+    
+    let cleanText = tempDiv.innerText || tempDiv.textContent || "";
+    
+    // Clean up whitespace
+    cleanText = cleanText.replace(/\n\s*\n/g, '\n\n').trim();
+    
+    if (cleanText) {
+        await streamText(output, cleanText + "\n\n");
+    } else {
+        await streamText(output, "> [DATA ENCRYPTED: CONTENT UNAVAILABLE]\n\n");
+    }
+
+    // 6. Render Media (Image/Video from RSS)
+    if (article.mediaUrl) {
+        const frame = createMediaFrame();
+        const wrapper = document.createElement('div');
+        wrapper.className = 'media-wrapper';
+        
+        let mediaEl;
+        
+        if (article.mediaType === 'video') {
+            mediaEl = document.createElement('video');
+            mediaEl.src = article.mediaUrl;
+            mediaEl.autoplay = true;
+            mediaEl.loop = true;
+            mediaEl.muted = true;
+            mediaEl.controls = false;
+            mediaEl.className = 'terminal-media';
+            
+            const controls = document.createElement('div');
+            controls.className = 'media-controls';
+            
+            const btnVol = createButton('🔇', () => {
+                mediaEl.muted = !mediaEl.muted;
+                btnVol.innerHTML = mediaEl.muted ? '🔇' : '🔊';
+            });
+            
+            const btnFull = createButton('⛶', () => toggleFullscreen(mediaEl));
+            
+            controls.appendChild(btnVol);
+            controls.appendChild(btnFull);
+            wrapper.appendChild(mediaEl);
+            wrapper.appendChild(controls);
+        } else {
+            mediaEl = document.createElement('img');
+            mediaEl.src = article.mediaUrl;
+            mediaEl.className = 'terminal-media';
+            
+            const controls = document.createElement('div');
+            controls.className = 'media-controls';
+            const btnFull = createButton('⛶', () => toggleFullscreen(mediaEl));
+            
+            controls.appendChild(btnFull);
+            wrapper.appendChild(mediaEl);
+            wrapper.appendChild(controls);
+        }
+        
+        frame.appendChild(wrapper);
+        output.appendChild(frame);
+        await streamText(output, `\n> VISUAL ATTACHMENT RENDERED.\n`);
+    }
+
+    // 7. Footer & Source Button
+    const btnContainer = document.createElement('div');
+    btnContainer.style.marginTop = "30px";
+    btnContainer.style.marginBottom = "50px";
+    btnContainer.style.textAlign = "center";
+    btnContainer.style.width = "100%";
+    
+    const sourceBtn = document.createElement('button');
+    sourceBtn.className = 'matrix-btn';
+    sourceBtn.textContent = "[ OPEN ORIGINAL SOURCE ]";
+    
+    sourceBtn.style.padding = "12px 24px";
+    sourceBtn.style.fontSize = "0.9rem";
+    sourceBtn.style.whiteSpace = "nowrap";      
+    sourceBtn.style.display = "inline-block";   
+    sourceBtn.style.width = "auto";             
+    sourceBtn.style.minWidth = "200px";         
+    sourceBtn.style.cursor = "pointer";
+
+    sourceBtn.onclick = () => window.open(article.link, '_blank');
+    
+    btnContainer.appendChild(sourceBtn);
+    output.appendChild(btnContainer);
+    
+    output.scrollTop = output.scrollHeight;
+}
+
+window.openNewsInTerminal = openNewsInTerminal;
