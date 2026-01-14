@@ -24,6 +24,7 @@
 
 
 🛠️ Installation (Developer Mode)💊
+
 Since this is a custom-built construct, you must load it manually into your browser:
 
 Download/Clone this repository to a local folder.
