@@ -1,13 +1,12 @@
 <div align="center">
 
-# Neo's New Tab 💊
+# Neo's New Tab 🐇
 [![Download Extension](https://img.shields.io/badge/Download-Unpacked_Extension-brightgreen)](https://github.com/QuantumVoidd/Neos-New-Tab/releases/latest)
 
 ![Visitors](https://api.visitorbadge.io/api/VisitorHit?user=QuantumVoidd&repo=Neos-New-Tab&countColor=%237B1E7A)
 
 ![GitHub stars](https://img.shields.io/github/stars/QuantumVoidd/Neos-New-Tab?style=social)
 
-![Clones](https://img.shields.io/badge/dynamic/json?color=success&label=clones&query=count&url=https://api.github.com/repos/QuantumVoidd/Neos-New-Tab/traffic/clones)
 
 </div>
 
@@ -17,14 +16,14 @@
 
 
 
-![Visitors](https://api.visitorbadge.io/api/VisitorHit?user=QuantumVoidd&repo=Neos-New-Tab&countColor=%237B1E7A)
 
 
 
 
 
 
-🛠️ Installation (Developer Mode)
+
+🛠️ Installation (Developer Mode)💊
 Since this is a custom-built construct, you must load it manually into your browser:
 
 Download/Clone this repository to a local folder.
@@ -128,7 +127,7 @@ Access the **System Settings** via the gear icon in the top right.
 * **Core:** HTML5, CSS3 (Advanced Animations), Vanilla JavaScript (ES6+).
 * **AI Engine:** [Puter.js](https://puter.com) (Primary) & [Pollinations.ai](https://pollinations.ai) (Fallback).
 * **Storage:** Chrome Storage API & IndexedDB (For saving large media files).
-* **Visuals:** HTML5 Canvas (Matrix Rain) & CSS Filters.
+* **Visuals:** HTML5 Canvas/Three.js (Matrix Rain) & CSS Filters.
 
 ---
 
