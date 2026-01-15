@@ -125,6 +125,40 @@
             align-content: start;
         }
 
+        /* --- FIXED FULLSCREEN STYLES --- */
+        .mp-main:fullscreen {
+            background: #000;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* In fullscreen, hide the sidebar toggle */
+        .mp-main:fullscreen .mp-sidebar-toggle { display: none; }
+
+        /* In fullscreen, HIDE the bottom library */
+        .mp-main:fullscreen .mp-library-view { display: none !important; }
+
+        /* In fullscreen, make player stage fill space */
+        .mp-main:fullscreen .mp-player-stage {
+            flex: 1; /* Grow to fill */
+            height: 100%;
+            border-bottom: none;
+        }
+
+        /* In fullscreen, make controls an overlay */
+        .mp-main:fullscreen .mp-controls-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(0,0,0,0.6); /* Transparent backdrop */
+            z-index: 100;
+            border-top: 1px solid rgba(0,255,65,0.3);
+            border-bottom: none;
+        }
+
         /* --- Override Video Editor JS Internal Styles --- */
         .ve-wrapper {
             background: transparent !important;
@@ -197,13 +231,6 @@
             </div>
 
             <div class="setting-group">
-                <h4 class="sub-menu-title">Operator Console</h4>
-                <div class="checkbox-group">
-                    <label><input type="checkbox" id="stats-toggle" checked> Enable System Diagnostics</label>
-                </div>
-            </div>
-
-            <div class="setting-group">
                 <h4 class="sub-menu-title">Time Config</h4>
                 <div class="checkbox-group">
                     <label><input type="checkbox" id="show-minutes" checked> Show Minutes</label>
@@ -225,10 +252,27 @@
                     <label>News Sources (RSS URLs, + separated)</label>
                     <input type="text" id="news-input" placeholder="http://feeds.bbci.co.uk/news/rss.xml">
                 </div>
+                <div class="setting-item">
+                    <label>Security Feed (RSS URLs, + separated)</label>
+                    <input type="text" id="security-input" placeholder="https://isc.sans.edu/rssfeed.xml">
+                </div>
+                <div class="setting-item">
+                    <label>Space/NASA Feed (RSS URLs, + separated)</label>
+                    <input type="text" id="space-input" placeholder="https://www.nasa.gov/rss/dyn/lg_image_of_the_day.rss">
+                </div>
+                <div class="setting-item">
+                    <label>Developer Feed (RSS URLs, + separated)</label>
+                    <input type="text" id="dev-input" placeholder="https://hnrss.org/newest">
+                </div>
+                <div class="setting-item">
+                    <label>Finance/Market Feed (RSS URLs, + separated)</label>
+                    <input type="text" id="finance-input" placeholder="https://finance.yahoo.com/news/rssindex">
+                </div>
                 <div class="checkbox-group">
                     <label><input type="checkbox" id="chat-toggle" checked> Secure Chat Terminal</label>
                     <label><input type="checkbox" id="oracle-toggle"> Enable Oracle Link <span style="opacity: 0.6; font-size: 0.8em;">(REAL AI)</span></label>
                     <label><input type="checkbox" id="system-monitor-toggle" checked> Enable System Monitor</label>
+                    <label><input type="checkbox" id="stats-toggle" checked> Enable System Diagnostics</label>
                 </div>
             </div>
 
@@ -379,55 +423,47 @@
         
         <div id="operator-console">
             <div class="deck-frame">
-                <div class="ship-plate">
-                    <span class="ship-name">NEBUCHADNEZZAR</span>
-                    <span class="ship-serial">MK-III // NO.11</span>
+                <div class="deck-wing-left">
+                    <div class="ship-plate">
+                        <span class="ship-name">NEBUCHADNEZZAR</span>
+                        <span class="ship-serial">MK-III // NO.11</span>
+                    </div>
                 </div>
                 
-                <div class="deck-modules">
-                    <div class="deck-group">
-                        <div class="gauge-container">
-                            <div id="cpu-fill" class="stat-fill"></div>
-                            <div class="gauge-lines"></div>
-                        </div>
-                        <div class="deck-label">CPU</div>
-                        <div class="led green blink-slow"></div>
+                <div class="deck-group mini-player" id="mini-player-module">
+                    <div class="player-display">
+                        <div id="deck-track-name" class="scrolling-text">LINK START...</div>
                     </div>
-
-                    <div class="deck-group">
-                        <div class="gauge-container">
-                            <div id="mem-fill" class="stat-fill"></div>
-                            <div class="gauge-lines"></div>
-                        </div>
-                        <div class="deck-label">RAM</div>
-                        <div class="led green solid"></div>
+                    <div class="player-controls">
+                        <button id="deck-prev" class="deck-mini-btn">⏮</button>
+                        <button id="deck-play" class="deck-mini-btn">▶</button>
+                        <button id="deck-next" class="deck-mini-btn">⏭</button>
                     </div>
+                    <div class="deck-label">MEDIA</div>
+                </div>
 
-                    <div class="deck-group">
-                        <div class="gauge-container">
-                            <div id="net-fill" class="stat-fill"></div>
-                            <div class="gauge-lines"></div>
+                <div class="deck-wing-right">
+                    <div class="deck-modules">
+                        <div class="deck-group">
+                            <div class="gauge-container"><div id="cpu-fill" class="stat-fill"></div><div class="gauge-lines"></div></div>
+                            <div class="deck-label">CPU</div>
                         </div>
-                        <div class="deck-label">NET</div>
-                        <div class="led blue blink-fast"></div>
-                    </div>
-
-                    <div class="deck-group">
-                        <div class="gauge-container">
-                            <div id="pwr-fill" class="stat-fill"></div>
-                            <div class="gauge-lines"></div>
+                        <div class="deck-group">
+                            <div class="gauge-container"><div id="mem-fill" class="stat-fill"></div><div class="gauge-lines"></div></div>
+                            <div class="deck-label">RAM</div>
                         </div>
-                        <div class="deck-label">PWR</div>
-                        <div class="led yellow solid"></div>
-                    </div>
-
-                    <div class="deck-group">
-                        <div class="gauge-container">
-                            <div id="io-fill" class="stat-fill"></div>
-                            <div class="gauge-lines"></div>
+                        <div class="deck-group">
+                            <div class="gauge-container"><div id="net-fill" class="stat-fill"></div><div class="gauge-lines"></div></div>
+                            <div class="deck-label">NET</div>
                         </div>
-                        <div class="deck-label">I/O</div>
-                        <div class="led cyan blink-slow"></div>
+                        <div class="deck-group">
+                            <div class="gauge-container"><div id="pwr-fill" class="stat-fill"></div><div class="gauge-lines"></div></div>
+                            <div class="deck-label">PWR</div>
+                        </div>
+                        <div class="deck-group">
+                            <div class="gauge-container"><div id="io-fill" class="stat-fill"></div><div class="gauge-lines"></div></div>
+                            <div class="deck-label">I/O</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -673,6 +709,8 @@
             <div id="media-player-root"></div> 
         </div>
     </div>
+
+    <audio id="global-media-engine"></audio>
 
     <audio id="ring-audio" loop></audio>
     <audio id="hangup-audio"></audio>

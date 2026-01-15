@@ -117,3 +117,58 @@ function updateNetworkStats() {
 
 // Expose the main updater to the window
 window.updateNebuchadnezzarDeck = updateNebuchadnezzarDeck;
+
+/**
+ * MINI MP3 PLAYER LOGIC
+ * Interfaces with window.globalMediaPlayer
+ */
+
+document.addEventListener('DOMContentLoaded', () => {
+    const playBtn = document.getElementById('deck-play');
+    const prevBtn = document.getElementById('deck-prev');
+    const nextBtn = document.getElementById('deck-next');
+    const trackName = document.getElementById('deck-track-name');
+
+    // 1. Play/Pause
+    playBtn.addEventListener('click', () => {
+        if (window.globalMediaPlayer) window.globalMediaPlayer.togglePlay();
+    });
+
+    // 2. Next Track
+    nextBtn.addEventListener('click', () => {
+        if (window.globalMediaPlayer) window.globalMediaPlayer.playNext();
+    });
+
+    // 3. Previous Track
+    prevBtn.addEventListener('click', () => {
+        if (window.globalMediaPlayer && window.globalMediaPlayer.library.music.length > 0) {
+            const player = window.globalMediaPlayer;
+            const index = player.library.music.findIndex(t => t.name === player.currentTrackName);
+            // Handle loop back to end if at start
+            const prevIndex = (index - 1 + player.library.music.length) % player.library.music.length;
+            const prevItem = player.library.music[prevIndex];
+            if (prevItem) player.loadMedia(prevItem);
+        }
+    });
+
+    // 4. Sync UI with Global Player
+    setInterval(() => {
+        if (window.globalMediaPlayer && window.globalMediaPlayer.mediaElement) {
+            const player = window.globalMediaPlayer;
+            
+            // Sync Track Name
+            const name = player.currentTrackName || "SYSTEM IDLE";
+            if (trackName.textContent !== name) trackName.textContent = name;
+
+            // Sync Play Button Icon
+            playBtn.textContent = player.mediaElement.paused ? "▶" : "⏸";
+        }
+    }, 500);
+});
+
+// Update the global update function to include media checks
+const originalUpdate = window.updateNebuchadnezzarDeck;
+window.updateNebuchadnezzarDeck = function() {
+    originalUpdate();
+    // Potential for future audio visualization logic on the deck leds
+};

@@ -1,12 +1,50 @@
 /**
- * ZION NETWORK FEED CONTROLLER
- * Handles Reddit API uplinks, Standard RSS News feeds, and Matrix text decryption effects.
+ * ZION NETWORK FEED CONTROLLER 
  */
 
 // Local state
 const matrixTextIntervals = new Map();
 const matrixTextIterations = new Map();
-let currentFeedMode = 'reddit'; // 'reddit' or 'news'
+
+// Feed Configuration
+const FEED_MODES = [
+    { id: 'reddit', label: "ZION NETWORK FEED", color: "var(--theme-color)" },
+    { id: 'news', label: "GLOBAL NEWS WIRE", color: "#00f2ff" }, // Cyan
+    { id: 'security', label: "THREAT INTELLIGENCE", color: "#ff0055" }, // Red/Pink
+    { id: 'space', label: "NASA / ENV. MONITOR", color: "#ae00ff" }, // Purple
+    { id: 'dev', label: "DEV. UNDERGROUND", color: "#00ff41" }, // Classic Green
+    { id: 'finance', label: "MARKET TICKER", color: "#ffd700" }  // Gold
+];
+
+let currentModeIndex = 0;
+
+// Default "No-API" Source Lists
+const DEFAULT_SOURCES = {
+    news: [
+        "http://feeds.bbci.co.uk/news/technology/rss.xml",
+        "https://www.reutersagency.com/feed/?best-topics=tech&post_type=best",
+        "https://www.theverge.com/rss/index.xml"
+    ],
+    security: [
+        "https://isc.sans.edu/rssfeed.xml",
+        "http://feeds.feedburner.com/TheHackersNews",
+        "https://www.cisa.gov/cybersecurity-advisories/all.xml"
+    ],
+    space: [
+        "https://earthobservatory.nasa.gov/feeds/hazards.rss",
+        "https://www.nasa.gov/rss/dyn/lg_image_of_the_day.rss",
+        "https://www.space.com/feeds/all"
+    ],
+    dev: [
+        "https://hnrss.org/newest", 
+        "http://syndication.thedailywtf.com/TheDailyWtf",
+        "http://feeds.arstechnica.com/arstechnica/index/"
+    ],
+    finance: [
+        "https://finance.yahoo.com/news/rssindex",
+        "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=&company=&dateb=&owner=include&start=0&count=20&output=atom"
+    ]
+};
 
 // --- TEXT DECRYPTION EFFECT ---
 function decryptRssText(element, targetText, isHovering) {
@@ -49,30 +87,27 @@ function decryptRssText(element, targetText, isHovering) {
 document.addEventListener('DOMContentLoaded', () => {
     const prevBtn = document.getElementById('rss-prev-btn');
     const nextBtn = document.getElementById('rss-next-btn');
-    const header = document.getElementById('rss-header');
-
+    
     if (prevBtn && nextBtn) {
-        const toggleFeed = () => {
-            currentFeedMode = (currentFeedMode === 'reddit') ? 'news' : 'reddit';
-            
-            // Update Header Text
-            if (header) {
-                header.textContent = (currentFeedMode === 'reddit') ? "ZION NETWORK FEED" : "GLOBAL NEWS WIRE";
-                header.style.color = "var(--theme-color)";
-                header.style.textShadow = "0 0 5px var(--theme-color)";
-                
-                // Trigger decryption effect on header
-                decryptRssText(header, header.textContent, true);
-            }
-            
-            // Reload Feed
-            updateZionFeed();
-        };
-
-        prevBtn.onclick = toggleFeed;
-        nextBtn.onclick = toggleFeed;
+        prevBtn.onclick = () => cycleFeed(-1);
+        nextBtn.onclick = () => cycleFeed(1);
     }
 });
+
+function cycleFeed(direction) {
+    currentModeIndex = (currentModeIndex + direction + FEED_MODES.length) % FEED_MODES.length;
+    const mode = FEED_MODES[currentModeIndex];
+    const header = document.getElementById('rss-header');
+    
+    if (header) {
+        header.textContent = mode.label;
+        header.style.color = mode.color;
+        header.style.textShadow = `0 0 8px ${mode.color}`;
+        decryptRssText(header, mode.label, true);
+    }
+    
+    updateZionFeed();
+}
 
 // --- HELPER: PARSE XML RSS WITH MEDIA & FULL TEXT EXTRACTION ---
 async function fetchAndParseRSS(url) {
@@ -83,13 +118,13 @@ async function fetchAndParseRSS(url) {
         const parser = new DOMParser();
         const xml = parser.parseFromString(text, "text/xml");
         
-        const items = Array.from(xml.querySelectorAll("item"));
+        let items = Array.from(xml.querySelectorAll("item"));
+        if (items.length === 0) items = Array.from(xml.querySelectorAll("entry")); // Atom support
+
         return items.map(item => {
-            // 1. Extract Media Logic
             let mediaUrl = null;
             let mediaType = 'image';
 
-            // Check Media RSS extensions
             const mediaContent = item.getElementsByTagNameNS("*", "content")[0] || 
                                  item.getElementsByTagName("media:content")[0];
             const mediaThumb = item.getElementsByTagNameNS("*", "thumbnail")[0] || 
@@ -103,7 +138,6 @@ async function fetchAndParseRSS(url) {
                 mediaUrl = mediaThumb.getAttribute("url");
             }
 
-            // Check Enclosures
             if (!mediaUrl) {
                 const enclosure = item.querySelector("enclosure");
                 if (enclosure && enclosure.getAttribute("url")) {
@@ -115,8 +149,9 @@ async function fetchAndParseRSS(url) {
                 }
             }
 
-            // Fallback: Scrape <img> tag from description (Improved Regex)
-            const description = item.querySelector("description")?.textContent || "";
+            const description = item.querySelector("description")?.textContent || 
+                                item.querySelector("summary")?.textContent || ""; 
+            
             if (!mediaUrl) {
                 const imgMatch = description.match(/<img[^>]+src=["']([^"']+)["']/i);
                 if (imgMatch) {
@@ -124,21 +159,27 @@ async function fetchAndParseRSS(url) {
                 }
             }
 
-            // 2. Extract Full Text (Content Module)
-            // Many feeds put the full article in <content:encoded> or <content>
             const contentEncoded = item.getElementsByTagNameNS("*", "encoded")[0] || 
                                    item.getElementsByTagName("content:encoded")[0] || 
                                    item.getElementsByTagName("content")[0] ||
-                                   item.getElementsByTagName("body")[0]; // Some odd feeds
+                                   item.getElementsByTagName("body")[0]; 
             
             const fullContent = contentEncoded ? contentEncoded.textContent : null;
+            const titleNode = item.querySelector("title");
+            const linkNode = item.querySelector("link");
+            const dateNode = item.querySelector("pubDate") || item.querySelector("updated");
+
+            let linkHref = "#";
+            if (linkNode) {
+                linkHref = linkNode.textContent || linkNode.getAttribute("href");
+            }
 
             return {
-                title: item.querySelector("title")?.textContent || "Unknown Signal",
-                link: item.querySelector("link")?.textContent || "#",
+                title: titleNode?.textContent || "Unknown Signal",
+                link: linkHref,
                 description: description,
-                fullContent: fullContent, // Send this to the terminal
-                pubDate: item.querySelector("pubDate")?.textContent || "",
+                fullContent: fullContent,
+                pubDate: dateNode?.textContent || "",
                 source: new URL(url).hostname.replace('www.', ''),
                 mediaUrl: mediaUrl,
                 mediaType: mediaType
@@ -156,7 +197,7 @@ async function updateZionFeed(isSilent = false) {
     
     if (!chrome || !chrome.storage) return;
 
-    const data = await chrome.storage.sync.get(['isRssEnabled', 'rssSubs', 'newsSources']);
+    const data = await chrome.storage.sync.get(['isRssEnabled', 'rssSubs', 'newsSources', 'spaceSources', 'securitySources', 'devSources', 'financeSources']);
     const container = document.getElementById('zion-rss-container');
     const list = document.getElementById('rss-feed-list');
     const barCont = document.getElementById('rss-loading-bar-container');
@@ -176,8 +217,9 @@ async function updateZionFeed(isSilent = false) {
         }
     }
 
-    // --- REDDIT MODE ---
-    if (currentFeedMode === 'reddit') {
+    const currentMode = FEED_MODES[currentModeIndex].id;
+
+    if (currentMode === 'reddit') {
         try {
             const subs = data.rssSubs || "matrix+cyberpunk";
             const response = await fetch(`https://www.reddit.com/r/${subs}/hot.json?limit=25&raw_json=1`);
@@ -197,25 +239,29 @@ async function updateZionFeed(isSilent = false) {
             if(list) list.innerHTML = `<div class="rss-meta" style="color:red">UPLINK FAILED: ${e.message}</div>`;
         }
     } 
-    // --- NEWS MODE ---
     else {
         try {
-            const sourcesRaw = data.newsSources || "http://feeds.bbci.co.uk/news/technology/rss.xml";
-            const sources = sourcesRaw.split('+').map(s => s.trim()).filter(s => s);
+            let sourcesRaw = data[`${currentMode}Sources`]; 
+            let sources = [];
+
+            if (sourcesRaw) {
+                sources = sourcesRaw.split('+').map(s => s.trim()).filter(s => s);
+            } else {
+                sources = DEFAULT_SOURCES[currentMode] || [];
+            }
             
-            // Fetch all sources in parallel
+            if (sources.length === 0) throw new Error("No Frequencies Found");
+
             const promises = sources.map(url => fetchAndParseRSS(url));
             const results = await Promise.all(promises);
-            
-            // Flatten and sort by date (newest first)
-            const allNews = results.flat().sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+            const allItems = results.flat().sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
             
             if (!isSilent && bar) bar.style.width = '80%';
             
-            renderFeedItems(allNews.slice(0, 25), 'news', list, bar, isSilent, alphabet);
+            renderFeedItems(allItems.slice(0, 25), 'news', list, bar, isSilent, alphabet);
 
         } catch (e) {
-            console.error("News Feed Error:", e);
+            console.error(`${currentMode.toUpperCase()} Feed Error:`, e);
             if(list) list.innerHTML = `<div class="rss-meta" style="color:red">SIGNAL LOST: CHECK URLS</div>`;
         }
     }
@@ -226,22 +272,22 @@ function renderFeedItems(items, mode, list, bar, isSilent, alphabet) {
     if (!isSilent && bar) bar.style.width = '100%'; 
     if (list) list.innerHTML = "";
 
+    const activeColor = FEED_MODES[currentModeIndex].color;
+
     items.forEach(item => {
         const link = document.createElement('a');
         link.className = 'rss-item'; 
         link.href = (mode === 'reddit') ? `https://reddit.com${item.permalink}` : item.link;
+        // BORDER STYLES REMOVED - Controlled by CSS now
         
         // --- CLICK HANDLER ---
         link.onclick = (e) => {
             if (e.target.tagName !== 'BUTTON' && e.target.parentElement.tagName !== 'BUTTON') {
                 e.preventDefault();
-                
-                // Reddit Mode -> Existing Function
                 if (mode === 'reddit' && typeof window.openTerminalModal === "function") {
                     window.openTerminalModal(item.permalink);
                 } 
-                // News Mode -> Open with Full Text Support
-                else if (mode === 'news' && typeof window.openNewsInTerminal === "function") {
+                else if (mode !== 'reddit' && typeof window.openNewsInTerminal === "function") {
                     window.openNewsInTerminal(item);
                 } 
                 else {
@@ -253,29 +299,29 @@ function renderFeedItems(items, mode, list, bar, isSilent, alphabet) {
         // Title
         const title = document.createElement('div');
         title.className = 'rss-title';
-        title.style.color = 'var(--theme-color)';
+        title.style.color = activeColor;
         const originalTitle = item.title;
         title.innerText = originalTitle.replace(/./g, () => alphabet[Math.floor(Math.random() * alphabet.length)]);
         
         // Meta
         const meta = document.createElement('div');
         meta.className = 'rss-meta';
-        meta.style.color = 'var(--theme-color)';
+        meta.style.color = activeColor;
         meta.style.opacity = '0.7';
         
         let combinedMeta = "";
         if (mode === 'reddit') {
             combinedMeta = `r/${item.subreddit} • u/${item.author}`;
         } else {
-            const time = new Date(item.pubDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            combinedMeta = `[${item.source}] • ${time}`;
+            const timeStr = item.pubDate ? new Date(item.pubDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "LIVE";
+            combinedMeta = `[${item.source}] • ${timeStr}`;
         }
         meta.innerText = combinedMeta.replace(/./g, () => alphabet[Math.floor(Math.random() * alphabet.length)]);
 
         link.appendChild(title);
         link.appendChild(meta);
 
-        // --- MEDIA HANDLING (REDDIT) ---
+        // --- MEDIA HANDLING ---
         if (mode === 'reddit') {
             if (item.post_hint === 'image' || (item.url && item.url.match(/\.(jpg|jpeg|png|gif)$/))) {
                 const wrap = document.createElement('div');
@@ -292,7 +338,6 @@ function renderFeedItems(items, mode, list, bar, isSilent, alphabet) {
                     e.preventDefault(); e.stopPropagation(); 
                     if (img.requestFullscreen) img.requestFullscreen();
                     else if (img.webkitRequestFullscreen) img.webkitRequestFullscreen();
-                    else if (img.msRequestFullscreen) img.msRequestFullscreen();
                 };
                 wrap.appendChild(img);
                 wrap.appendChild(imgFsBtn);
@@ -309,31 +354,26 @@ function renderFeedItems(items, mode, list, bar, isSilent, alphabet) {
                 const fsBtn = document.createElement('button');
                 fsBtn.className = 'video-fullscreen-btn';
                 fsBtn.innerHTML = '⛶';
-                fsBtn.title = "Maximize Transmission";
                 fsBtn.onclick = (e) => {
                     e.preventDefault(); e.stopPropagation();
                     if (video.requestFullscreen) video.requestFullscreen();
-                    else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
                 };
                 
                 const volBtn = document.createElement('button');
                 volBtn.className = 'video-vol-btn';
                 volBtn.innerHTML = '🔇';
-                volBtn.title = "Toggle Audio";
                 volBtn.onclick = (e) => {
                     e.preventDefault(); e.stopPropagation();
                     video.muted = !video.muted;
                     if (!video.muted) video.play().catch(() => {});
                     volBtn.innerHTML = video.muted ? '🔇' : '🔊';
-                    volBtn.style.boxShadow = video.muted ? 'none' : '0 0 10px var(--theme-color)';
+                    volBtn.style.boxShadow = video.muted ? 'none' : `0 0 10px ${activeColor}`;
                 };
                 wrap.appendChild(video); wrap.appendChild(fsBtn); wrap.appendChild(volBtn);
                 link.appendChild(wrap);
             }
         }
-        
-        // --- MEDIA HANDLING (NEWS) ---
-        else if (mode === 'news' && item.mediaUrl) {
+        else if (mode !== 'reddit' && item.mediaUrl) {
             const wrap = document.createElement('div');
             wrap.className = 'rss-media-wrapper';
             
@@ -357,15 +397,12 @@ function renderFeedItems(items, mode, list, bar, isSilent, alphabet) {
                 const img = document.createElement('img');
                 img.src = item.mediaUrl;
                 img.className = 'rss-media-content';
-                
                 const imgFsBtn = document.createElement('button');
                 imgFsBtn.className = 'video-fullscreen-btn'; 
                 imgFsBtn.innerHTML = '⛶';
-                imgFsBtn.title = "Maximize Visual";
                 imgFsBtn.onclick = (e) => {
                     e.preventDefault(); e.stopPropagation(); 
                     if (img.requestFullscreen) img.requestFullscreen();
-                    else if (img.webkitRequestFullscreen) img.webkitRequestFullscreen();
                 };
                 wrap.appendChild(img);
                 wrap.appendChild(imgFsBtn);
@@ -373,19 +410,20 @@ function renderFeedItems(items, mode, list, bar, isSilent, alphabet) {
             link.appendChild(wrap);
         }
 
-        // --- STATS / SUMMARY ---
+        // --- STATS / SUMMARY (RESTORED ICONS AND LOGIC) ---
         if (mode === 'reddit') {
             const statsRow = document.createElement('div');
             statsRow.className = 'rss-stats-row';
+            statsRow.style.color = activeColor;
             const format = (n) => (n > 999 ? (n/1000).toFixed(1) + 'k' : Math.floor(n) || 0);
 
-            // Upvote
+            // 1. Upvote (SVG RESTORED)
             const upDiv = document.createElement('div');
             upDiv.className = 'rss-stat-item upvote-item';
             upDiv.innerHTML = `<span class="rss-stat-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4L3 15H9V20H15V15H21L12 4Z" /></svg></span> ${format(item.ups)}`;
             statsRow.appendChild(upDiv);
 
-            // Downvote
+            // 2. Downvote (LOGIC RESTORED)
             const ratio = item.upvote_ratio || 1;
             const estimatedDowns = ratio < 1 ? Math.round((item.ups / ratio) - item.ups) : 0;
             if (estimatedDowns > 0) {
@@ -395,7 +433,7 @@ function renderFeedItems(items, mode, list, bar, isSilent, alphabet) {
                 statsRow.appendChild(downDiv);
             }
 
-            // Comments
+            // 3. Comments
             const commDiv = document.createElement('div');
             commDiv.className = 'rss-stat-item';
             commDiv.innerHTML = `<span class="rss-stat-icon">💬</span> ${format(item.num_comments)}`;
@@ -411,13 +449,10 @@ function renderFeedItems(items, mode, list, bar, isSilent, alphabet) {
                 
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = item.description;
-                
                 const imgs = tempDiv.querySelectorAll('img');
                 imgs.forEach(i => i.remove());
-                
                 let text = tempDiv.textContent || tempDiv.innerText || "";
                 if(text.length > 120) text = text.substring(0, 120) + "...";
-                
                 if (text.trim()) {
                     summary.innerText = text.trim();
                     link.appendChild(summary);

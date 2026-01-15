@@ -4556,7 +4556,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- MEDIA PLAYER INTEGRATION ---
+    // --- UPDATED MEDIA PLAYER INTEGRATION ---
     const dockMedia = document.getElementById('dock-media');
     const mediaModal = document.getElementById('media-player-modal');
     const closeMedia = document.getElementById('close-mp-btn');
@@ -4565,21 +4565,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dockMedia && mediaModal) {
         dockMedia.addEventListener('click', () => {
             mediaModal.classList.remove('hidden');
-            
-            // Ensures it renders on top of everything
             mediaModal.style.zIndex = '10007'; 
-
-            // Initialize class only once
             if (!mediaPlayerInstance && window.ZionMediaPlayer) {
                 mediaPlayerInstance = new ZionMediaPlayer();
+                // Export globally so the Deck can control it
+                window.globalMediaPlayer = mediaPlayerInstance; 
+            } else if (mediaPlayerInstance) {
+                // Restart visualizer if music is still playing background
+                mediaPlayerInstance.setVisualizerMode(mediaPlayerInstance.currentVizMode);
             }
         });
 
         closeMedia.addEventListener('click', () => {
             mediaModal.classList.add('hidden');
-            // Auto-pause when closing window
-            if(mediaPlayerInstance && mediaPlayerInstance.mediaElement) {
-                mediaPlayerInstance.mediaElement.pause();
+            // MODIFIED: We no longer pause the music here.
+            // We let the internal class handle stopping the visuals via the hidden state.
+            if (mediaPlayerInstance) {
+                cancelAnimationFrame(mediaPlayerInstance.vizId);
+                mediaPlayerInstance.vizId = null;
             }
         });
     }
