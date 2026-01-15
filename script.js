@@ -2264,7 +2264,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 200);
 });
 
-setInterval(() => updateZionFeed(true), 120000);
+setInterval(() => {
+    if (!document.fullscreenElement) {
+        updateZionFeed(true);
+    }
+}, 120000);
 chrome.storage.local.get(['customImg'], (res) => { if(res.customImg) applyImg(res.customImg); else loadVideoFromDB().then(file => { if(file) applyVid(file); }); });
 window.onresize = resize;
 setInterval(updateUI, 1000);
