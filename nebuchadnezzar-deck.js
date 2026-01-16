@@ -5,27 +5,59 @@
 
 // Global state for stats
 let lastCpuInfo = null;
-window.networkData = { sent: 0, received: 0, lastUpdate: Date.now() }; // Exposed globally for /whoami command
+window.networkData = { sent: 0, received: 0, lastUpdate: Date.now() }; 
 let networkHistory = [];
 const MAX_NETWORK_HISTORY = 60;
+
+// Track music state to handle transitions
+let wasMusicActive = true; 
 
 /**
  * Main update function called by the global loop
  */
 function updateNebuchadnezzarDeck() {
-    updateCpuStat();
-    updateMemStat();
-    updateBatteryStat();
+    // Safely run hardware stats without crashing the loop
+    try {
+        updateCpuStat();
+        updateMemStat();
+        updateBatteryStat();
+    } catch (e) {
+        // Ignore hardware stat errors (common in non-extension environments)
+    }
     
-    // Throttle network updates to every 2 seconds
-    if (Date.now() - window.networkData.lastUpdate > 2000) {
-        updateNetworkStats();
+    // 1. Check Music State
+    let isMusicActive = false;
+    if (window.globalMediaPlayer && window.globalMediaPlayer.mediaElement && !window.globalMediaPlayer.mediaElement.paused) {
+        isMusicActive = true;
+    }
+
+    // 2. Visualizer Logic
+    if (isMusicActive) {
+         updateDeckVisualizer();
+         wasMusicActive = true;
+    } else {
+        // 3. Reset Logic (Self-Healing)
+        // Check if the lights are "naked" (missing background color)
+        const firstLed = document.querySelector('#operator-console .led');
+        const isLedInvisible = firstLed && (!firstLed.style.background || firstLed.style.background === '');
+
+        // Force reset if music just stopped OR if lights are invisible
+        if (wasMusicActive || isLedInvisible) {
+            resetDeckLeds();
+            wasMusicActive = false;
+        }
+        
+        // 4. Run Network Stats (Throttled)
+        if (Date.now() - window.networkData.lastUpdate > 2000) {
+            updateNetworkStats();
+        }
     }
 }
 
 function updateCpuStat() {
     const cpuFill = document.getElementById('cpu-fill');
-    if (chrome.system && chrome.system.cpu && cpuFill) {
+    // Safety check for Chrome API
+    if (window.chrome && window.chrome.system && window.chrome.system.cpu && cpuFill) {
         chrome.system.cpu.getInfo((info) => {
             if (lastCpuInfo) {
                 let totalDiff = 0, idleDiff = 0;
@@ -44,7 +76,7 @@ function updateCpuStat() {
 
 function updateMemStat() {
     const memFill = document.getElementById('mem-fill');
-    if (chrome.system && chrome.system.memory && memFill) {
+    if (window.chrome && window.chrome.system && window.chrome.system.memory && memFill) {
         chrome.system.memory.getInfo((info) => {
             const memPercent = Math.round(((info.capacity - info.availableCapacity) / info.capacity) * 100);
             memFill.style.height = `${memPercent}%`;
@@ -62,11 +94,69 @@ function updateBatteryStat() {
     }
 }
 
+// --- VISUALIZER: SYNC ALL LEDS TO MUSIC ---
+function updateDeckVisualizer() {
+    const leds = document.querySelectorAll('#operator-console .led');
+    const ioFill = document.getElementById('io-fill');
+    
+    if (leds.length === 0) return;
+
+    const time = Date.now() / 100; 
+    
+    leds.forEach((led, i) => {
+        // Generate wave pattern
+        const intensity = Math.sin(time + (i * 1.5)) * Math.random(); 
+        
+        // Force transition for smooth effect
+        led.style.transition = 'background 0.1s, box-shadow 0.1s, opacity 0.1s'; 
+
+        if (intensity > 0.2) {
+            // Active Beat: Flash Cyan or Purple
+            const color = i % 2 === 0 ? '#00f2ff' : '#ae00ff';
+            led.style.background = color;
+            led.style.boxShadow = `0 0 10px ${color}`;
+            led.style.opacity = '1';
+        } else {
+            // Off Beat: Dim Red (Keeps structure visible)
+            led.style.background = '#330000';
+            led.style.boxShadow = 'none';
+            led.style.opacity = '0.6';
+        }
+    });
+    
+    // Animate I/O bar
+    if (ioFill) {
+        const vuLevel = Math.max(10, Math.random() * 100); 
+        ioFill.style.height = `${vuLevel}%`;
+        ioFill.style.background = `linear-gradient(to top, var(--theme-color) 0%, ${vuLevel > 80 ? '#fff' : 'var(--theme-color)'} 100%)`;
+    }
+}
+
+// --- RESET FUNCTION: FORCE SYSTEM READY STATE ---
+function resetDeckLeds() {
+    const leds = document.querySelectorAll('#operator-console .led');
+    if (!leds.length) return;
+
+    leds.forEach(led => {
+        // FORCE INLINE STYLES (Bypasses CSS Class issues)
+        led.style.transition = 'background 0.3s ease';
+        led.style.background = '#00FF41'; // Matrix Green
+        led.style.boxShadow = '0 0 5px #00FF41';
+        led.style.opacity = '1';
+    });
+    
+    // Reset I/O Bar
+    const ioFill = document.getElementById('io-fill');
+    if (ioFill) {
+        ioFill.style.background = 'var(--theme-color)';
+        ioFill.style.height = '5%';
+    }
+}
+
 function updateNetworkStats() {
     const now = Date.now();
     let netActivity = 0;
     
-    // Simulate activity based on connection status
     if (navigator.onLine) {
         const randomPattern = Math.random();
         if (randomPattern < 0.1) netActivity = 30 + Math.random() * 40;
@@ -83,6 +173,7 @@ function updateNetworkStats() {
     if (networkHistory.length > MAX_NETWORK_HISTORY) networkHistory.shift();
     
     const netFill = document.getElementById('net-fill');
+    // Select the specific Network LED (3rd group)
     const netLed = document.querySelector('#operator-console .deck-group:nth-child(3) .led');
     
     if (netFill) {
@@ -92,83 +183,65 @@ function updateNetworkStats() {
         netFill.style.height = `${netPercent}%`;
         
         if (netLed) {
-            netLed.classList.remove('blink-fast', 'blink-slow', 'solid');
+            // Apply traffic colors using INLINE styles to match Reset logic
             if (netPercent > 70) {
-                netLed.classList.add('blink-fast');
-                netLed.style.background = '#ff0';
-                netLed.style.boxShadow = '0 0 5px #ff0';
+                netLed.style.background = '#ffff00'; // Yellow
+                netLed.style.boxShadow = '0 0 5px #ffff00';
             } else if (netPercent > 30) {
-                netLed.classList.add('blink-slow');
-                netLed.style.background = '#0f0';
-                netLed.style.boxShadow = '0 0 5px #0f0';
+                netLed.style.background = '#00FF41'; // Green
+                netLed.style.boxShadow = '0 0 5px #00FF41';
             } else {
-                netLed.classList.add('solid');
-                netLed.style.background = '#00f';
-                netLed.style.boxShadow = '0 0 5px #00f';
+                netLed.style.background = '#0055ff'; // Blue (Idle)
+                netLed.style.boxShadow = '0 0 5px #0055ff';
             }
+            netLed.style.opacity = '1';
         }
     }
     const ioFill = document.getElementById('io-fill');
     if (ioFill) {
         const ioPercent = Math.min(netActivity * 0.7 + Math.random() * 15, 100);
         ioFill.style.height = `${ioPercent}%`;
+        ioFill.style.background = 'var(--theme-color)';
     }
 }
 
-// Expose the main updater to the window
+// Ensure the function is exposed globally
 window.updateNebuchadnezzarDeck = updateNebuchadnezzarDeck;
 
 /**
  * MINI MP3 PLAYER LOGIC
- * Interfaces with window.globalMediaPlayer
  */
-
 document.addEventListener('DOMContentLoaded', () => {
+    // Initial Force Reset
+    setTimeout(resetDeckLeds, 500);
+    // Secondary check in case load is slow
+    setTimeout(resetDeckLeds, 2000);
+
     const playBtn = document.getElementById('deck-play');
     const prevBtn = document.getElementById('deck-prev');
     const nextBtn = document.getElementById('deck-next');
     const trackName = document.getElementById('deck-track-name');
 
-    // 1. Play/Pause
-    playBtn.addEventListener('click', () => {
+    if(playBtn) playBtn.addEventListener('click', () => {
         if (window.globalMediaPlayer) window.globalMediaPlayer.togglePlay();
     });
 
-    // 2. Next Track
-    nextBtn.addEventListener('click', () => {
+    if(nextBtn) nextBtn.addEventListener('click', () => {
         if (window.globalMediaPlayer) window.globalMediaPlayer.playNext();
     });
 
-    // 3. Previous Track
-    prevBtn.addEventListener('click', () => {
+    if(prevBtn) prevBtn.addEventListener('click', () => {
         if (window.globalMediaPlayer && window.globalMediaPlayer.library.music.length > 0) {
-            const player = window.globalMediaPlayer;
-            const index = player.library.music.findIndex(t => t.name === player.currentTrackName);
-            // Handle loop back to end if at start
-            const prevIndex = (index - 1 + player.library.music.length) % player.library.music.length;
-            const prevItem = player.library.music[prevIndex];
-            if (prevItem) player.loadMedia(prevItem);
+            window.globalMediaPlayer.playPrev();
         }
     });
 
-    // 4. Sync UI with Global Player
     setInterval(() => {
         if (window.globalMediaPlayer && window.globalMediaPlayer.mediaElement) {
             const player = window.globalMediaPlayer;
-            
-            // Sync Track Name
             const name = player.currentTrackName || "SYSTEM IDLE";
-            if (trackName.textContent !== name) trackName.textContent = name;
-
-            // Sync Play Button Icon
-            playBtn.textContent = player.mediaElement.paused ? "▶" : "⏸";
+            if (trackName && trackName.textContent !== name) trackName.textContent = name;
+            if (playBtn) playBtn.textContent = player.mediaElement.paused ? "▶" : "⏸";
         }
-    }, 500);
+    }, 200);
 });
-
-// Update the global update function to include media checks
-const originalUpdate = window.updateNebuchadnezzarDeck;
-window.updateNebuchadnezzarDeck = function() {
-    originalUpdate();
-    // Potential for future audio visualization logic on the deck leds
-};

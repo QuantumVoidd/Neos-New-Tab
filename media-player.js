@@ -144,6 +144,25 @@ renderLayout() {
 
     const style = document.createElement('style');
     style.textContent = `
+        /* --- REFINED BORDER GLOW (MATCHES STYLE.CSS) --- */
+        .mp-frame {
+            box-shadow: 0 0 10px var(--theme-color) !important;
+            border: 1px solid var(--theme-color) !important;
+        }
+
+        /* --- REFINED VOLUME SLIDER (MATCHES UI) --- */
+        #mp-volume::-webkit-slider-thumb {
+            box-shadow: 0 0 10px var(--theme-color) !important;
+            height: 12px !important;
+            width: 12px !important; 
+            margin-top: -3px !important;
+            transform: scale(1) !important;
+        }
+        #mp-volume::-webkit-slider-thumb:hover {
+            box-shadow: 0 0 15px var(--theme-color) !important;
+            transform: scale(1.2) !important;
+        }
+
         .mp-select { width: 100%; background: rgba(0,20,0,0.8); color: var(--theme-color); border: 1px solid var(--theme-color); padding: 5px; font-family: 'Courier New'; outline: none; text-transform: uppercase; font-size: 0.8rem; margin-bottom: 5px; cursor: pointer; }
         .mp-select option { background: #000; }
         

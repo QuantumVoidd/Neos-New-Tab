@@ -488,3 +488,23 @@ function renderFeedItems(items, mode, list, bar, isSilent, alphabet) {
 
 // Make globally available
 window.updateZionFeed = updateZionFeed;
+
+// --- CLI INTERFACE HOOK ---
+// Allows script.js to force a feed switch via index or mode name
+window.setFeedMode = (index) => {
+    if (index >= 0 && index < FEED_MODES.length) {
+        currentModeIndex = index;
+        const mode = FEED_MODES[currentModeIndex];
+        const header = document.getElementById('rss-header');
+        
+        if (header) {
+            header.textContent = mode.label;
+            header.style.color = mode.color;
+            header.style.textShadow = `0 0 8px ${mode.color}`;
+            if (typeof decryptRssText === 'function') {
+                decryptRssText(header, mode.label, true);
+            }
+        }
+        updateZionFeed(); 
+    }
+};

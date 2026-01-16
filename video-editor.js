@@ -10,8 +10,8 @@ class VideoEditor {
         this.container.style.overflow = 'hidden';
 
         // Internal Resolution
-        this.width = 1100;
-        this.height = 700;
+        this.width = window.innerWidth * 0.98; 
+        this.height = window.innerHeight * 0.98;
         this.canvasResX = 854;
         this.canvasResY = 480;
 
@@ -95,14 +95,15 @@ class VideoEditor {
                 overflow: hidden; 
             }
             
+            /* ADJUSTED HEIGHT: 240px (Was 230px) */
             .ve-bottom-row {
-                height: 300px;
-                flex: 0 0 300px; 
+                height: 240px;
+                flex: 0 0 240px; 
                 display: grid;
                 grid-template-columns: 380px 1fr 320px; 
                 background: #151515;
                 border-top: 1px solid #333;
-                overflow: hidden; /* CSS Containment: Hard shell */
+                overflow: hidden; 
                 flex-shrink: 0;
             }
     
@@ -112,7 +113,7 @@ class VideoEditor {
                 flex-direction: column;
                 padding: 10px;
                 position: relative;
-                overflow: hidden; /* CSS Containment: Prevent graph stretch */
+                overflow: hidden; 
             }
             .ve-module-header { font-weight:700; color:#777; margin-bottom:10px; text-transform:uppercase; letter-spacing:1px; font-size:10px; display:flex; justify-content:space-between; }
     
@@ -221,11 +222,11 @@ class VideoEditor {
             .ve-input-row { display: flex; justify-content: space-between; margin-top: 4px; gap: 6px; align-items: center; }
             .ve-num-input { background: #000; border: 1px solid #444; color: #fff; width: 100%; font-size: 10px; padding: 3px; text-align: right; border-radius: 3px; font-family: 'Consolas', monospace; }
     
-            /* TIMELINE (Refined) */
-            .ve-timeline-panel { background: #1e1e1e; display: flex; flex-direction: column; border-bottom: 2px solid #000; position: relative; height: 75px; flex-shrink: 0; }
+            /* ADJUSTED HEIGHT: 80px (Was 50px) */
+            .ve-timeline-panel { background: #1e1e1e; display: flex; flex-direction: column; border-bottom: 2px solid #000; position: relative; height: 80px; flex-shrink: 0; }
             
             .ve-ruler { 
-                height: 25px; 
+                height: 25px; /* Slightly taller ruler */
                 background: #111; 
                 position: relative; 
                 cursor: ew-resize; 
@@ -246,8 +247,9 @@ class VideoEditor {
             }
             .ve-track-strip.ve-track-active { box-shadow: inset 0 0 10px rgba(76, 175, 80, 0.2); background: #282828; }
             
+            /* ADJUSTED CLIP: Taller and more substantial */
             .ve-clip-mini { 
-                position: absolute; top: 5px; height: 35px; 
+                position: absolute; top: 5px; height: 40px; 
                 background: #5d5d7a; border: 1px solid rgba(255,255,255,0.1); 
                 border-radius: 2px; overflow: hidden; 
             }
@@ -279,9 +281,9 @@ class VideoEditor {
             .ve-wheels-container { display: flex; justify-content: space-around; align-items: center; padding: 10px; height: 100%; }
             .ve-wheel-group { display: flex; flex-direction: column; align-items: center; gap: 8px; }
             .ve-wheel-header { display: flex; justify-content: space-between; width: 100%; padding: 0 5px; color: #999; font-weight: 700; font-size: 11px; }
-            .ve-color-wheel { width: 80px; height: 80px; border-radius: 50%; background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red), radial-gradient(circle, white 0%, transparent 70%); background-blend-mode: screen; position: relative; border: 4px solid #111; box-shadow: 0 0 0 1px #333, inset 0 0 10px #000; cursor: crosshair; }
+            .ve-color-wheel { width: 70px; height: 70px; border-radius: 50%; background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red), radial-gradient(circle, white 0%, transparent 70%); background-blend-mode: screen; position: relative; border: 4px solid #111; box-shadow: 0 0 0 1px #333, inset 0 0 10px #000; cursor: crosshair; }
             .ve-puck { width: 8px; height: 8px; border: 2px solid #fff; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; box-shadow: 0 0 4px #000; background: transparent; }
-            .ve-ring-container { width: 110px; display: flex; align-items: center; background: #111; border-radius: 10px; padding: 2px; border: 1px solid #333; }
+            .ve-ring-container { width: 90px; display: flex; align-items: center; background: #111; border-radius: 10px; padding: 2px; border: 1px solid #333; }
             .ve-slider { -webkit-appearance: none; width: 100%; height: 4px; background: transparent; outline: none; margin: 0; }
             .ve-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: #888; border-radius: 50%; cursor: pointer; border: 2px solid #111; }
             
@@ -293,17 +295,17 @@ class VideoEditor {
         `;
         document.head.appendChild(style);
 
-        // FIX: Safe Area / Layout Enforcement
+        // FIX: Layout Enforcement (Updated to 240px height for bottom)
         const layoutStyles = `
             .ve-bottom-row {
-                height: 300px !important;
-                max-height: 300px !important;
-                flex: 0 0 300px !important;
-                min-height: 300px !important;
+                height: 240px !important;
+                max-height: 240px !important;
+                flex: 0 0 240px !important;
+                min-height: 240px !important;
                 overflow: hidden !important;
             }
             .ve-top-row {
-                flex: 1 1 0% !important;
+                flex: 1 1 auto !important;
                 min-height: 0 !important;
             }
         `;
@@ -319,7 +321,6 @@ class VideoEditor {
         wrapper.innerHTML = `
             <div class="ve-layout">
                 <div class="ve-top-row">
-                    <!-- MEDIA POOL -->
                     <div class="ve-panel ve-media-pool">
                         <div class="ve-panel-header" style="padding:0; display:flex;">
                             <div id="tab-footage" class="ve-tab active" style="flex:1; text-align:center; padding:6px 0; cursor:pointer;">Footage</div>
@@ -327,7 +328,6 @@ class VideoEditor {
                             <div id="tab-anims" class="ve-tab" style="flex:1; text-align:center; padding:6px 0; cursor:pointer;">Anim</div>
                         </div>
                         
-                        <!-- Footage List -->
                         <div class="ve-media-grid" id="ve-asset-list">
                             <div style="grid-column:1/-1; display:flex; justify-content:center; padding-bottom:10px;">
                                 <button class="ve-btn-icon" id="ve-import" title="Import Media" style="border:1px solid #333; border-radius:4px; width:100%;">📂 Import Media</button>
@@ -335,7 +335,6 @@ class VideoEditor {
                             <div style="grid-column:1/-1; text-align:center; color:#444; font-size:10px; margin-top:20px;">DRAG MEDIA HERE</div>
                         </div>
     
-                        <!-- Effects List (Hidden by default) -->
                         <div class="ve-media-grid hidden" id="ve-effects-list">
                             <div class="ve-asset-thumb" data-effect="glitch">⚡ Glitch</div>
                             <div class="ve-asset-thumb" data-effect="noise">📺 Film Grain</div>
@@ -346,7 +345,6 @@ class VideoEditor {
                             <div class="ve-asset-thumb" data-effect="none" style="color:#777;">🚫 None</div>
                         </div>
 
-                        <!-- Animations List (Hidden by default) -->
                         <div class="ve-media-grid hidden" id="ve-animations-list">
                             <div class="ve-asset-thumb" data-anim="zoom-pulse">🔊 Zoom Pulse</div>
                             <div class="ve-asset-thumb" data-anim="slide">➡ Slide</div>
@@ -357,7 +355,6 @@ class VideoEditor {
                         </div>
                     </div>
     
-                    <!-- VIEWER (WEBGL CANVAS) -->
                     <div class="ve-panel ve-viewer">
                         <div class="ve-canvas-container" style="position:relative;">
                             <canvas class="main" width="${this.canvasResX}" height="${this.canvasResY}"></canvas>
@@ -382,7 +379,6 @@ class VideoEditor {
                         </div>
                     </div>
     
-                    <!-- INSPECTOR (NODE GRAPH) -->
                     <div class="ve-panel ve-inspector-panel">
                         <div class="ve-panel-header"><span>Transform & Comp</span></div>
                         <div class="ve-node-graph" id="ve-inspector">
@@ -402,7 +398,6 @@ class VideoEditor {
                     </div>
                 </div>
     
-                <!-- TIMELINE RULER & TRACKS -->
                 <div class="ve-timeline-panel">
                     <div class="ve-ruler" id="ve-ruler">
                         <div class="ve-playhead-knob" id="ve-ph-knob"></div>
@@ -412,9 +407,7 @@ class VideoEditor {
                     </div>
                 </div>
     
-                <!-- BOTTOM ROW (GRID) -->
                 <div class="ve-bottom-row">
-                    <!-- MODULE 1: COLOR WHEELS -->
                     <div class="ve-module-container">
                         <div class="ve-module-header"><span>Primaries</span></div>
                         <div class="ve-wheels-container">
@@ -436,7 +429,6 @@ class VideoEditor {
                         </div>
                     </div>
     
-                    <!-- MODULE 2: CURVES (FIXED) -->
                     <div class="ve-module-container">
                         <div class="ve-module-header">
                             <span>Curves</span> 
@@ -447,11 +439,9 @@ class VideoEditor {
                         </div>
                     </div>
     
-                    <!-- MODULE 3: KEYFRAMES -->
                     <div class="ve-module-container">
                         <div class="ve-module-header"><span>Keyframes</span> <button class="ve-btn-text" id="btn-add-kf" style="font-size:9px; padding:2px 6px;">+ Key</button></div>
                         <div class="ve-kf-list" id="ve-kf-list">
-                            <!-- Populated dynamically -->
                             <div style="text-align:center; color:#444; margin-top:20px;">No Clip Selected</div>
                         </div>
                     </div>
@@ -1546,11 +1536,11 @@ class VideoEditor {
         const kf = this.selectedClip.keyframes;
         
         // Update UI with current interpolated values
-        this.inspectorInputs.x.value = this.getInterpolatedValue(kf.x, localT);
-        this.inspectorInputs.y.value = this.getInterpolatedValue(kf.y, localT);
-        this.inspectorInputs.s.value = this.getInterpolatedValue(kf.scale, localT);
-        this.inspectorInputs.r.value = this.getInterpolatedValue(kf.rot, localT);
-        this.inspectorInputs.o.value = this.getInterpolatedValue(kf.opacity, localT);
+        this.inspectorInputs.x.value = this.getInterpolatedValue(kf.x, localT).toFixed(0);
+        this.inspectorInputs.y.value = this.getInterpolatedValue(kf.y, localT).toFixed(0);
+        this.inspectorInputs.s.value = this.getInterpolatedValue(kf.scale, localT).toFixed(1);
+        this.inspectorInputs.r.value = this.getInterpolatedValue(kf.rot, localT).toFixed(0);
+        this.inspectorInputs.o.value = this.getInterpolatedValue(kf.opacity, localT).toFixed(1);
     }
 
     attachEvents() {
@@ -1855,17 +1845,31 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dockVideo && videoModal) {
         dockVideo.onclick = () => {
             videoModal.classList.remove('hidden');
+            
+            // REFINED CENTER LAYOUT WITH PADDING CONSTRAINT
             videoModal.style.display = 'flex';
             videoModal.style.alignItems = 'center';
             videoModal.style.justifyContent = 'center';
             videoModal.style.zIndex = '10006'; 
+            // REMOVED PADDING TO PREVENT OVERFLOW
             
             const frame = videoModal.querySelector('.terminal-frame');
             if(frame) {
-                frame.style.width = '1100px'; 
-                frame.style.height = '700px';
-                frame.style.maxWidth = '98vw';
+                // SIZING LOGIC MATCHING PAINT APP EXACTLY
+                frame.style.width = '98vw'; 
+                frame.style.height = '98vh';
+                frame.style.maxWidth = '1800px';
+                frame.style.maxHeight = 'none'; // Uncap height to fill screen
                 frame.style.background = '#000';
+                
+                // IMPORTANT FIX:
+                frame.style.margin = 'auto'; // Ensures centering if flex is slightly off
+                frame.style.boxSizing = 'border-box'; // Ensures border is INSIDE 98vh
+                
+                // ADDED NEON BORDER GLOW
+                frame.style.border = '1px solid var(--theme-color)';
+                frame.style.boxShadow = '0 0 10px var(--theme-color)';
+                frame.style.transition = 'box-shadow 0.3s ease, border-color 0.3s ease';
             }
 
             if (!editorInstance && window.VideoEditor) editorInstance = new VideoEditor(videoRoot);

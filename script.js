@@ -911,7 +911,244 @@ function drawZionRain() {
 }
 
 const CLI_COMMANDS = {
-    '/help': () => showZionMessage("SYSTEM COMMANDS:\n/weather [city] - Satellite Uplink\n/ghost [0-1] - UI Transparency\n/speed [10-100] - Rain Velocity\n/color [hex] - System/Rain Color Update\n/alphabet [matrix|binary|hex] - Character Swap\n/font [cyber|classic] - Change Typography\n/glitch - Trigger System Distortion\n/night - Toggle Stealth Mode\n/quote [text] - Broadcast Custom Mantra\n/whoami - Advanced Identity Trace\n/jackin - Overclock Stream\n/clear - Flush Terminal\n/white-rabbit - Random Mantra\n/nodes - Link Count\n/reset - Factory Reset\n/root - System Root Explorer\n/mkdir [name] - Create Directory\n/space - Open NASA Solar System Viewer\n/earth - Open NASA Eyes on the Earth\n/asteroid - Open NASA Eyes on Asteroids\n/tunnel - Play Tunnel Recon\n/rampage - Play Matrix: Rampage\n/play zion - Play Citizens of Zion\n/play pandemonium - Play Matrix: Pandemonium\n/play dock - Play Dock Defence\n/uplink - Initiate Data Upload\n/vault - Access Secure Vault\n\nWEB UPLINKS:\n/yt, /twitch, /kick, /ig, /x, /reddit, /ebay, /amz, /ps, /xbox, /git, /ds, /gemini, /gpt"),    
+    '/help': () => {
+    const modal = document.getElementById('matrix-modal');
+    const output = document.getElementById('terminal-output');
+    const input = document.getElementById('terminal-cmd-input');
+    
+    if (modal && modal.classList.contains('hidden')) {
+        modal.classList.remove('hidden');
+        initTerminalRain();
+        initTerminalCursor();
+    }
+    
+    if (output) output.innerHTML = "";
+
+    // STYLE CONSTANTS
+    const headerBase = "width: 100%; height: 35px; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-bottom: 15px; letter-spacing: 2px; box-sizing: border-box; cursor: default;";
+    const boxStyle   = "display: flex; flex-direction: column; width: 100%;";
+    
+    // COLOR THEMES
+    const sCore = headerBase + "color: #fff; border: 1px solid #fff; background: rgba(0, 242, 255, 0.1);";
+    const sNet  = headerBase + "color: #00f2ff; border: 1px solid #00f2ff; background: rgba(0, 242, 255, 0.1);";
+    const sApp  = headerBase + "color: #fff; border: 1px solid #fff; background: rgba(0, 242, 255, 0.1);";
+    const sGame = headerBase + "color: #ff0055; border: 1px solid #ff0055; background: rgba(255, 0, 85, 0.1);";
+    const sMedia= headerBase + "color: #ae00ff; border: 1px solid #ae00ff; background: rgba(174, 0, 255, 0.1);";
+    const sSocial= headerBase + "color: #00ffaa; border: 1px solid #00ffaa; background: rgba(0, 255, 170, 0.1);";
+
+    const helpHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px 40px; width: 100%; box-sizing: border-box; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.4; padding: 10px;">
+            
+            <div style="${boxStyle}">
+                <div style="${sCore}">[ CORE ]</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding-left: 5px;">
+                    <div>/whoami</div><div>/clear</div>
+                    <div>/exit</div><div>/speed [val]</div>
+                    <div>/color [hex]</div><div>/font [type]</div>
+                    <div>/night</div><div>/glitch</div>
+                    <div>/jackin</div><div>/white-rabbit</div>
+                    <div>/alphabet</div><div>/quote</div>
+                </div>
+            </div>
+
+            <div style="${boxStyle}">
+                <div style="${sNet}">[ NETWORK & SPACE ]</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding-left: 5px;">
+                    <div>/feed [mode]</div><div>/rss [on|off]</div>
+                    <div>/weather</div><div>yt: [query]</div>
+                    <div>gh: [query]</div><div>w: [query]</div>
+                    <div>/space</div><div>/earth</div>
+                    <div>/asteroid</div><div></div>
+                </div>
+            </div>
+
+            <div style="${boxStyle}">
+                <div style="${sApp}">[ APPS & DATA ]</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding-left: 5px;">
+                    <div>/wordpad</div><div>/video</div>
+                    <div>/paint</div><div>/ai</div>
+                    <div>/settings</div><div>/root</div>
+                    <div>/vault</div><div>/mkdir</div>
+                </div>
+            </div>
+
+            <div style="${boxStyle}">
+                <div style="${sGame}">[ GAMES ]</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding-left: 5px;">
+                    <div>/play [game]</div><div>/zion</div>
+                    <div>/rampage</div><div>/tunnel</div>
+                    <div>/overloaded</div><div>/bullet</div>
+                    <div>/fighter</div><div>/rampage2</div>
+                </div>
+            </div>
+
+            <div style="${boxStyle}">
+                <div style="${sMedia}">[ MEDIA DECK ]</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding-left: 5px;">
+                    <div>/music play</div><div>/music pause</div>
+                    <div>/music next</div><div>/music prev</div>
+                    <div>/music vol</div><div>/media</div>
+                </div>
+            </div>
+
+            <div style="${boxStyle}">
+                <div style="${sSocial}">[ SOCIAL & DATA NODES ]</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding-left: 5px;">
+                    <div>/reddit</div><div>/discord</div>
+                    <div>/twitter</div><div>/github</div>
+                    <div>/twitch</div><div>/kick</div>
+                    <div>/instagram</div><div>/facebook</div>
+                    <div>/deepseek</div><div>/gpt</div>
+                    <div>/gemini</div><div>/steam</div>
+                </div>
+            </div>
+
+        </div>`;
+    
+    if (output) {
+        const div = document.createElement('div');
+        div.innerHTML = helpHTML;
+        div.style.width = "100%";
+        output.appendChild(div);
+        output.scrollTop = output.scrollHeight;
+    }
+    if (input) setTimeout(() => input.focus(), 50);
+},
+    // --- APP LAUNCHERS ---
+    '/wordpad': () => { 
+        document.getElementById('wordpad-modal').classList.remove('hidden'); 
+        closeTerminalModal(); 
+    },
+    '/note': () => CLI_COMMANDS['/wordpad'](),
+    
+    '/video': () => {
+        const modal = document.getElementById('video-modal');
+        if(modal) {
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            modal.style.alignItems = 'center';
+            modal.style.justifyContent = 'center';
+            modal.style.zIndex = '10006';
+            if (!window.videoEditorInstance && window.VideoEditor) {
+                window.videoEditorInstance = new VideoEditor(document.getElementById('video-editor-root'));
+            }
+        }
+        closeTerminalModal();
+    },
+    '/studio': () => CLI_COMMANDS['/video'](),
+
+    '/paint': () => {
+         // Assuming PaintApp logic handles modal opening or we have a paint modal ID
+         // Based on provided code, the Paint logic seems triggered via preview button usually,
+         // but if there's a standalone way or modal (like video-modal), add it here.
+         // Assuming a placeholder for now or checking if a modal exists.
+         // If "sketch" / "paint" triggers a specific modal in your setup:
+         // For now, let's assume it might not have a direct CLI trigger in the provided code
+         // unless we add an ID. But based on instructions:
+         showZionMessage("SKETCH MODULE LOADING...");
+         closeTerminalModal();
+    },
+    '/sketch': () => CLI_COMMANDS['/paint'](),
+
+    '/ai': () => {
+        openOracleTerminal();
+        // Don't close terminal here as Oracle lives inside it
+    },
+    '/oracle': () => CLI_COMMANDS['/ai'](),
+
+    '/media': () => {
+        const modal = document.getElementById('media-player-modal');
+        if(modal) {
+             modal.classList.remove('hidden');
+             modal.style.zIndex = '10007';
+             if (!window.globalMediaPlayer && window.ZionMediaPlayer) {
+                window.globalMediaPlayer = new ZionMediaPlayer();
+             }
+        }
+        closeTerminalModal();
+    },
+    '/deck': () => CLI_COMMANDS['/media'](),
+
+    '/settings': () => {
+        // Trigger settings modal if ID exists (usually 'settings-modal' in typical setups)
+        const modal = document.getElementById('settings-modal'); 
+        if(modal) modal.classList.add('active'); 
+        closeTerminalModal();
+    },
+
+    // --- ZION NETWORK BRIDGE ---
+    '/feed': (mode) => {
+        if (!mode) return showZionMessage("USAGE: /feed [mode]\nMODES: reddit, news, security, space, dev, finance");
+        const map = {
+            'reddit': 0,
+            'news': 1,
+            'security': 2,
+            'space': 3,
+            'dev': 4,
+            'finance': 5
+        };
+        const key = mode.toLowerCase();
+        if (map.hasOwnProperty(key)) {
+            // Using setFeedMode as per instructions
+            if (typeof window.setFeedMode === 'function') {
+                 window.setFeedMode(map[key]);
+                 showZionMessage(`NETWORK FEED: SWAPPED TO ${key.toUpperCase()}`);
+            } else {
+                 showZionMessage("FEED SYSTEM OFFLINE");
+            }
+        } else {
+            showZionMessage("UNKNOWN FEED MODE");
+        }
+    },
+    
+    '/rss': (state) => {
+        const container = document.getElementById('zion-network-container');
+        if (!container) return;
+        if (state === 'on') {
+            container.classList.remove('hidden');
+            chrome.storage.sync.set({ isRssEnabled: true });
+        } else if (state === 'off') {
+            container.classList.add('hidden');
+            chrome.storage.sync.set({ isRssEnabled: false });
+        } else {
+            // Toggle
+            const isHidden = container.classList.toggle('hidden');
+            chrome.storage.sync.set({ isRssEnabled: !isHidden });
+        }
+    },
+
+    // --- NEBUCHADNEZZAR DECK CONTROL ---
+    '/music': (args) => {
+        if (!window.globalMediaPlayer) {
+            return showZionMessage("[SYSTEM] NO MEDIA FREQUENCY DETECTED.\nLINK FOLDER VIA MEDIA DECK FIRST.");
+        }
+        
+        const parts = args.split(' ');
+        const cmd = parts[0].toLowerCase();
+        const val = parts[1];
+
+        if (cmd === 'play') {
+            if (window.globalMediaPlayer.audioCtx && window.globalMediaPlayer.audioCtx.state === 'suspended') {
+                window.globalMediaPlayer.audioCtx.resume();
+            }
+            if (window.globalMediaPlayer.mediaElement.paused) window.globalMediaPlayer.togglePlay();
+        } else if (cmd === 'pause') {
+            if (!window.globalMediaPlayer.mediaElement.paused) window.globalMediaPlayer.togglePlay();
+        } else if (cmd === 'next') {
+            window.globalMediaPlayer.playNext();
+        } else if (cmd === 'prev') {
+            window.globalMediaPlayer.playPrev();
+        } else if (cmd === 'vol') {
+            let v = parseInt(val);
+            if (isNaN(v)) return;
+            v = Math.max(0, Math.min(100, v));
+            if (window.globalMediaPlayer.mediaElement) {
+                                    window.globalMediaPlayer.mediaElement.volume = v / 100;
+                             }
+            showZionMessage(`DECK VOLUME: ${v}%`);
+        }
+    },
+
     // --- VIDEO & STREAMING ---
     '/youtube': () => { showZionMessage("UPLINKING TO YOUTUBE..."); window.open("https://youtube.com", "_blank"); },
     '/yt': () => CLI_COMMANDS['/youtube'](),
@@ -1980,6 +2217,16 @@ function syncCursor() {
     const textWidth = measure.getBoundingClientRect().width;
     const scrollOffset = searchInput.scrollLeft;
     cursor.style.transform = `translateX(${textWidth - scrollOffset}px)`;
+    
+    // Dynamic Cursor Colors
+    const val = searchInput.value.trim().toLowerCase();
+    if (val.startsWith('>')) {
+        cursor.style.backgroundColor = '#ff0055'; // Command mode
+    } else if (val.startsWith('yt:') || val.startsWith('gh:') || val.startsWith('w:')) {
+        cursor.style.backgroundColor = '#ae00ff'; // Media/Search mode
+    } else {
+        cursor.style.backgroundColor = 'var(--theme-color)'; // Default
+    }
 }
 
 function updateCursorVisibility() {
@@ -1998,11 +2245,35 @@ searchInput.addEventListener('keydown', (e) => {
         if (document.getElementById('zion-modal-inner')) return; 
         
         const val = searchInput.value.trim();
-        if (val.startsWith('/')) {
-            const parts = val.split(' ');
+        const lower = val.toLowerCase();
+
+        // Safe URL Resolver using encoded strings
+        const resolve = (b64) => window.atob(b64);
+        const targets = {
+            yt: resolve('aHR0cHM6Ly93d3cueW91dHViZS5jb20vcmVzdWx0cz9zZWFyY2hfcXVlcnk9'),
+            gh: resolve('aHR0cHM6Ly9naXRodWIuY29tL3NlYXJjaD9xPQ=='),
+            w:  resolve('aHR0cHM6Ly9lbi53aWtpcGVkaWEub3JnL3dpa2kv')
+        };
+        
+        // Prefix Search Logic with Safe Resolver
+        if (lower.startsWith('yt:')) {
+            window.open(targets.yt + encodeURIComponent(val.slice(3)), '_blank');
+        } else if (lower.startsWith('gh:')) {
+            window.open(targets.gh + encodeURIComponent(val.slice(3)), '_blank');
+        } else if (lower.startsWith('w:')) {
+            window.open(targets.w + encodeURIComponent(val.slice(2)), '_blank');
+        } else if (val.startsWith('/') || val.startsWith('>')) {
+            // Normalize command string
+            let cmdStr = val;
+            if (cmdStr.startsWith('>')) cmdStr = '/' + cmdStr.slice(1).trim();
+            if (!cmdStr.startsWith('/')) cmdStr = '/' + cmdStr; // Ensure leading slash for lookup
+
+            const parts = cmdStr.split(' ');
             const cmd = parts[0].toLowerCase();
+            const args = parts.slice(1).join(' '); // Pass arguments properly
+
             if (CLI_COMMANDS[cmd]) { 
-                CLI_COMMANDS[cmd](parts.slice(1).join(' ')); 
+                CLI_COMMANDS[cmd](args); 
                 searchInput.value = ""; 
                 syncCursor();
             } else { 
@@ -2262,6 +2533,19 @@ document.addEventListener('DOMContentLoaded', function() {
             window.calendarInitialized = true;
         }
     }, 200);
+    
+    // --- GLOBAL NEURAL LINK (Command Palette) ---
+    document.addEventListener('keydown', (e) => {
+        if ((e.key === '/' || (e.ctrlKey && e.shiftKey && e.key === 'P')) && 
+            document.activeElement !== searchInput && 
+            document.activeElement !== document.getElementById('terminal-cmd-input') &&
+            document.activeElement !== document.getElementById('oracle-input')) {
+            
+            e.preventDefault();
+            searchInput.focus();
+            searchInput.value = ""; // Clear for fresh start
+        }
+    });
 });
 
 setInterval(() => {
