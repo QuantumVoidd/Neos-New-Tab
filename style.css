@@ -629,41 +629,6 @@ body, html {
 #search-input::placeholder { color: var(--theme-color); opacity: 0.45; text-shadow: 0 0 5px var(--theme-color); text-align: left; }
 
 .quote { font-style: italic; font-size: calc(1.4rem * var(--text-scale)); margin-top: 20px; opacity: 0.9; transition: opacity 0.5s; }
-/* --- SETTINGS MODAL: Flexbox Stack --- */
-/* --- SETTINGS MODAL: Final Layout (Stable Grid + Original Aesthetics) --- */
-/* --- SETTINGS MODAL: Final Layout (Stable Grid + Normal Size Sliders) --- */
-/* --- SETTINGS MODAL: Final Layout --- */
-/* --- SETTINGS MODAL: Final Polished Layout --- */
-/* --- SETTINGS MODAL: Final Polished Layout --- */
-/* --- SETTINGS MODAL: Final Polished Layout --- */
-/* --- SETTINGS MODAL: Final Polished Layout --- */
-/* --- SETTINGS MODAL: Final Fixed Layout --- */
-#settings-modal { 
-    position: fixed; 
-    top: 10%; 
-    left: 50%;
-    /* Center and shift left to clear cog */
-    transform: translateX(calc(-50% - 120px));
-    
-    width: 750px; 
-    height: 85vh; 
-    
-    background: #000; 
-    border: 2px solid var(--theme-color); 
-    z-index: 3000; 
-    color: white; 
-    border-radius: 15px; 
-    
-    /* VERTICAL STACK: Header Top, Content Bottom */
-    display: flex; 
-    flex-direction: column; 
-    overflow: hidden; 
-    padding: 0 !important;
-    
-    box-shadow: 0 0 5px var(--theme-color), 
-                0 0 10px var(--theme-color), 
-                inset 0 0 5px var(--theme-color);
-}
 
 /* --- HEADER SECTION --- */
 .settings-header-wrapper {
@@ -3036,4 +3001,192 @@ button:focus {
 .deck-modules {
     display: flex;
     gap: 15px;
+}
+
+/* --- LOGON CONSTRUCT (REQUIRED FOR LOGIN SCREEN) --- */
+.logon-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #000; /* Solid black background */
+    z-index: 99999;       /* Puts it ABOVE everything else */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Courier New', monospace;
+    color: var(--theme-color, #00ff41);
+}
+
+.logon-content {
+    text-align: center;
+    width: 300px;
+    position: relative;
+}
+
+/* --- UPDATED PFP SIZE & TRANSPARENCY --- */
+.pfp-container {
+    width: 90px;
+    height: 90px;
+    margin: 0 auto 15px;
+    position: relative;
+    border-radius: 50%;
+    overflow: hidden;
+    
+    /* Neon Border & Glow - Adjusted to 10px for a "hair bigger" feel */
+    border: 2px solid var(--theme-color, #00ff41);
+    box-shadow: 
+        0 0 10px var(--theme-color, #00ff41), 
+        inset 0 0 6px rgba(0, 255, 65, 0.2);
+        
+    transition: box-shadow 0.3s ease;
+    
+    /* FIX: Transparent so rain shows behind the icon */
+    background: transparent; 
+}
+
+/* --- LOGON INPUT (LEFT ALIGNED) --- */
+.cipher-wrapper {
+    position: relative;
+    margin: 20px auto !important;
+    width: 200px !important;
+    height: 34px !important;
+    box-sizing: border-box;
+    
+    background: rgba(0, 10, 0, 0.9);
+    
+    /* Neon Border & Glow - Adjusted to 6px for visibility */
+    border: 1px solid var(--theme-color, #00ff41);
+    box-shadow: 
+        0 0 6px var(--theme-color, #00ff41), 
+        inset 0 0 3px rgba(0, 255, 65, 0.1);
+        
+    padding: 0 15px;
+    border-radius: 50px;
+    
+    /* Layout: Align items to the left */
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    
+    transition: all 0.3s ease;
+}
+
+/* Optional: stronger glow on hover/focus - Adjusted to 10px for a "hair bigger" feel */
+.cipher-wrapper:hover, .cipher-wrapper:focus-within {
+    box-shadow: 
+        0 0 10px var(--theme-color, #00ff41), 
+        inset 0 0 5px rgba(0, 255, 65, 0.3);
+    /* Border matches theme color and stays visible */
+    border-color: var(--theme-color, #00ff41) !important; 
+    transform: scale(1.02);
+}
+
+#cipher-key {
+    background: transparent;
+    border: none;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    height: 100%;
+    width: 100%;
+    
+    /* Left align text */
+    text-align: left;
+    
+    outline: none;
+    letter-spacing: 3px;
+    
+    /* FIX 1: Hide Native Text & Cursor */
+    color: transparent; 
+    caret-color: transparent;
+    
+    /* FIX 2: Layering (Above proxy, Below cursor) */
+    position: relative;
+    z-index: 2; 
+}
+
+/* Fix: Make placeholder visible even though input color is transparent */
+#cipher-key::placeholder {
+    color: var(--theme-color, #00ff41);
+    font-size: 0.75rem;
+    opacity: 0.5;
+}
+
+#cipher-key:placeholder-shown {
+    text-align: center;
+}
+
+/* --- VISUAL PROXY (The "Ghost" Text for Alignment) --- */
+#cipher-proxy {
+    position: absolute;
+    left: 15px; /* Matches wrapper padding */
+    top: 50%;
+    transform: translateY(-50%);
+    
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 3px;
+    color: var(--theme-color, #00ff41);
+    
+    z-index: 1; /* Below input */
+    pointer-events: none;
+    white-space: pre;
+}
+
+/* --- MATRIX CURSOR STYLES --- */
+#logon-cursor {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    
+    /* Size & Color */
+    width: 10px;
+    height: 14px; 
+    background-color: var(--theme-color, #00ff41);
+    
+    pointer-events: none;
+    display: none; /* Hidden by default, JS shows it on focus */
+    
+    /* FIX: High Z-Index ensures it sits visibly ON TOP of the text input */
+    z-index: 3;
+    
+    /* Blink Animation */
+    animation: terminal-blink 1s step-end infinite;
+}
+
+@keyframes terminal-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+/* --- ANIMATION CLASSES --- */
+.shatter-exit {
+    animation: digital-shatter 0.8s forwards ease-in;
+    pointer-events: none;
+}
+
+@keyframes digital-shatter {
+    0% { transform: scale(1); opacity: 1; filter: blur(0px); }
+    100% { transform: scale(2); opacity: 0; filter: blur(20px); }
+}
+
+.access-denied {
+    animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+    border-color: red !important;
+}
+
+@keyframes shake { 
+    10%, 90% { transform: translate3d(-1px, 0, 0); } 
+    20%, 80% { transform: translate3d(2px, 0, 0); } 
+    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 
+    40%, 60% { transform: translate3d(4px, 0, 0); } 
+}
+
+/* Remove Blur/Dimming from Rain */
+#logon-rain-canvas {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    z-index: -1;
+    opacity: 1 !important; /* Crisp visibility */
 }

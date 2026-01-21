@@ -1,8 +1,55 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#000000">
     <title>New Tab</title>
+    
+    <style>
+        /* 1. Force Black Background Immediately */
+        :root, html, body {
+            background-color: #000000 !important;
+            background: #000000 !important;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* 2. Position the Logon Overlay Immediately (Don't wait for style.css) */
+        #logon-construct {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000000 !important; 
+            z-index: 99999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 3. Hide the Content (including neo_id.png) initially, then fade in */
+        .logon-content {
+            opacity: 0; 
+            animation: safeFadeIn 0.8s forwards;
+            /* Simple centering just in case main CSS is slow */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @keyframes safeFadeIn {
+            0% { opacity: 0; }
+            20% { opacity: 0; } /* Keep hidden during initial paint */
+            100% { opacity: 1; }
+        }
+    </style>
+
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     
@@ -66,15 +113,14 @@
             flex-grow: 1;
             height: 100%;
             overflow: hidden;
-            position: relative; /* Needed for absolute positioning of toggle */
+            position: relative;
         }
 
-        /* --- STYLED TOGGLE BUTTON --- */
         .mp-sidebar-toggle {
             position: absolute;
             top: 10px;
             left: 10px;
-            z-index: 200; /* Above video */
+            z-index: 200;
             background: rgba(0, 0, 0, 0.8);
             border: 1px solid var(--theme-color);
             color: var(--theme-color);
@@ -125,7 +171,6 @@
             align-content: start;
         }
 
-        /* --- FIXED FULLSCREEN STYLES --- */
         .mp-main:fullscreen {
             background: #000;
             width: 100vw;
@@ -133,33 +178,15 @@
             display: flex;
             flex-direction: column;
         }
-
-        /* In fullscreen, hide the sidebar toggle */
         .mp-main:fullscreen .mp-sidebar-toggle { display: none; }
-
-        /* In fullscreen, HIDE the bottom library */
         .mp-main:fullscreen .mp-library-view { display: none !important; }
-
-        /* In fullscreen, make player stage fill space */
-        .mp-main:fullscreen .mp-player-stage {
-            flex: 1; /* Grow to fill */
-            height: 100%;
-            border-bottom: none;
-        }
-
-        /* In fullscreen, make controls an overlay */
+        .mp-main:fullscreen .mp-player-stage { flex: 1; height: 100%; border-bottom: none; }
         .mp-main:fullscreen .mp-controls-bar {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background: rgba(0,0,0,0.6); /* Transparent backdrop */
-            z-index: 100;
-            border-top: 1px solid rgba(0,255,65,0.3);
-            border-bottom: none;
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            background: rgba(0,0,0,0.6); z-index: 100;
+            border-top: 1px solid rgba(0,255,65,0.3); border-bottom: none;
         }
 
-        /* --- Override Video Editor JS Internal Styles --- */
         .ve-wrapper {
             background: transparent !important;
             border: none !important;
@@ -194,227 +221,525 @@
             background: rgba(0, 20, 0, 0.8) !important;
             border: 1px solid #333;
         }
+
+        /* --- FIXED SETTINGS PAGE STYLES (RESTORED GLOW + CLEANER MENU) --- */
+        #settings-modal {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background: rgba(0, 0, 0, 0.85) !important; 
+            z-index: 2147483647 !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            opacity: 1 !important;
+            backdrop-filter: none !important;
+        }
+        
+        #settings-modal.hidden {
+            display: none !important;
+        }
+
+        .settings-layout-container {
+            position: relative !important;
+            width: 80vw !important;
+            height: 80vh !important;
+            max-width: 1100px !important;
+            max-height: 800px !important;
+            
+            background: #000 !important;
+            
+            /* Single Outer Border */
+            border: 1px solid var(--theme-color, #00ff41) !important;
+            outline: none !important;
+            
+            /* RESTORED STRONG NEON GLOW */
+            box-shadow: 
+                0 0 30px rgba(0, 255, 65, 0.6) !important, 
+                inset 0 0 15px rgba(0, 255, 65, 0.2) !important;
+            
+            border-radius: 4px;
+            overflow: hidden !important;
+            display: flex !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-sizing: border-box !important;
+        }
+
+        #settings-rain-canvas {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            z-index: 0 !important;
+            opacity: 1 !important; /* UPDATED: Full Opacity */
+            pointer-events: none;
+            border: none !important;
+        }
+
+        .settings-sidebar {
+            width: 250px !important;
+            background: rgba(0, 0, 0, 0.9) !important;
+            border-right: 1px solid var(--theme-color) !important;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 0;
+            flex-shrink: 0;
+            overflow-y: auto;
+            position: relative !important;
+            z-index: 2 !important;
+            box-sizing: border-box !important;
+        }
+
+        .settings-logo {
+            padding: 0 20px 20px 20px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            color: #fff;
+            text-shadow: 0 0 10px var(--theme-color);
+            border-bottom: none !important;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .settings-logo span { color: var(--theme-color); }
+
+        .settings-tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            color: #888;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+            font-size: 0.9rem;
+            background: transparent;
+        }
+        .settings-tab:hover { color: #fff; background: rgba(0, 255, 0, 0.05); }
+        .settings-tab.active {
+            color: var(--theme-color);
+            background: linear-gradient(90deg, rgba(0, 255, 65, 0.1), transparent);
+            border-left: 3px solid var(--theme-color);
+            text-shadow: 0 0 8px var(--theme-color);
+        }
+
+        .settings-footer {
+            margin-top: auto; padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; 
+            border-top: 1px solid #333;
+        }
+
+        .sidebar-btn-action {
+            background: transparent; border: 1px solid #333; color: #aaa; padding: 8px; cursor: pointer;
+            font-family: 'Orbitron', sans-serif; font-size: 0.7rem; text-transform: uppercase; transition: 0.3s;
+        }
+        .sidebar-btn-action:hover { border-color: var(--theme-color); color: var(--theme-color); box-shadow: 0 0 10px rgba(0,255,65,0.2); }
+        .sidebar-btn-action.danger:hover { border-color: #ff3333; color: #ff3333; box-shadow: 0 0 10px rgba(255, 51, 51, 0.2); }
+
+        .settings-content-area {
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+            position: relative !important;
+            background: rgba(0, 0, 0, 0.8) !important;
+            z-index: 2 !important;
+            box-sizing: border-box !important;
+        }
+
+        .settings-content-area::-webkit-scrollbar { width: 8px; }
+        .settings-content-area::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+        .settings-content-area::-webkit-scrollbar-thumb { background: #333; border: 1px solid #000; }
+        .settings-content-area::-webkit-scrollbar-thumb:hover { background: var(--theme-color); }
+
+        .settings-section { display: none; animation: fadeIn 0.3s ease; }
+        .settings-section.active { display: block; }
+
+        .sec-header {
+            font-family: 'Orbitron', sans-serif; 
+            color: var(--theme-color); 
+            font-size: 1.5rem;
+            margin-bottom: 30px; 
+            padding-bottom: 10px;
+            letter-spacing: 2px; 
+            text-transform: uppercase; 
+            margin-top: 0;
+            border-bottom: none !important;
+        }
+
+        .setting-group {
+            margin-bottom: 25px;
+            background: transparent;
+            padding: 20px;
+            /* Border removed as requested */
+            border: none; 
+            box-shadow: none;
+        }
+
+        .sub-menu-title {
+            color: #666; 
+            font-size: 0.75rem; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+            margin-bottom: 15px; 
+            display: block; 
+            border-bottom: none !important;
+            padding-bottom: 0;
+        }
+
+        .settings-separator { display: none !important; }
+
+        .checkbox-group label {
+            display: flex; align-items: center; margin-bottom: 10px; cursor: pointer; color: #ccc;
+            font-family: 'Courier New', monospace; transition: color 0.2s; font-size: 0.9rem;
+        }
+        .checkbox-group label:hover { color: var(--theme-color); }
+        .checkbox-group input[type="checkbox"] { margin-right: 10px; accent-color: var(--theme-color); width: 16px; height: 16px; cursor: pointer; }
+
+        .setting-item { margin-bottom: 15px; }
+        .setting-item label { display: block; margin-bottom: 5px; color: #aaa; font-size: 0.85rem; font-family: 'Orbitron', sans-serif; }
+        
+        .setting-item input[type="range"] {
+            width: 100%; accent-color: var(--theme-color); height: 4px; background: #333; border-radius: 2px; appearance: none;
+        }
+        .setting-item input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 16px; height: 16px; background: var(--theme-color); cursor: pointer; border-radius: 50%;
+        }
+
+        .setting-item input[type="text"], 
+        .setting-item input[type="password"], 
+        .setting-item select {
+            width: 100%; background: #111; border: 1px solid #333; color: var(--theme-color);
+            padding: 10px; font-family: 'Courier New', monospace; box-sizing: border-box;
+        }
+        .setting-item input[type="text"]:focus, 
+        .setting-item input[type="password"]:focus { outline: none; border-color: var(--theme-color); box-shadow: 0 0 5px var(--theme-color); }
+
+        .button-group button {
+            background: rgba(0,0,0,0.5); border: 1px solid var(--theme-color); color: var(--theme-color);
+            padding: 8px 16px; cursor: pointer; font-family: 'Orbitron', sans-serif; font-size: 0.8rem;
+            margin-right: 10px; margin-bottom: 10px; text-transform: uppercase;
+        }
+        .button-group button:hover { background: var(--theme-color); color: #000; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
+    <div id="logon-construct" class="logon-overlay">
+        <canvas id="logon-rain-canvas"></canvas>
+
+        <div class="logon-content">
+            <div class="pfp-container">
+                <img id="user-pfp" src="neo_id.png" alt="Operator Identity">
+                <div class="pfp-glow-ring"></div>
+                <div class="pfp-scan-line"></div>
+            </div>
+            
+            <div class="logon-details">
+                <h2 id="operator-name">UNIDENTIFIED SIGNAL</h2>
+                <div class="cipher-wrapper">
+                    <input type="password" id="cipher-key" placeholder="ENTER_CIPHER" autocomplete="off" autofocus>
+                    <span id="cipher-proxy"></span>
+                    <span id="logon-cursor"></span>
+                </div>
+                <div id="logon-status" class="blink-text">AWAITING DECRYPTION KEY...</div>
+            </div>
+        </div>
+    </div>
+
     <canvas id="matrix"></canvas>
     <canvas id="sentinel-layer"></canvas>
     
     <div id="scanline-overlay" class="hidden"></div>
 
     <div id="settings-modal" class="hidden">
-        <canvas id="settings-rain-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; opacity: 0.4;"></canvas>
-        
-        <div class="settings-header-wrapper">
-            <h3 id="settings-header">System Settings</h3>
-            <div class="settings-separator"></div>
-        </div>
-        
-        <div class="settings-scroll-area">
+        <div class="settings-layout-container">
+            <canvas id="settings-rain-canvas"></canvas>
             
-            <div class="setting-group">
-                <h4 class="sub-menu-title">UI Config</h4>
+            <div class="settings-sidebar">
+                <div class="settings-logo">Zion<span>Mainframe</span></div>
+                <div class="settings-tabs-container">
+                    <div class="settings-tab active" data-target="sec-operator">Operator ID</div>
+                    <div class="settings-tab" data-target="sec-ui">User Interface</div>
+                    <div class="settings-tab" data-target="sec-time">Time Config</div>
+                    <div class="settings-tab" data-target="sec-effects">Visual Effects</div>
+                    <div class="settings-tab" data-target="sec-rain">Rain Matrix</div>
+                    <div class="settings-tab" data-target="sec-3d">3D Backgrounds</div>
+                    <div class="settings-tab" data-target="sec-audio">Audio</div>
+                    <div class="settings-tab" data-target="sec-phone">Phone Uplink</div>
+                    <div class="settings-tab" data-target="sec-network">Zion Network</div>
+                    <div class="settings-tab" data-target="sec-modules">Modules</div>
+                    <div class="settings-tab" data-target="sec-backdrop">Backdrop</div>
+                    <div class="settings-tab" data-target="sec-system">System Info</div>
+                </div>
+                <div class="settings-footer">
+                    <button id="save-settings" class="sidebar-btn-action">Save & Exit</button>
+                    <button id="restore-defaults" class="sidebar-btn-action danger">Reset</button>
+                </div>
+            </div>
+
+            <div class="settings-content-area">
                 
-                <div class="setting-item">
-                    <label>UI Scale</label>
-                    <input type="range" id="size-slider" min="0.5" max="1.5" step="0.01" value="1">
-                </div>
-
-                <div class="setting-item">
-                    <label>Global Theme Color</label>
-                    <input type="color" id="theme-color-picker" value="#00f2ff">
-                </div>
-
-                <div class="checkbox-group">
-                    <label><input type="checkbox" id="bg-toggle"> Transparent UI</label>
-                </div>
-            </div>
-
-            <div class="setting-group">
-                <h4 class="sub-menu-title">Time Config</h4>
-                <div class="checkbox-group">
-                    <label><input type="checkbox" id="show-minutes" checked> Show Minutes</label>
-                    <label><input type="checkbox" id="show-seconds"> Show Seconds</label>
-                    <label><input type="checkbox" id="use-24hour"> 24-Hour Protocol</label>
-                </div>
-            </div>
-
-            <div class="setting-group">
-                <h4 class="sub-menu-title">ZION Network</h4>
-                <div class="checkbox-group">
-                    <label><input type="checkbox" id="rss-toggle"> Enable RSS Feed</label>
-                </div>
-                <div class="setting-item">
-                    <label>Favourite Subreddits (+ separated)</label>
-                    <input type="text" id="rss-input" placeholder="matrix+cyberpunk+tech">
-                </div>
-                <div class="setting-item">
-                    <label>News Sources (RSS URLs, + separated)</label>
-                    <input type="text" id="news-input" placeholder="http://feeds.bbci.co.uk/news/rss.xml">
-                </div>
-                <div class="setting-item">
-                    <label>Security Feed (RSS URLs, + separated)</label>
-                    <input type="text" id="security-input" placeholder="https://isc.sans.edu/rssfeed.xml">
-                </div>
-                <div class="setting-item">
-                    <label>Space/NASA Feed (RSS URLs, + separated)</label>
-                    <input type="text" id="space-input" placeholder="https://www.nasa.gov/rss/dyn/lg_image_of_the_day.rss">
-                </div>
-                <div class="setting-item">
-                    <label>Developer Feed (RSS URLs, + separated)</label>
-                    <input type="text" id="dev-input" placeholder="https://hnrss.org/newest">
-                </div>
-                <div class="setting-item">
-                    <label>Finance/Market Feed (RSS URLs, + separated)</label>
-                    <input type="text" id="finance-input" placeholder="https://finance.yahoo.com/news/rssindex">
-                </div>
-                <div class="checkbox-group">
-                    <label><input type="checkbox" id="chat-toggle" checked> Secure Chat Terminal</label>
-                    <label><input type="checkbox" id="oracle-toggle"> Enable Oracle Link <span style="opacity: 0.6; font-size: 0.8em;">(REAL AI)</span></label>
-                    <label><input type="checkbox" id="system-monitor-toggle" checked> Enable System Monitor</label>
-                    <label><input type="checkbox" id="stats-toggle" checked> Enable System Diagnostics</label>
-                </div>
-            </div>
-
-            <div class="setting-group">
-                <h4 class="sub-menu-title">Visuals</h4>
-                <div class="checkbox-group">
-                    <label><input type="checkbox" id="matrix-green"> Matrix Green UI (Overrides Colors)</label>
-                    <label><input type="checkbox" id="snow-toggle"> Sentinel Swarm</label>
-                    <label><input type="checkbox" id="font-toggle"> Cyberpunk Font</label>
-                    <label><input type="checkbox" id="glow-toggle"> Digital Glow Effect</label>
-                    <label><input type="checkbox" id="glitch-toggle"> Glitch on Hover</label>
-                    <div class="setting-item" style="margin-top: 10px;">
-                        <label>Glitch Intensity</label>
-                        <input type="range" id="glitch-slider" min="1" max="20" step="1" value="5">
-                    </div>
-                    <label><input type="checkbox" id="scanline-toggle"> Scanline CRT Overlay</label>
-                    <label><input type="checkbox" id="bg-filter-toggle"> Green Backdrop Filter</label>
-                </div>
-            </div>
-
-            <div class="setting-group">
-                <h4 class="sub-menu-title">2D Rain Config</h4>
-                <div class="setting-item">
-                    <label>Rain Speed</label>
-                    <input type="range" id="speed-slider" min="10" max="100" step="5" value="35">
-                </div>
-                
-                <div class="setting-item">
-                    <label>Rain Color</label>
-                    <input type="color" id="color-picker" value="#00f2ff">
-                </div>
-                
-                <div class="checkbox-group">
-                    <label><input type="checkbox" id="binary-mode"> Binary Mode</label>
-                    <label><input type="checkbox" id="hex-mode"> Hex Mode</label>
-                    <label><input type="checkbox" id="ascii-mode"> ASCII Mode</label>
-                    <label><input type="checkbox" id="math-mode"> Mathematical Symbols</label>
-                    <label><input type="checkbox" id="rainbow-toggle"> Rainbow Mode</label>
-                </div>
-            </div>
-
-            <div class="setting-group">
-                <h4 class="sub-menu-title">3D Rain Config</h4>
-                <div class="checkbox-group">
-                    <label><input type="checkbox" id="vertical-rain-toggle"> Vertical Rain</label>
-                    <hr class="separator-3d-rain">
-                    <label><input type="checkbox" id="vertical-rain-binary-mode"> Binary Mode (3D)</label>
-                    <label><input type="checkbox" id="vertical-rain-hex-mode"> Hex Mode (3D)</label>
-                    <label><input type="checkbox" id="vertical-rain-ascii-mode"> ASCII Mode (3D)</label>
-                    <label><input type="checkbox" id="vertical-rain-math-mode"> Mathematical Symbols (3D)</label>
-                    <label><input type="checkbox" id="vertical-rain-rainbow-toggle"> Rainbow Mode (3D)</label>
-                </div>
-                <p style="font-size: 0.7rem; opacity: 0.6; margin-top: 5px;">High-density 3D rain with optimal slow cruising speed</p>
-            </div>
-
-            <div class="setting-group">
-                <h4 class="sub-menu-title">3D Backgrounds</h4>
-                <div class="checkbox-group">
-                    <label><input type="checkbox" id="journey2-toggle"> Endless voyage</label>
-                    <label><input type="checkbox" id="binary-toggle"> Matrix Tunnel</label>
-                    <label><input type="checkbox" id="room-toggle"> Matrix Class Room</label>
-                    <label><input type="checkbox" id="movie-tunnel-toggle"> Matrix Movie Tunnel</label>
-                    <label><input type="checkbox" id="matrix-room-toggle"> Matrix Room</label>
-                    <label><input type="checkbox" id="combat-training-toggle"> Combat Training</label>
-                    <label><input type="checkbox" id="meditation-toggle"> Meditation</label>
-                    <label><input type="checkbox" id="operator-toggle"> Operator Feed</label>
-                </div>
-                <p style="font-size: 0.7rem; opacity: 0.6; margin-top: 5px;">Note: Only one 3D background can be active at a time</p>
-            </div>
-
-            <div class="setting-group">
-                <h4 class="sub-menu-title">Audio Environment</h4>
-                <div class="checkbox-group">
-                    <label><input type="checkbox" id="rain-ambience-toggle"> Rain Ambience (Window)</label>
-                    <label><input type="checkbox" id="hum-toggle"> Nebuchadnezzar Hum</label>
-                    <label><input type="checkbox" id="matrix-sfx-toggle"> Matrix Stream Audio</label>
-                    <div class="setting-item" style="margin-top: 5px;">
-                        <label>Environment Volume</label>
-                        <input type="range" id="env-volume-slider" min="0" max="1" step="0.1" value="0.5">
+                <div id="sec-operator" class="settings-section active">
+                    <h2 class="sec-header">Operator Identity</h2>
+                    
+                    <div class="setting-group" style="display: flex; gap: 30px;">
+                        <div style="flex: 0 0 150px; text-align: center;">
+                            <div style="width: 120px; height: 120px; border: 1px solid var(--theme-color); border-radius: 50%; overflow: hidden; margin: 0 auto 15px auto; box-shadow: 0 0 10px rgba(0,255,65,0.2);">
+                                <img id="settings-pfp-preview" src="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                            </div>
+                            <button id="upload-pfp-btn" class="sidebar-btn-action" style="width: 100%; margin-bottom: 5px;">Upload PFP</button>
+                            <button id="reset-pfp-btn" class="sidebar-btn-action danger" style="width: 100%;">Reset</button>
+                            <input type="file" id="pfp-input" accept="image/*" class="hidden">
+                        </div>
+                        
+                        <div style="flex: 1;">
+                            <div class="setting-item">
+                                <label>Operator Name</label>
+                                <input type="text" id="operator-name-input" placeholder="NEO">
+                            </div>
+                            <div class="setting-item">
+                                <label>Access Key (Password)</label>
+                                <input type="text" id="access-key-input" placeholder="knock">
+                            </div>
+                            <p style="color: #666; font-size: 0.7rem; font-family: 'Courier New'; margin-top: 10px;">
+                                // CAUTION: Changing credentials will require re-authentication on next system load.
+                            </p>
+                        </div>
                     </div>
                 </div>
-                <div class="button-group" style="margin-top: 10px;">
-                    <button id="upload-custom-sfx-btn">Upload Custom SFX</button>
-                    <button id="clear-custom-sfx" style="background: #333; color: #999;">Purge Custom SFX</button>
-                    <input type="file" id="custom-sfx-input" accept="audio/mpeg" class="hidden">
-                </div>
-            </div>
 
-            <div class="setting-group">
-                <h4 class="sub-menu-title">Backdrop Overlay</h4>
-                <div class="button-group">
-                    <button id="upload-image-btn">Upload Image</button>
-                    <button id="upload-video-btn">Upload Video</button>
-                    <div class="setting-item" style="margin: 10px 0;">
-                        <label>Scaling Mode</label>
-                        <select id="scale-mode">
-                            <option value="cover">Fill (Cover)</option>
-                            <option value="contain">Fit (Contain)</option>
-                            <option value="fill">Stretch</option>
-                        </select>
+                <div id="sec-ui" class="settings-section">
+                    <h2 class="sec-header">Interface Config</h2>
+                    
+                    <div class="setting-group">
+                        <div class="setting-item">
+                            <label>UI Scale</label>
+                            <input type="range" id="size-slider" min="0.5" max="1.5" step="0.01" value="1">
+                        </div>
+                        <div class="setting-item">
+                            <label>Global Theme Color</label>
+                            <input type="color" id="theme-color-picker" value="#00f2ff">
+                        </div>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" id="bg-toggle"> Transparent UI</label>
+                        </div>
                     </div>
-                    <button id="clear-backdrop" style="background: #333; color: #999;">Purge Backdrop</button>
-                    <input type="file" id="image-input" accept="image/*" class="hidden">
-                    <input type="file" id="video-input" accept="video/*" class="hidden">
                 </div>
-            </div>
 
-            <div class="setting-group">
-                <h4 class="sub-menu-title">Phone Config</h4>
-                <div class="checkbox-group">
-                    <label><input type="checkbox" id="phone-toggle" checked> Enable Rotary Link</label>
+                <div id="sec-time" class="settings-section">
+                    <h2 class="sec-header">Time Configuration</h2>
+                    <div class="setting-group">
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" id="show-minutes" checked> Show Minutes</label>
+                            <label><input type="checkbox" id="show-seconds"> Show Seconds</label>
+                            <label><input type="checkbox" id="use-24hour"> 24-Hour Protocol</label>
+                        </div>
+                    </div>
                 </div>
-                <div class="setting-item" style="margin-top: 5px;">
-                    <label>Signal Frequency: <span id="phone-freq-value">3</span> Minutes</label>
-                    <input type="range" id="phone-freq-slider" min="1" max="30" step="1" value="3">
-                </div>
-                <div class="button-group" style="margin-top: 10px;">
-                    <button id="upload-audio-btn">Upload MP3 Message</button>
-                    <button id="clear-audios" style="background: #333; color: #999;">Purge Messages</button>
-                    <input type="file" id="audio-input" accept="audio/mpeg" class="hidden" multiple>
-                    <p style="font-size: 0.7rem; opacity: 0.6; margin-top: 5px;">Uploaded clips will play randomly when you answer the phone.</p>
-                </div>
-            </div>
 
-            <div class="setting-group">
-                <h4 class="sub-menu-title">Quotes & Info</h4>
-                <div class="checkbox-group">
-                    <label><input type="checkbox" id="cycle-quotes"> Cycle Matrix Quotes</label>
+                <div id="sec-network" class="settings-section">
+                    <h2 class="sec-header">Zion Network</h2>
+                    
+                    <div class="setting-group">
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" id="rss-toggle"> Enable RSS Feed</label>
+                        </div>
+                        <div class="setting-item">
+                            <label>Favourite Subreddits (+ separated)</label>
+                            <input type="text" id="rss-input" placeholder="matrix+cyberpunk+tech">
+                        </div>
+                        <div class="setting-item">
+                            <label>News Sources (RSS URLs)</label>
+                            <input type="text" id="news-input" placeholder="http://feeds.bbci.co.uk/news/rss.xml">
+                        </div>
+                        <div class="setting-item">
+                            <label>Security Feed</label>
+                            <input type="text" id="security-input" placeholder="https://isc.sans.edu/rssfeed.xml">
+                        </div>
+                        <div class="setting-item">
+                            <label>Space/NASA Feed</label>
+                            <input type="text" id="space-input" placeholder="https://www.nasa.gov/rss/dyn/lg_image_of_the_day.rss">
+                        </div>
+                        <div class="setting-item">
+                            <label>Developer Feed</label>
+                            <input type="text" id="dev-input" placeholder="https://hnrss.org/newest">
+                        </div>
+                        <div class="setting-item">
+                            <label>Finance Feed</label>
+                            <input type="text" id="finance-input" placeholder="https://finance.yahoo.com/news/rssindex">
+                        </div>
+                    </div>
                 </div>
-                <div class="setting-item">
-                    <label>Manual Input</label>
-                    <input type="text" id="quote-input" placeholder="Enter mantra...">
-                </div>
-                <div class="setting-item">
-                    <label>Date & Quote Size</label>
-                    <input type="range" id="text-scale-slider" min="0.8" max="2.5" step="0.1" value="1.2">
-                </div>
-            </div>
 
-            <div class="button-group">
-                <button id="save-settings">Save & Exit</button>
-                <button id="restore-defaults" style="background: #a00; color: white;">Hard Reset</button>
+                <div id="sec-modules" class="settings-section">
+                    <h2 class="sec-header">System Modules</h2>
+                    <div class="setting-group">
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" id="chat-toggle" checked> Secure Chat Terminal</label>
+                            <label><input type="checkbox" id="oracle-toggle"> Enable Oracle Link (AI)</label>
+                            <label><input type="checkbox" id="system-monitor-toggle" checked> Enable System Monitor</label>
+                            <label><input type="checkbox" id="stats-toggle" checked> Enable System Diagnostics</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sec-effects" class="settings-section">
+                    <h2 class="sec-header">Visual Effects</h2>
+                    <div class="setting-group">
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" id="matrix-green"> Matrix Green UI (Override)</label>
+                            <label><input type="checkbox" id="snow-toggle"> Sentinel Swarm</label>
+                            <label><input type="checkbox" id="font-toggle"> Cyberpunk Font</label>
+                            <label><input type="checkbox" id="glow-toggle"> Digital Glow Effect</label>
+                            <label><input type="checkbox" id="scanline-toggle"> Scanline CRT Overlay</label>
+                            <label><input type="checkbox" id="bg-filter-toggle"> Green Backdrop Filter</label>
+                            
+                            <label><input type="checkbox" id="glitch-toggle"> Glitch on Hover</label>
+                            <div class="setting-item" style="margin-top: 10px; padding-left: 20px;">
+                                <label>Glitch Intensity</label>
+                                <input type="range" id="glitch-slider" min="1" max="20" step="1" value="5">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sec-rain" class="settings-section">
+                    <h2 class="sec-header">Rain Matrix Configuration</h2>
+
+                    <div class="setting-group">
+                        <span class="sub-menu-title">2D Rain Configuration</span>
+                        <div class="setting-item">
+                            <label>Rain Speed</label>
+                            <input type="range" id="speed-slider" min="10" max="100" step="5" value="35">
+                        </div>
+                        <div class="setting-item">
+                            <label>Rain Color</label>
+                            <input type="color" id="color-picker" value="#00f2ff">
+                        </div>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" id="binary-mode"> Binary Mode</label>
+                            <label><input type="checkbox" id="hex-mode"> Hex Mode</label>
+                            <label><input type="checkbox" id="ascii-mode"> ASCII Mode</label>
+                            <label><input type="checkbox" id="math-mode"> Mathematical Symbols</label>
+                            <label><input type="checkbox" id="rainbow-toggle"> Rainbow Mode</label>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <span class="sub-menu-title">3D Rain Configuration</span>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" id="vertical-rain-toggle"> Enable Vertical Rain</label>
+                            <hr style="border: 0; border-top: 1px solid #333; margin: 10px 0;">
+                            <label><input type="checkbox" id="vertical-rain-binary-mode"> Binary Mode (3D)</label>
+                            <label><input type="checkbox" id="vertical-rain-hex-mode"> Hex Mode (3D)</label>
+                            <label><input type="checkbox" id="vertical-rain-ascii-mode"> ASCII Mode (3D)</label>
+                            <label><input type="checkbox" id="vertical-rain-math-mode"> Math Symbols (3D)</label>
+                            <label><input type="checkbox" id="vertical-rain-rainbow-toggle"> Rainbow Mode (3D)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sec-3d" class="settings-section">
+                    <h2 class="sec-header">3D Backgrounds</h2>
+
+                    <div class="setting-group">
+                        <p style="font-size: 0.7rem; color: #666; margin-bottom: 10px;">Select one active construct:</p>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" id="journey2-toggle"> Endless Voyage</label>
+                            <label><input type="checkbox" id="binary-toggle"> Matrix Tunnel</label>
+                            <label><input type="checkbox" id="room-toggle"> Matrix Class Room</label>
+                            <label><input type="checkbox" id="movie-tunnel-toggle"> Matrix Movie Tunnel</label>
+                            <label><input type="checkbox" id="matrix-room-toggle"> Matrix Room</label>
+                            <label><input type="checkbox" id="combat-training-toggle"> Combat Training</label>
+                            <label><input type="checkbox" id="meditation-toggle"> Meditation</label>
+                            <label><input type="checkbox" id="operator-toggle"> Operator Feed</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sec-audio" class="settings-section">
+                    <h2 class="sec-header">Audio</h2>
+
+                    <div class="setting-group">
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" id="rain-ambience-toggle"> Rain Ambience</label>
+                            <label><input type="checkbox" id="hum-toggle"> Nebuchadnezzar Hum</label>
+                            <label><input type="checkbox" id="matrix-sfx-toggle"> Matrix Stream Audio</label>
+                        </div>
+                        <div class="setting-item">
+                            <label>Environment Volume</label>
+                            <input type="range" id="env-volume-slider" min="0" max="1" step="0.1" value="0.5">
+                        </div>
+                        <div class="button-group">
+                            <button id="upload-custom-sfx-btn">Upload Custom SFX</button>
+                            <button id="clear-custom-sfx">Purge Custom SFX</button>
+                            <input type="file" id="custom-sfx-input" accept="audio/mpeg" class="hidden">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sec-phone" class="settings-section">
+                    <h2 class="sec-header">Phone Uplink</h2>
+                    <div class="setting-group">
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" id="phone-toggle" checked> Enable Phone</label>
+                        </div>
+                        <div class="setting-item">
+                            <label>Signal Frequency (Minutes)</label>
+                            <input type="range" id="phone-freq-slider" min="1" max="30" step="1" value="3">
+                            <span id="phone-freq-value" style="float: right; color: var(--theme-color);">3</span>
+                        </div>
+                        <div class="button-group">
+                            <button id="upload-audio-btn">Upload Message (MP3)</button>
+                            <button id="clear-audios">Purge Messages</button>
+                            <input type="file" id="audio-input" accept="audio/mpeg" class="hidden" multiple>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sec-backdrop" class="settings-section">
+                    <h2 class="sec-header">Backdrop Overlay</h2>
+                    
+                    <div class="setting-group">
+                        <div class="setting-item">
+                            <label>Scaling Mode</label>
+                            <select id="scale-mode">
+                                <option value="cover">Fill (Cover)</option>
+                                <option value="contain">Fit (Contain)</option>
+                                <option value="fill">Stretch</option>
+                            </select>
+                        </div>
+                        <div class="button-group">
+                            <button id="upload-image-btn">Upload Image</button>
+                            <button id="upload-video-btn">Upload Video</button>
+                            <button id="clear-backdrop">Purge Backdrop</button>
+                        </div>
+                        <input type="file" id="image-input" accept="image/*" class="hidden">
+                        <input type="file" id="video-input" accept="video/*" class="hidden">
+                    </div>
+                </div>
+
+                <div id="sec-system" class="settings-section">
+                    <h2 class="sec-header">System Info</h2>
+
+                    <div class="setting-group">
+                        <span class="sub-menu-title">Quotes</span>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" id="cycle-quotes"> Cycle Matrix Quotes</label>
+                        </div>
+                        <div class="setting-item">
+                            <label>Manual Quote Input</label>
+                            <input type="text" id="quote-input" placeholder="Enter mantra...">
+                        </div>
+                        <div class="setting-item">
+                            <label>Date & Quote Font Size</label>
+                            <input type="range" id="text-scale-slider" min="0.8" max="2.5" step="0.1" value="1.2">
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -558,7 +883,6 @@
             <div id="calendar-grid" style="position: relative; z-index: 1;"></div>
         </div>
 
-        <div id="settings-icon-container"><div id="settings-icon"></div></div>
         <div id="clock" data-text="00:00:00">00:00:00</div>
         <div class="date-container">
             <div id="date">Calculating...</div>
@@ -618,6 +942,7 @@
             <div class="dock-app-icon" id="dock-video" title="Signal Studio">🎬</div>
             <div class="dock-app-icon" id="dock-media" title="Media Deck">▶️</div>
             <div class="dock-app-icon" id="dock-oracle" title="Oracle Link">🧠</div>
+            <div class="dock-app-icon" id="dock-settings" title="System Config">⚙️</div>
         </div>
     </div>
 
@@ -689,31 +1014,8 @@
         </div>
     </div>
 
-    <div id="video-modal" class="hidden">
-        <div class="modal-overlay"></div>
-        <div class="terminal-frame video-frame" style="width: auto; height: auto; padding: 0;">
-            <div class="app-header">
-                <span>> SYSTEM.APP.SIGNAL_STUDIO</span>
-                <div class="app-controls">
-                    <button id="close-video-btn" title="Exit app">✖</button>
-                </div>
-            </div>
-            <div id="video-editor-root"></div> 
-        </div>
-    </div>
-
-    <div id="media-player-modal" class="hidden">
-        <div class="modal-overlay"></div>
-        <div class="terminal-frame mp-frame">
-            <div class="app-header">
-                <span>> SYSTEM.APP.MEDIA_DECK</span>
-                <div class="app-controls">
-                    <button id="close-mp-btn" title="Exit app">✖</button>
-                </div>
-            </div>
-            <div id="media-player-root"></div> 
-        </div>
-    </div>
+    <div id="video-modal" class="hidden"><div class="modal-overlay"></div><div class="terminal-frame video-frame" style="width: auto; height: auto; padding: 0;"><div class="app-header"><span>> SYSTEM.APP.SIGNAL_STUDIO</span><div class="app-controls"><button id="close-video-btn" title="Exit app">✖</button></div></div><div id="video-editor-root"></div></div></div>
+    <div id="media-player-modal" class="hidden"><div class="modal-overlay"></div><div class="terminal-frame mp-frame"><div class="app-header"><span>> SYSTEM.APP.MEDIA_DECK</span><div class="app-controls"><button id="close-mp-btn" title="Exit app">✖</button></div></div><div id="media-player-root"></div></div></div>
 
     <audio id="global-media-engine"></audio>
 
@@ -735,6 +1037,7 @@
     <script src="video-editor.js"></script>
     <script src="nebuchadnezzar-deck.js"></script>
     <script src="media-player.js"></script>
+    <script src="logon.js"></script>
     <script src="script.js"></script>
     <script src="zion-network-feed.js"></script>
     <script src="settings-page.js"></script>
