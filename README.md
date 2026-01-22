@@ -3,7 +3,9 @@
 # Neo's New Tab 🐇
 
 ![Download Extension](https://img.shields.io/badge/Download-Unpacked_Extension-brightgreen)
+
 ![Visitors](https://api.visitorbadge.io/api/VisitorHit?user=QuantumVoidd&repo=Neos-New-Tab&countColor=%237B1E7A)
+
 ![GitHub stars](https://img.shields.io/github/stars/QuantumVoidd/Neos-New-Tab?style=social)
 
 </div>
