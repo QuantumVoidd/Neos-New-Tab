@@ -109,6 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 pfpContainer.style.border = "none"; 
                 pfpContainer.style.overflow = "hidden";
                 pfpContainer.style.borderRadius = "50%"; // Force circular container
+                pfpContainer.style.position = "relative";
             }
 
             // 2. Aggressive Image Scaling & Positioning
@@ -147,17 +148,22 @@ document.addEventListener('DOMContentLoaded', () => {
             pfpContainer.style.border = "";
             pfpContainer.style.overflow = "";
             pfpContainer.style.borderRadius = "";
+            // Ensure container is relative so absolute child centers correctly
+            pfpContainer.style.position = "relative";
         }
 
-        pfp.style.position = "relative"; 
-        pfp.style.top = "auto";
-        pfp.style.left = "auto";
-        pfp.style.transform = "none";
+        // Updated Centering Logic: Use Absolute positioning + Transform
+        pfp.style.position = "absolute"; 
+        pfp.style.top = "50%";
+        pfp.style.left = "50%";
+        pfp.style.transform = "translate(-50%, -50%)";
         
-        pfp.style.width = "100%";  
-        pfp.style.height = "100%";
+        // Use width/height to control size (creates 'padding' effect naturally)
+        pfp.style.width = "65%";  
+        pfp.style.height = "65%";
+        
         pfp.style.objectFit = "contain"; 
-        pfp.style.padding = "18px"; // Padding returns for icon
+        pfp.style.padding = "0"; 
         pfp.style.margin = "0";
         pfp.style.borderRadius = "0";
     }

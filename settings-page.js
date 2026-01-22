@@ -263,15 +263,17 @@ function updatePfpVisuals(isCustom, imgSrc) {
         pfpPreview.style.display = "block";
     } else {
         // --- WIREFRAME MODE (CONTAIN) ---
-        pfpPreview.style.position = "relative"; 
-        pfpPreview.style.top = "auto";
-        pfpPreview.style.left = "auto";
-        pfpPreview.style.transform = "none";
+        // Updated Centering Logic matching logon.js
+        pfpPreview.style.position = "absolute"; 
+        pfpPreview.style.top = "50%";
+        pfpPreview.style.left = "50%";
+        pfpPreview.style.transform = "translate(-50%, -50%)";
         
-        pfpPreview.style.width = "100%";  
-        pfpPreview.style.height = "100%";
+        // Use 65% width/height to control size (creates 'padding' effect naturally)
+        pfpPreview.style.width = "65%";  
+        pfpPreview.style.height = "65%";
         pfpPreview.style.objectFit = "contain"; 
-        pfpPreview.style.padding = "20px"; // Padding to prevent touching borders
+        pfpPreview.style.padding = "0"; 
         pfpPreview.style.margin = "0";
         pfpPreview.style.borderRadius = "0";
     }
