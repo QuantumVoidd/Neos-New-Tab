@@ -2,11 +2,11 @@
 
 # Neo's New Tab 🐇
 
-![Download Extension](https://img.shields.io/badge/Download-Unpacked_Extension-brightgreen)
+<img src="https://img.shields.io/badge/Download-Unpacked_Extension-brightgreen" alt="Download Extension">
 
-![Visitors](https://api.visitorbadge.io/api/VisitorHit?user=QuantumVoidd&repo=Neos-New-Tab&countColor=%237B1E7A)
+<img src="https://api.visitorbadge.io/api/VisitorHit?user=QuantumVoidd&repo=Neos-New-Tab&countColor=%237B1E7A" alt="Visitors">
 
-![GitHub stars](https://img.shields.io/github/stars/QuantumVoidd/Neos-New-Tab?style=social)
+<img src="https://img.shields.io/github/stars/QuantumVoidd/Neos-New-Tab?style=social" alt="GitHub stars">
 
 </div>
 
@@ -23,11 +23,11 @@
 ## 📸 Screenshots
 
 <div align="center">
-    <img src="https://github.com/user-attachments/assets/5d807d67-4fd4-48e3-9ecb-48a28f8499c5" alt="Main Interface" style="width: 100%; height: auto; margin-bottom: 10px; border-radius: 8px;">
-    <img src="https://github.com/user-attachments/assets/13a1980a-ef80-4fa8-908f-66bdaf33a8c4" alt="Terminal View" style="width: 100%; height: auto; margin-bottom: 10px; border-radius: 8px;">
-    <img src="https://github.com/user-attachments/assets/10cdf6d3-5d8f-4a35-b973-a7c501c150ba" alt="Root Explorer" style="width: 100%; height: auto; margin-bottom: 10px; border-radius: 8px;">
-    <img src="https://github.com/user-attachments/assets/806ea96e-2894-4cb9-81de-0bf038cbd8b8" alt="AI Oracle" style="width: 100%; height: auto; margin-bottom: 10px; border-radius: 8px;">
-    <img src="https://github.com/user-attachments/assets/fb7f8d79-6918-429f-9d54-d42d9e916a79" alt="Games" style="width: 100%; height: auto; margin-bottom: 10px; border-radius: 8px;">
+    <img src="https://github.com/user-attachments/assets/5d807d67-4fd4-48e3-9ecb-48a28f8499c5" alt="Main Interface" style="width: 100%; height: auto; margin-bottom: 10px; border-radius: 8px; display: block;">
+    <img src="https://github.com/user-attachments/assets/13a1980a-ef80-4fa8-908f-66bdaf33a8c4" alt="Terminal View" style="width: 100%; height: auto; margin-bottom: 10px; border-radius: 8px; display: block;">
+    <img src="https://github.com/user-attachments/assets/10cdf6d3-5d8f-4a35-b973-a7c501c150ba" alt="Root Explorer" style="width: 100%; height: auto; margin-bottom: 10px; border-radius: 8px; display: block;">
+    <img src="https://github.com/user-attachments/assets/806ea96e-2894-4cb9-81de-0bf038cbd8b8" alt="AI Oracle" style="width: 100%; height: auto; margin-bottom: 10px; border-radius: 8px; display: block;">
+    <img src="https://github.com/user-attachments/assets/fb7f8d79-6918-429f-9d54-d42d9e916a79" alt="Games" style="width: 100%; height: auto; margin-bottom: 10px; border-radius: 8px; display: block;">
 </div>
 
 ---
