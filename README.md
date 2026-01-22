@@ -1,30 +1,3 @@
-<style>
-  /* Force GitHub Pages (Jekyll) to use a Dark Matrix Theme */
-  body { 
-    background-color: #000000 !important; 
-    color: #00ff41 !important; /* Matrix Green */
-    font-family: 'Courier New', monospace !important;
-  }
-  
-  /* Style headers and links to match */
-  h1, h2, h3, h4, strong { color: #00ff41 !important; }
-  a { color: #008f11 !important; text-decoration: underline; }
-  
-  /* Ensure the main container doesn't have a white background */
-  .main-content, .container-lg, .wrapper { 
-    background-color: #000000 !important; 
-    border: none !important;
-    box-shadow: none !important;
-  }
-  
-  /* Code blocks should stay dark */
-  code, pre { 
-    background-color: #1a1a1a !important; 
-    color: #00ff41 !important; 
-    border: 1px solid #008f11 !important; 
-  }
-</style>
-
 <h1 align="center">Neo's New Tab 🐇</h1>
 
 <p align="center">
