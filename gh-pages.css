@@ -1,0 +1,26 @@
+/* This file only affects the GitHub Pages website */
+html, body, .main-content, .container-lg, .wrapper, #readme, .markdown-body { 
+  background-color: #000000 !important; 
+  color: #00ff41 !important; 
+  border: none !important;
+}
+
+h1, h2, h3, h4, p, li, strong, span, em { 
+  color: #00ff41 !important; 
+}
+
+a { 
+  color: #00ff41 !important; 
+  text-decoration: underline; 
+}
+
+code, pre { 
+  background: #111 !important; 
+  border: 1px solid #004400 !important; 
+  color: #00ff41 !important; 
+}
+
+header, .page-header { 
+  background: #000 !important; 
+  border-bottom: 1px solid #00ff41 !important; 
+}
