@@ -4,7 +4,9 @@
 
 <img src="https://img.shields.io/badge/Download-Unpacked_Extension-brightgreen" alt="Download Extension">
 
+
 <img src="https://api.visitorbadge.io/api/VisitorHit?user=QuantumVoidd&repo=Neos-New-Tab&countColor=%237B1E7A" alt="Visitors">
+
 
 <img src="https://img.shields.io/github/stars/QuantumVoidd/Neos-New-Tab?style=social" alt="GitHub stars">
 
