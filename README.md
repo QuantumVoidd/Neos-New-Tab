@@ -1,58 +1,14 @@
 <div align="center">
 
 # Neo's New Tab 🐇
-[![Download Extension](https://img.shields.io/badge/Download-Unpacked_Extension-brightgreen)](https://github.com/QuantumVoidd/Neos-New-Tab/releases/latest)
 
+![Download Extension](https://img.shields.io/badge/Download-Unpacked_Extension-brightgreen)
 ![Visitors](https://api.visitorbadge.io/api/VisitorHit?user=QuantumVoidd&repo=Neos-New-Tab&countColor=%237B1E7A)
-
 ![GitHub stars](https://img.shields.io/github/stars/QuantumVoidd/Neos-New-Tab?style=social)
-
 
 </div>
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-🛠️ Installation (Developer Mode)💊
-
-Since this is a custom-built construct, you must load it manually into your browser:
-
-Download/Clone this repository to a local folder.
-
-Open Google Chrome (or Brave/Edge).
-
-Navigate to chrome://extensions/.
-
-Toggle Developer mode in the top right corner.
-
-Click Load unpacked.
-
-Select the folder containing manifest.json, newtab.html, etc.
-
-Open a new tab and Enter the Matrix.
-
-<img width="3829" height="1907" alt="Screenshot 2026-01-22 095854" src="https://github.com/user-attachments/assets/5d807d67-4fd4-48e3-9ecb-48a28f8499c5" />
-<img width="3835" height="1914" alt="Screenshot 2026-01-16 071702" src="https://github.com/user-attachments/assets/13a1980a-ef80-4fa8-908f-66bdaf33a8c4" />
-<img width="3827" height="1911" alt="Screenshot 2026-01-16 071609" src="https://github.com/user-attachments/assets/38423a4b-1bd8-4491-adcf-04d65f979a49" />
-<img width="3840" height="1904" alt="Root-Explorer" src="https://github.com/user-attachments/assets/10cdf6d3-5d8f-4a35-b973-a7c501c150ba" />
-<img width="3840" height="1909" alt="AI chat Expanded" src="https://github.com/user-attachments/assets/806ea96e-2894-4cb9-81de-0bf038cbd8b8" />
-<img width="3840" height="1906" alt="Retro Matrix Flash Games" src="https://github.com/user-attachments/assets/fb7f8d79-6918-429f-9d54-d42d9e916a79" />
-<img width="2560" height="1243" alt="Screenshot 2026-01-09 131611" src="https://github.com/user-attachments/assets/4098c5d3-319a-41b0-8882-7a3538d65363" />
-<img width="3827" height="1908" alt="Screenshot 2026-01-13 071942" src="https://github.com/user-attachments/assets/5cad6201-2bbf-4b4a-bb8e-4ccd523b69ab" />
-<img width="3837" height="1901" alt="Screenshot 2026-01-13 064828" src="https://github.com/user-attachments/assets/7fc5cc43-fca3-4652-b453-fe67aa4f10fe" />
-<img width="3831" height="1919" alt="Screenshot 2026-01-16 072054" src="https://github.com/user-attachments/assets/b57ecc30-00f7-4aed-abd3-dd01295c046b" />
-
-
+---
 
 # 🟢 ZION // The Matrix New Tab Experience
 
@@ -60,48 +16,60 @@ Open a new tab and Enter the Matrix.
 
 **Neo's New Tab** is not just a Chrome extension; it is a fully immersive **Construct** that replaces your "New Tab" page with a functional, Matrix operating system. It features a reactive Matrix digital rain, a fully CLI-driven terminal, a drag-and-drop file system, integrated AI, and deep customization options.
 
+---
+
+## 📸 Screenshots
+
+<div align="center">
+    <img src="https://github.com/user-attachments/assets/5d807d67-4fd4-48e3-9ecb-48a28f8499c5" alt="Main Interface" style="width: 100%; height: auto; margin-bottom: 10px; border-radius: 8px;">
+    <img src="https://github.com/user-attachments/assets/13a1980a-ef80-4fa8-908f-66bdaf33a8c4" alt="Terminal View" style="width: 100%; height: auto; margin-bottom: 10px; border-radius: 8px;">
+    <img src="https://github.com/user-attachments/assets/10cdf6d3-5d8f-4a35-b973-a7c501c150ba" alt="Root Explorer" style="width: 100%; height: auto; margin-bottom: 10px; border-radius: 8px;">
+    <img src="https://github.com/user-attachments/assets/806ea96e-2894-4cb9-81de-0bf038cbd8b8" alt="AI Oracle" style="width: 100%; height: auto; margin-bottom: 10px; border-radius: 8px;">
+    <img src="https://github.com/user-attachments/assets/fb7f8d79-6918-429f-9d54-d42d9e916a79" alt="Games" style="width: 100%; height: auto; margin-bottom: 10px; border-radius: 8px;">
+</div>
+
+---
+
+## 🛠️ Installation (Developer Mode) 💊
+
+Since this is a custom-built construct, you must load it manually into your browser:
+
+1. **Download/Clone** this repository to a local folder.
+2. Open **Google Chrome** (or Brave/Edge).
+3. Navigate to `chrome://extensions/`.
+4. Toggle **Developer mode** in the top right corner.
+5. Click **Load unpacked**.
+6. Select the folder containing `manifest.json`.
+7. Open a new tab and **Enter the Matrix**.
+
+---
 
 ## 🚀 System Capabilities
 
 ### 🖥️ The Construct (Visuals)
 * **Dynamic Matrix Rain:** Rendering in both 2D and 3D (Vertical) modes.
 * **Character Sets:** Switch between Matrix Katakana, Binary, Hex, ASCII, and Math symbols.
-* **3D Environments:** Toggle between video backdrops (Matrix Tunnel, Dojo, Nebuchadnezzar Deck, Deep Space).
-* **Visual FX:** CRT Scanlines, Digital Glitch, Glow Effects, and "Night Mode" stealth protocols.
+* **3D Environments:** Toggle between video backdrops (Matrix Tunnel, Dojo, Nebuchadnezzar Deck).
+* **Visual FX:** CRT Scanlines, Digital Glitch, and Glow Effects.
 
 ### ⌨️ Terminal & Command Line
-Access the system core by typing commands directly into the main interface.
-* **`/root`**: Opens the **Root Explorer** (GUI File Manager).
-* **`/weather [city]`**: Real-time satellite weather uplink.
-* **`/whoami`**: Advanced browser and hardware identity trace.
-* **`/jackin`**: Overclocks the rain simulation speed.
-* **`/glitch`**: Triggers a system-wide reality distortion.
-* **`/rampage`**, **`/tunnel`**, **`/zion`**: Launches integrated arcade simulations.
+* **/root**: Opens the **Root Explorer** (GUI File Manager).
+* **/weather [city]**: Real-time satellite weather uplink.
+* **/whoami**: Advanced browser and hardware identity trace.
+* **/jackin**: Overclocks the rain simulation speed.
 
 ### 📂 Root Explorer (File System)
-A fully functional local storage manager built into your browser.
-* **Drag & Drop:** Move files into folders using intuitive drag-and-drop mechanics.
-* **Secure Vault:** Upload images, videos, and audio clips directly to local storage (`/uplink`).
-* **Media Preview:** Native previewing for images, video, and audio files with "Extract" (Download) capability.
-* **Storage Visualization:** Real-time capacity bar monitoring your 1GB local quota.
+* **Drag & Drop:** Move files into folders using intuitive mechanics.
+* **Secure Vault:** Upload images, videos, and audio clips to local storage.
+* **Media Preview:** Native previewing for images, video, and audio files.
 
 ### 🔮 The Oracle (AI Integration)
-Powered by **Puter.js**, the Oracle is a real-time AI interface capable of answering queries.
-* **Dual-Core Architecture:** Primary intelligence is driven by Puter.js for high-fidelity responses.
-* **Robust Fallback System:** Integrated `oracle_engine.js` ensures 100% uptime by automatically rerouting failed queries to **Pollinations AI**. If the main link is severed, the backup system engages instantly.
-* **Personality:** Roleplays as The Oracle, Responds with cryptic, Matrix-themed wisdom.
-
-### 📡 Network & Tools
-* **Zion RSS Feed:** Live Reddit feed (configurable subreddits) with "Digital Decryption" text effects on hover.
-* **NASA Uplink:** Integrated NASA "Eyes" visualizers for Earth, Solar System, and Asteroid tracking.
-* **Secure Nodes:** A dynamic, drag-and-drop navigation bar for your favorite websites (max 10 nodes).
-* **Operator Console:** Visual widgets monitoring CPU (simulated), Date, Time, and Battery levels.
+* **Dual-Core Architecture:** Driven by Puter.js with a robust fallback to Pollinations AI.
+* **Personality:** Roleplays as The Oracle, responding with cryptic wisdom.
 
 ---
 
 ## 📟 Command List (CLI)
-
-Type these commands into the main input bar:
 
 | Command | Action |
 | :--- | :--- |
@@ -110,81 +78,24 @@ Type these commands into the main input bar:
 | `/weather [city]` | Check weather conditions |
 | `/speed [10-100]` | Adjust rain velocity |
 | `/color [hex]` | Change system theme color |
-| `/font [cyber/classic]` | Toggle font styles |
 | `/space` | Launch NASA Solar System Viewer |
-| `/play zion` | Launch "Citizens of Zion" game |
 | `/reset` | Factory reset all settings |
----
-
-## 🎛️ Customization
-
-Access the **System Settings** via the gear icon in the top right.
-* **Audio:** Upload custom MP3s for the phone ringing system.
-* **Visuals:** Adjust rain density, glitch intensity, and UI scaling.
-* **Feeds:** Configure your preferred Subreddits for the RSS stream.
-* **Backgrounds:** Upload your own wallpapers or video loops.
 
 ---
 
 ## 🧩 Tech Stack
 
-* **Core:** HTML5, CSS3 (Advanced Animations), Vanilla JavaScript (ES6+).
-* **AI Engine:** [Puter.js](https://puter.com) (Primary) & [Pollinations.ai](https://pollinations.ai) (Fallback).
-* **Storage:** Chrome Storage API & IndexedDB (For saving large media files).
-* **Visuals:** HTML5 Canvas/Three.js (Matrix Rain) & CSS Filters.
+* **Core:** HTML5, CSS3, Vanilla JavaScript (ES6+).
+* **AI Engine:** [Puter.js](https://puter.com) & [Pollinations.ai](https://pollinations.ai).
+* **Storage:** Chrome Storage API & IndexedDB.
+* **Visuals:** HTML5 Canvas & Three.js.
 
 ---
 
-\## ⚠️ Disclaimer
+## ⚠️ Disclaimer
 
-This is a non-commercial fan project created for aesthetic purposes. It is not affiliated with, endorsed by, or sponsored by Warner Bros. or the creators of The Matrix franchise.
+This is a non-commercial fan project created for aesthetic purposes. It is not affiliated with Warner Bros. or the creators of The Matrix franchise. 
 
-It is intended for personal use and customization. *"There is no spoon."*
-
----
+*"There is no spoon."*
 
 **Operator:** *Link established. You are free to move.*
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
