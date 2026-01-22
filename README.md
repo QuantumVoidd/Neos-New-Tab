@@ -1,29 +1,6 @@
 <h1 align="center">Neo's New Tab 🐇</h1>
 
 <p align="center">
-  <style>
-    /* 1. Force everything to Black & Matrix Green */
-    html, body, .main-content, .container-lg, .wrapper, #readme, .markdown-body { 
-      background-color: #000000 !important; 
-      color: #00ff41 !important; 
-      border: none !important;
-      box-shadow: none !important;
-    }
-
-    /* 2. Style every text element to ensure no black-on-black text */
-    h1, h2, h3, h4, h5, h6, p, li, strong, span, em, blockquote { 
-      color: #00ff41 !important; 
-    }
-
-    /* 3. Style links, code blocks, and horizontal rules */
-    a { color: #00ff41 !important; text-decoration: underline; }
-    code, pre { background: #111 !important; border: 1px solid #004400 !important; color: #00ff41 !important; }
-    hr { background-color: #004400 !important; height: 1px !important; border: none !important; }
-
-    /* 4. Fix specific theme headers */
-    header, .page-header { background: #000 !important; border-bottom: 1px solid #00ff41 !important; }
-  </style>
-
   <a href="https://github.com/QuantumVoidd/Neos-New-Tab/releases/latest">
     <img src="https://img.shields.io/badge/Download-Unpacked_Extension-brightgreen" alt="Download Extension">
   </a>
