@@ -1,4 +1,0 @@
-theme: jekyll-theme-slate
-# This forces the website to load your dark CSS after the theme loads
-header_pages:
-  - gh-pages.css
