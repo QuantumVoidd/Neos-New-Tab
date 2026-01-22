@@ -41,7 +41,7 @@ Select the folder containing manifest.json, newtab.html, etc.
 
 Open a new tab and Enter the Matrix.
 
-
+<img width="3829" height="1907" alt="Screenshot 2026-01-22 095854" src="https://github.com/user-attachments/assets/5d807d67-4fd4-48e3-9ecb-48a28f8499c5" />
 <img width="3835" height="1914" alt="Screenshot 2026-01-16 071702" src="https://github.com/user-attachments/assets/13a1980a-ef80-4fa8-908f-66bdaf33a8c4" />
 <img width="3827" height="1911" alt="Screenshot 2026-01-16 071609" src="https://github.com/user-attachments/assets/38423a4b-1bd8-4491-adcf-04d65f979a49" />
 <img width="3840" height="1904" alt="Root-Explorer" src="https://github.com/user-attachments/assets/10cdf6d3-5d8f-4a35-b973-a7c501c150ba" />
@@ -144,6 +144,7 @@ It is intended for personal use and customization. *"There is no spoon."*
 ---
 
 **Operator:** *Link established. You are free to move.*
+
 
 
 
