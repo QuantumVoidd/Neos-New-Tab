@@ -29,7 +29,7 @@
     <img src="https://github.com/user-attachments/assets/13a1980a-ef80-4fa8-908f-66bdaf33a8c4" alt="Terminal View" style="width: 100%; height: auto; margin-bottom: 15px; border-radius: 8px; display: block;">
     <img src="https://github.com/user-attachments/assets/10cdf6d3-5d8f-4a35-b973-a7c501c150ba" alt="Root Explorer" style="width: 100%; height: auto; margin-bottom: 15px; border-radius: 8px; display: block;">
     <img src="https://github.com/user-attachments/assets/806ea96e-2894-4cb9-81de-0bf038cbd8b8" alt="AI Oracle" style="width: 100%; height: auto; margin-bottom: 15px; border-radius: 8px; display: block;">
-    <img width="3833" height="1910" alt="Screenshot 2026-01-23 090507" src="https://github.com/user-attachments/assets/5332a46e-2d65-4ce1-933f-9d0c9556c525" />
+    <img src="https://github.com/user-attachments/assets/5332a46e-2d65-4ce1-933f-9d0c9556c525" alt="Screenshot 2026-01-23 090507" style="width: 100%; height: auto; margin-bottom: 15px; border-radius: 8px; display: block;">
 </p>
 
 ---
