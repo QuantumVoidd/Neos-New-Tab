@@ -2810,6 +2810,12 @@ function renderExplorerGrid(filter = "") {
 
     // 5. Generate Keys
     let keys = isArray ? currentData.map((_, i) => i) : Object.keys(currentData);
+
+    // --- MERGE LOCALSTORAGE AT ROOT ---
+    if (viewDepth === 0 && !isArray) {
+        const localKeys = Object.keys(localStorage).filter(k => k.startsWith('nes_'));
+        keys = [...keys, ...localKeys];
+    }
     
     // Empty Folder Message
     if (keys.length === 0 && viewDepth === 0) {
@@ -2817,8 +2823,11 @@ function renderExplorerGrid(filter = "") {
     }
 
     keys.forEach(key => {
-        const value = currentData[key];
-     
+        // --- Value retrieval (handle localStorage keys separately) ---
+        let value = currentData[key];
+        if (value === undefined && typeof key === 'string' && key.startsWith('nes_')) {
+            value = localStorage.getItem(key);
+        }
 
         // --- NEW SMART FILTER LOGIC ---
         if (filter) {
@@ -2869,6 +2878,10 @@ function renderExplorerGrid(filter = "") {
         } else if (isArray && typeof value === 'string' && value.startsWith('http')) {
             icon = '🔗';
             fileType = 'link';
+        } else if (String(key).startsWith('nes_')) {
+            icon = '💾';
+            fileType = 'nes_save';
+            displayLabel = key.replace('nes_', '') + '.sav';
         } else {
             const lowerKey = String(key).toLowerCase();
             if (lowerKey.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/)) {
@@ -2921,6 +2934,13 @@ function renderExplorerGrid(filter = "") {
         node.onclick = () => {
             if (window.isExplorerDeleteMode) {
                 if (confirm(`PURGE: ${displayLabel}?`)) {
+                    if (String(key).startsWith('nes_')) {
+                        localStorage.removeItem(key);
+                        renderExplorerGrid();
+                        updateStorageUI();
+                        return;
+                    }
+
                     if (isArray) currentData.splice(key, 1);
                     else delete currentData[key];
 
@@ -2967,13 +2987,17 @@ function updateStorageUI() {
     }
 
     chrome.storage.local.getBytesInUse(null, (bytes) => {
+        // Include localStorage size for NES saves
+        const localBytes = JSON.stringify(localStorage).length;
+        const totalUsedBytes = bytes + localBytes;
+        
         // --- FIX: Increased Visual Quota to 1GB ---
         // 1GB = 1024 * 1024 * 1024 bytes
         const totalQuota = 1073741824; 
         
-        const usedMB = (bytes / (1024 * 1024)).toFixed(2);
+        const usedMB = (totalUsedBytes / (1024 * 1024)).toFixed(2);
         // Calculate percentage, maxing out at 100% visually
-        const percent = Math.min((bytes / totalQuota) * 100, 100).toFixed(1);
+        const percent = Math.min((totalUsedBytes / totalQuota) * 100, 100).toFixed(1);
         
         storageContainer.innerHTML = `
             <div style="display:flex; justify-content:space-between;">
@@ -3072,6 +3096,14 @@ function showExplorerPreview(key, value, type) {
                 <div style="font-size: 3rem; margin-bottom: 20px;">🎵</div>
                 <audio src="${value}" controls style="width:100%; max-width:500px;"></audio>
             </div>`;
+    } else if (type === 'nes_save') {
+        contentHtml = `
+            <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; width:100%; padding: 40px; border: 1px solid rgba(0,242,255,0.1); background:rgba(0,0,0,0.5);">
+                <div style="font-size: 3rem; margin-bottom: 20px;">🕹️</div>
+                <div style="font-family: 'Press Start 2P', monospace; font-size: 1.2rem; color: #ffcc00; margin-bottom: 10px; text-align: center;">EMULATOR DATA STREAM</div>
+                <div style="color: var(--theme-color); opacity: 0.8; font-family: monospace;">${cleanTitle}</div>
+                <div style="margin-top: 15px; font-size: 0.8rem; color: #aaa;">Timestamp: ${new Date().toLocaleString()}</div>
+            </div>`;
     } else {
         let textContent = "";
         if (typeof value === 'string' && value.startsWith('data:')) {
@@ -3103,6 +3135,7 @@ function showExplorerPreview(key, value, type) {
             
             <div style="display:flex; justify-content:flex-end; gap:15px; margin-top:10px;">
                 ${type === 'image' ? `<button id="edit-paint-btn" style="background:rgba(0,255,65,0.2); color:var(--theme-color); border:1px solid var(--theme-color); padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">EDIT IN PAINT</button>` : ''}
+                ${type === 'nes_save' ? `<button id="restore-nes-btn" style="background:rgba(255, 204, 0, 0.2); color: #ffcc00; border:1px solid #ffcc00; padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">RESTORE TO EMULATOR</button>` : ''}
                 <button id="extract-btn" style="background:var(--theme-color); color:#000; border:none; padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">DOWNLOAD</button>
                 <button id="close-preview-btn" style="background:transparent; color:var(--theme-color); border:1px solid var(--theme-color); padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">CLOSE</button>
             </div>
@@ -3131,6 +3164,26 @@ function showExplorerPreview(key, value, type) {
                 window.PaintApp.loadImage(value, key);
             } else {
                 showZionMessage("ERROR: PAINT MODULE NOT LOADED");
+            }
+        };
+    }
+
+    // NES RESTORE LOGIC
+    const restoreNesBtn = document.getElementById('restore-nes-btn');
+    if (restoreNesBtn) {
+        restoreNesBtn.onclick = () => {
+            try {
+                if (window.activeNesInstance && window.activeNesInstance.nes) {
+                    const state = JSON.parse(value);
+                    window.activeNesInstance.nes.fromJSON(state);
+                    showZionMessage("GAME STATE RESTORED");
+                    previewOverlay.remove();
+                } else {
+                    showZionMessage("ERROR: EMULATOR NOT ACTIVE\nLAUNCH NES EMULATOR FIRST.");
+                }
+            } catch (e) {
+                console.error("NES Restore Error:", e);
+                showZionMessage("ERROR: CORRUPTED SAVE DATA");
             }
         };
     }
@@ -4108,6 +4161,13 @@ function closeTerminalModal() {
     const modal = document.getElementById('matrix-modal');
     if (!modal) return;
 
+    // --- FIX: STOP NES EMULATOR ---
+    // This kills the audio and game loop immediately when the terminal closes
+    if (typeof window.stopNesEmulator === 'function') {
+        window.stopNesEmulator();
+    }
+    // -----------------------------
+
     // Use centralized purge logic
     purgeTerminalMedia();
     
@@ -4130,7 +4190,7 @@ function closeTerminalModal() {
         const toolsContainer = document.getElementById('oracle-tools-container');
         if (toolsContainer) toolsContainer.remove();
         isOracleTerminalActive = false;
-        currentImageAttachment = null; 
+        if (typeof currentImageAttachment !== 'undefined') currentImageAttachment = null; 
     }
     
     modal.classList.add('hidden');
@@ -4546,6 +4606,18 @@ function initSidebarRain(sidebarId) {
     draw();
 }
 
+// Utility function to load scripts if not present
+function loadScript(src) {
+    return new Promise((resolve) => {
+        if (document.querySelector(`script[src="${src}"]`)) return resolve();
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = resolve; // Resolve anyway to avoid breaking chain
+        document.head.appendChild(s);
+    });
+}
+
 // Initialize on load
 document.addEventListener('DOMContentLoaded', () => {
     // --- INITIALIZE OPERATOR SANDBOX ---
@@ -4600,6 +4672,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const matrixfighterBtn = document.getElementById('btn-matrixfighter');
     if (matrixfighterBtn) matrixfighterBtn.addEventListener('click', () => openGame('matrixfighter'));
+    
+    // --- NES EMULATOR INTEGRATION ---
+    const nesBtn = document.getElementById('btn-nes');
+    if (nesBtn) {
+        nesBtn.addEventListener('click', () => {
+            // Ensure the controller script is loaded before calling
+            loadScript("Emulators/nes/nes-controller.js").then(() => {
+                if (window.openNesEmulator) {
+                    window.openNesEmulator();
+                   
+                    document.getElementById('terminal-cmd-input').placeholder = "Type 'exit' to close emulation...";
+                } else {
+                    showZionMessage("ERROR: NES MODULE FAILED TO LOAD");
+                }
+            });
+        });
+    }
 
     // --- ATTACH NASA BUTTON LISTENERS ---
     const solarBtn = document.getElementById('btn-solar');

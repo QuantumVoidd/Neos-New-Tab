@@ -3190,3 +3190,157 @@ button:focus {
     z-index: -1;
     opacity: 1 !important; /* Crisp visibility */
 }
+
+/* --- NES EMULATOR STYLES (FINAL POLISHED) --- */
+.nes-terminal-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    
+    /* SCROLL FIX: Allows content to grow and scroll if needed */
+    min-height: 100%; 
+    height: auto;
+    
+    /* VISIBILITY: Allows scrolling */
+    overflow: visible; 
+    
+    padding: 20px 0; 
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* The Frame (TV Screen) */
+.nes-screen-container {
+    position: relative;
+    
+    /* ASPECT RATIO LOCK */
+    aspect-ratio: 4 / 3;
+    
+    /* SIZE LIMIT */
+    max-height: 67vh; 
+    
+    /* WIDTH: 99% + border-box ensures symmetry without overflow */
+    box-sizing: border-box;
+    width: 99%; 
+    max-width: 100%; 
+    
+    /* CENTER & SCROLL SAFE */
+    margin: auto; 
+    
+    /* Visuals */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    border: 2px solid var(--theme-color); 
+    
+    /* GLOW REFINED: Reduced from 20px to 10px for a tighter finish */
+    box-shadow: 0 0 10px var(--theme-color); 
+    
+    background: #000;
+}
+
+/* The Game Canvas */
+#nes-screen {
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    display: block;
+    object-fit: contain;
+}
+
+/* Fullscreen Mode Override */
+.nes-screen-container:fullscreen {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-height: none !important;
+    max-width: none !important;
+    aspect-ratio: auto !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: black !important;
+}
+
+.nes-screen-container:fullscreen #nes-screen {
+    width: auto;
+    height: 100%;
+    aspect-ratio: 4/3; 
+    margin: 0 auto;
+}
+
+/* Overlay Buttons */
+.nes-overlay-btn {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--theme-color);
+    color: var(--theme-color);
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.2rem;
+    z-index: 10;
+    transition: all 0.2s;
+    border-radius: 4px;
+}
+.nes-overlay-btn:hover {
+    background: var(--theme-color);
+    color: #000;
+    box-shadow: 0 0 10px var(--theme-color);
+}
+.btn-top-right { top: 10px; right: 10px; }
+.btn-bottom-right { bottom: 10px; right: 10px; }
+
+/* Dropdown Menu */
+.nes-model-selector {
+    width: 99%;
+    max-width: 800px;
+    background: rgba(0, 20, 0, 0.95);
+    border: 1px solid var(--theme-color);
+    color: var(--theme-color);
+    padding: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 1rem;
+    margin-bottom: 15px; 
+    cursor: pointer;
+    outline: none;
+    box-shadow: 0 0 10px rgba(0, 242, 255, 0.15); /* Matched refined glow */
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.nes-model-selector option {
+    background: #000;
+    color: var(--theme-color);
+}
+
+/* --- SIDEBAR SUB-HEADERS (Text Glow Only) --- */
+.sidebar-group-header {
+    width: 100%;
+    text-align: center;
+    
+    /* Typography */
+    color: var(--theme-color);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.85rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    
+    /* Spacing */
+    margin: 15px 0 5px 0;
+    padding: 0;
+    
+    /* THEME STYLING: Text Glow Only */
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    text-shadow: 0 0 8px var(--theme-color), 0 0 12px var(--theme-color);
+}
+
+/* Remove top margin for the very first header so it sits flush */
+.sidebar-content > .sidebar-group-header:first-child {
+    margin-top: 5px;
+}
