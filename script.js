@@ -4175,6 +4175,12 @@ function closeTerminalModal() {
         window.activeSmsInstance = null;
     }
 
+    // --- STOP GENESIS EMULATOR ---
+    if (window.activeGenesisInstance && typeof window.activeGenesisInstance.destroy === 'function') {
+        window.activeGenesisInstance.destroy();
+        window.activeGenesisInstance = null;
+    }
+
     // Use centralized purge logic
     purgeTerminalMedia();
     
@@ -4709,6 +4715,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     if(cmdInput) cmdInput.placeholder = "Type 'exit' to close emulation...";
                 } else {
                     showZionMessage("ERROR: SMS MODULE FAILED TO LOAD");
+                }
+            });
+        });
+    }
+
+    // --- SEGA GENESIS INTEGRATION ---
+    const genesisBtn = document.getElementById('btn-genesis');
+    if (genesisBtn) {
+        genesisBtn.addEventListener('click', () => {
+            loadScript("Emulators/genesis/genesis-controller.js").then(() => {
+                if (typeof window.openGenesisEmulator === 'function') {
+                    window.openGenesisEmulator();
+                    const cmdInput = document.getElementById('terminal-cmd-input');
+                    if (cmdInput) cmdInput.placeholder = "Type 'exit' to close emulation...";
+                } else {
+                    showZionMessage("ERROR: GENESIS CORE OFFLINE");
                 }
             });
         });

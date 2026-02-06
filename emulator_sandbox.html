@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background-color: black; overflow: hidden; 
+        }
+        #emulator-container { 
+            width: 100%; height: 100%; 
+            display: flex; justify-content: center; align-items: center; 
+        }
+        canvas { 
+            display: block; width: 100%; height: 100%; image-rendering: pixelated; 
+        }
+    </style>
+</head>
+<body>
+    <div id="emulator-container"></div>
+
+    <script>
+        (function() {
+            const originalConnect = AudioNode.prototype.connect;
+            AudioNode.prototype.connect = function(destination, output, input) {
+                if (destination && destination instanceof AudioDestinationNode) {
+                    const ctx = destination.context;
+                    if (!ctx._masterGain) {
+                        ctx._masterGain = ctx.createGain();
+                        ctx._masterGain.gain.value = 1.0; 
+                        originalConnect.call(ctx._masterGain, destination);
+                        window.emulatorAudioContext = ctx;
+                    }
+                    return originalConnect.call(this, ctx._masterGain, output, input);
+                }
+                return originalConnect.apply(this, arguments);
+            };
+        })();
+    </script>
+
+    <script src="Emulators/genesis/nostalgist.umd.min.js"></script>
+
+    <script>
+        let emulatorInstance = null;
+        let gamepadLoop = null;
+        let lockSave = false;
+        let lockLoad = false;
+
+        const blobToBase64 = blob => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+
+        async function base64ToBlob(base64) {
+            const res = await fetch(base64);
+            return await res.blob();
+        }
+
+        // --- KEYBOARD HOTKEYS (1, 4) ---
+        window.addEventListener('keydown', (e) => {
+            // Quick Save: '1'
+            if (e.key === '1') {
+                console.log("Keyboard: Quick Save");
+                saveState();
+            }
+            // Quick Load: '4'
+            if (e.key === '4') {
+                console.log("Keyboard: Quick Load");
+                window.parent.postMessage({ status: 'request_load' }, '*');
+            }
+        });
+
+        function pollGamepads() {
+            gamepadLoop = requestAnimationFrame(pollGamepads);
+            const gamepads = navigator.getGamepads();
+            const gp = gamepads[0];
+            if (!gp) return;
+
+            // R1 + A = SAVE
+            if (gp.buttons[5]?.pressed && gp.buttons[0]?.pressed) {
+                if (!lockSave) { lockSave = true; saveState(); }
+            } else { lockSave = false; }
+
+            // R1 + X = LOAD
+            if (gp.buttons[5]?.pressed && gp.buttons[2]?.pressed) {
+                if (!lockLoad) { lockLoad = true; window.parent.postMessage({ status: 'request_load' }, '*'); }
+            } else { lockLoad = false; }
+        }
+
+        async function saveState() {
+            if (!emulatorInstance) return;
+            try {
+                const result = await emulatorInstance.saveState();
+                let blob = result;
+                if (result && result.state) blob = result.state;
+                
+                if (!(blob instanceof Blob)) throw new Error("Invalid State Blob");
+
+                const stateStr = await blobToBase64(blob);
+                window.parent.postMessage({ status: 'save_success', data: stateStr }, '*');
+            } catch (e) {
+                console.error("Save Error:", e);
+                window.parent.postMessage({ status: 'error', message: "Save Failed" }, '*');
+            }
+        }
+
+        window.addEventListener('message', async (event) => {
+            const { command, romBlob, coreConfig, stateData } = event.data;
+
+            if (command === 'start') {
+                const container = document.getElementById('emulator-container');
+                try {
+                    container.innerHTML = '';
+                    const canvas = document.createElement('canvas');
+                    canvas.id = 'game-canvas';
+                    container.appendChild(canvas);
+
+                    // --- KEY MAPPING CONFIG ---
+                    // Maps User Keys -> RetroPad Buttons -> Genesis Functions
+                    // Genesis A=Y, B=B, C=A, X=L, Y=X, Z=R (Standard GenesisPlusGX Map)
+                    const inputConfig = {
+                        input_player1_up: "w",
+                        input_player1_down: "s",
+                        input_player1_left: "a",
+                        input_player1_right: "d",
+                        
+                        // Start = Shift (Using R-Shift to separate from B)
+                        input_player1_start: "rshift", 
+                        // Mode = CapsLock
+                        input_player1_select: "capslock",
+                        
+                        // A (Space) -> Gen A (Retro Y)
+                        input_player1_y: "space",
+                        // B (L-Shift) -> Gen B (Retro B)
+                        input_player1_b: "lshift",
+                        // C (I) -> Gen C (Retro A)
+                        input_player1_a: "i",
+                        
+                        // X (K) -> Gen X (Retro L)
+                        input_player1_l: "k",
+                        // Y (J) -> Gen Y (Retro X)
+                        input_player1_x: "j",
+                        // Z (L) -> Gen Z (Retro R)
+                        input_player1_r: "l",
+                        
+                        // Fast Forward Toggle
+                        input_toggle_fast_forward: "p"
+                    };
+
+                    emulatorInstance = await Nostalgist.launch({
+                        element: canvas, 
+                        rom: romBlob,
+                        core: coreConfig,
+                        retroarchConfig: inputConfig, // APPLY INPUT MAP
+                        style: { width: '100%', height: '100%' }
+                    });
+                    
+                    window.focus();
+                    window.parent.postMessage({ status: 'running' }, '*');
+                    
+                    if (!gamepadLoop) pollGamepads();
+
+                } catch (e) {
+                    console.error("Sandbox Error:", e);
+                    window.parent.postMessage({ status: 'error', message: e.toString() }, '*');
+                }
+            }
+            else if (command === 'mute') {
+                const ctx = window.emulatorAudioContext;
+                if (ctx && ctx._masterGain) {
+                    const isMuted = ctx._masterGain.gain.value < 0.01;
+                    ctx._masterGain.gain.setTargetAtTime(isMuted ? 1.0 : 0.0, ctx.currentTime, 0.1);
+                }
+            }
+            else if (command === 'load_state') {
+                if (emulatorInstance && stateData) {
+                    try {
+                        const blob = await base64ToBlob(stateData);
+                        await emulatorInstance.loadState(blob);
+                        window.parent.postMessage({ status: 'load_complete' }, '*');
+                    } catch (e) {
+                        window.parent.postMessage({ status: 'error', message: "Load Failed" }, '*');
+                    }
+                }
+            }
+        });
+
+        window.addEventListener("gamepadconnected", (e) => {
+            window.parent.postMessage({ status: 'gamepad_connected', id: e.gamepad.id }, '*');
+        });
+    </script>
+</body>
+</html>
