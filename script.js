@@ -4167,6 +4167,13 @@ function closeTerminalModal() {
         window.stopNesEmulator();
     }
     // -----------------------------
+    
+    // --- STOP SMS EMULATOR ---
+    // Checks if the activeSmsInstance exists (created by sms-controller.js)
+    if (window.activeSmsInstance && window.activeSmsInstance.sms) {
+        if(window.activeSmsInstance.sms.stop) window.activeSmsInstance.sms.stop();
+        window.activeSmsInstance = null;
+    }
 
     // Use centralized purge logic
     purgeTerminalMedia();
@@ -4685,6 +4692,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('terminal-cmd-input').placeholder = "Type 'exit' to close emulation...";
                 } else {
                     showZionMessage("ERROR: NES MODULE FAILED TO LOAD");
+                }
+            });
+        });
+    }
+
+    // --- SMS EMULATOR INTEGRATION ---
+    const smsBtn = document.getElementById('btn-sms');
+    if (smsBtn) {
+        smsBtn.addEventListener('click', () => {
+            // Update the path to the correct subdirectory
+            loadScript("Emulators/sms/sms-controller.js").then(() => {
+                if (window.openSmsEmulator) {
+                    window.openSmsEmulator();
+                    const cmdInput = document.getElementById('terminal-cmd-input');
+                    if(cmdInput) cmdInput.placeholder = "Type 'exit' to close emulation...";
+                } else {
+                    showZionMessage("ERROR: SMS MODULE FAILED TO LOAD");
                 }
             });
         });

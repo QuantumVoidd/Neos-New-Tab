@@ -66,6 +66,9 @@ class MatrixNES {
     }
 
     loadRom(data) {
+        // Clear the placeholder background when ROM loads so it doesn't show through
+        this.canvas.style.background = 'black';
+        
         if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
         this.nes.loadROM(data);
         this.startInterval();
@@ -1168,9 +1171,9 @@ async function openNesEmulator() {
             </select>
             
             <div id="nes-container" class="nes-screen-container">
-                <button id="nes-fullscreen-btn" class="nes-overlay-btn btn-top-right" title="Fullscreen">&#9974;</button>
-                <canvas id="nes-screen" width="256" height="240"></canvas>
-                <button id="nes-mute-btn" class="nes-overlay-btn btn-bottom-right" title="Mute Audio">&#128266;</button>
+                <button id="nes-fullscreen-btn" class="nes-overlay-btn btn-top-right" title="Fullscreen" style="border-radius:50%; width:30px; height:30px; display:flex; justify-content:center; align-items:center;">&#9974;</button>
+                <canvas id="nes-screen" width="256" height="240" style="background: black url('Emulators/nes/cover.jpg') no-repeat center center; background-size: cover;"></canvas>
+                <button id="nes-mute-btn" class="nes-overlay-btn btn-bottom-right" title="Mute Audio" style="border-radius:50%; width:30px; height:30px; display:flex; justify-content:center; align-items:center;">&#128266;</button>
             </div>
 
             <div style="display: block; width: 100%; box-sizing: border-box; margin: 5px auto 0 auto; font-size:0.65rem; opacity:0.7; font-family: 'Courier New', monospace; text-align:center; line-height:1.5;"><span style="color:#fff;">CONTROLS:</span> WASD = MOVE<br>A-BTN = <span style="color:#fff;">SPACE/X</span> | B-BTN = <span style="color:#fff;">L-SHIFT/Z</span> | SELECT = <span style="color:#fff;">TAB/R-SHIFT</span> | START = <span style="color:#fff;">ENTER/\`</span><br><span style="color:#aaa;">[1] QUICK SAVE | [4] QUICK LOAD | [HOLD P] FAST FWD</span><br><span style="color:#0f0;">[GAMEPAD DETECTED ON PRESS]</span></div>
