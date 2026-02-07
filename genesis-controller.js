@@ -7,8 +7,13 @@ window.openGenesisEmulator = async function() {
     if (!modal || !output) return;
     modal.classList.remove('hidden');
 
+    // FIX 1: Cleanup any "Ghost" listeners from previous sessions immediately
+    if (window._genesisListener) {
+        window.removeEventListener('message', window._genesisListener);
+        window._genesisListener = null;
+    }
+
     let currentSlot = 1;
-    let messageListener = null;
 
     // 1. Setup Interface
     output.innerHTML = `
@@ -449,9 +454,13 @@ window.openGenesisEmulator = async function() {
                 iframe.contentWindow.focus();
             };
 
-            if (messageListener) window.removeEventListener('message', messageListener);
+            // FIX 2: Clear old listener again before adding new one
+            if (window._genesisListener) {
+                window.removeEventListener('message', window._genesisListener);
+            }
 
-            messageListener = function(e) {
+            // FIX 3: Assign to GLOBAL variable so it persists/updates correctly
+            window._genesisListener = function(e) {
                 if (e.data.status === 'save_success') {
                     localStorage.setItem(`gen_save_slot_${currentSlot}`, e.data.data);
                     debugLog.innerHTML = `<span style="color:#0f0;">STATE SAVED [SLOT ${currentSlot}]</span>`;
@@ -483,7 +492,7 @@ window.openGenesisEmulator = async function() {
                 }
             };
 
-            window.addEventListener('message', messageListener);
+            window.addEventListener('message', window._genesisListener);
 
         } catch (e) {
             console.error(e);

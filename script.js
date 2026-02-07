@@ -4181,6 +4181,12 @@ function closeTerminalModal() {
         window.activeGenesisInstance = null;
     }
 
+    // --- STOP SNES EMULATOR ---
+    if (window.activeSnesInstance && typeof window.activeSnesInstance.destroy === 'function') {
+        window.activeSnesInstance.destroy();
+        window.activeSnesInstance = null;
+    }
+
     // Use centralized purge logic
     purgeTerminalMedia();
     
@@ -4731,6 +4737,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (cmdInput) cmdInput.placeholder = "Type 'exit' to close emulation...";
                 } else {
                     showZionMessage("ERROR: GENESIS CORE OFFLINE");
+                }
+            });
+        });
+    }
+    
+    // --- SNES EMULATOR INTEGRATION ---
+    const snesBtn = document.getElementById('btn-snes');
+    if (snesBtn) {
+        snesBtn.addEventListener('click', () => {
+            // Load the controller script dynamically
+            loadScript("Emulators/snes/snes-controller.js").then(() => {
+                // Check if the function exists in the global scope
+                if (typeof window.openSnesEmulator === 'function') {
+                    // Launch the emulator
+                    window.openSnesEmulator();
+                    
+                    // Update terminal prompt to show exit instructions
+                    const cmdInput = document.getElementById('terminal-cmd-input');
+                    if (cmdInput) cmdInput.placeholder = "Type 'exit' to close emulation...";
+                } else {
+                    showZionMessage("ERROR: SNES CORE OFFLINE");
                 }
             });
         });

@@ -19,6 +19,7 @@
     <div id="emulator-container"></div>
 
     <script>
+        // Audio Context Patch - Prevents auto-suspend
         (function() {
             const originalConnect = AudioNode.prototype.connect;
             AudioNode.prototype.connect = function(destination, output, input) {
@@ -42,8 +43,9 @@
     <script>
         let emulatorInstance = null;
         let gamepadLoop = null;
-        let lockSave = false;
-        let lockLoad = false;
+        
+        // Processing Lock to prevent overlapping operations
+        let isProcessing = false;
 
         const blobToBase64 = blob => new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -59,16 +61,8 @@
 
         // --- KEYBOARD HOTKEYS (1, 4) ---
         window.addEventListener('keydown', (e) => {
-            // Quick Save: '1'
-            if (e.key === '1') {
-                console.log("Keyboard: Quick Save");
-                saveState();
-            }
-            // Quick Load: '4'
-            if (e.key === '4') {
-                console.log("Keyboard: Quick Load");
-                window.parent.postMessage({ status: 'request_load' }, '*');
-            }
+            if (e.key === '1') saveState();
+            if (e.key === '4') window.parent.postMessage({ status: 'request_load' }, '*');
         });
 
         function pollGamepads() {
@@ -79,29 +73,40 @@
 
             // R1 + A = SAVE
             if (gp.buttons[5]?.pressed && gp.buttons[0]?.pressed) {
-                if (!lockSave) { lockSave = true; saveState(); }
-            } else { lockSave = false; }
+                if (!isProcessing) saveState();
+            } 
 
             // R1 + X = LOAD
             if (gp.buttons[5]?.pressed && gp.buttons[2]?.pressed) {
-                if (!lockLoad) { lockLoad = true; window.parent.postMessage({ status: 'request_load' }, '*'); }
-            } else { lockLoad = false; }
+                if (!isProcessing) {
+                    isProcessing = true; // Lock immediately
+                    window.parent.postMessage({ status: 'request_load' }, '*');
+                    // Unlock after a delay to prevent spam
+                    setTimeout(() => isProcessing = false, 1000); 
+                }
+            }
         }
 
         async function saveState() {
-            if (!emulatorInstance) return;
+            if (!emulatorInstance || isProcessing) return;
+            isProcessing = true;
+            
             try {
                 const result = await emulatorInstance.saveState();
+                
                 let blob = result;
                 if (result && result.state) blob = result.state;
                 
-                if (!(blob instanceof Blob)) throw new Error("Invalid State Blob");
-
-                const stateStr = await blobToBase64(blob);
+                // Force Binary Type
+                const cleanBlob = new Blob([blob], { type: 'application/octet-stream' });
+                const stateStr = await blobToBase64(cleanBlob);
+                
                 window.parent.postMessage({ status: 'save_success', data: stateStr }, '*');
             } catch (e) {
                 console.error("Save Error:", e);
-                window.parent.postMessage({ status: 'error', message: "Save Failed" }, '*');
+                window.parent.postMessage({ status: 'error', message: "Save Failed: " + e.message }, '*');
+            } finally {
+                isProcessing = false;
             }
         }
 
@@ -116,35 +121,13 @@
                     canvas.id = 'game-canvas';
                     container.appendChild(canvas);
 
-                    // --- KEY MAPPING CONFIG ---
-                    // Maps User Keys -> RetroPad Buttons -> Genesis Functions
-                    // Genesis A=Y, B=B, C=A, X=L, Y=X, Z=R (Standard GenesisPlusGX Map)
                     const inputConfig = {
-                        input_player1_up: "w",
-                        input_player1_down: "s",
-                        input_player1_left: "a",
-                        input_player1_right: "d",
-                        
-                        // Start = Shift (Using R-Shift to separate from B)
-                        input_player1_start: "rshift", 
-                        // Mode = CapsLock
-                        input_player1_select: "capslock",
-                        
-                        // A (Space) -> Gen A (Retro Y)
-                        input_player1_y: "space",
-                        // B (L-Shift) -> Gen B (Retro B)
-                        input_player1_b: "lshift",
-                        // C (I) -> Gen C (Retro A)
-                        input_player1_a: "i",
-                        
-                        // X (K) -> Gen X (Retro L)
-                        input_player1_l: "k",
-                        // Y (J) -> Gen Y (Retro X)
-                        input_player1_x: "j",
-                        // Z (L) -> Gen Z (Retro R)
-                        input_player1_r: "l",
-                        
-                        // Fast Forward Toggle
+                        input_player1_up: "w", input_player1_down: "s",
+                        input_player1_left: "a", input_player1_right: "d",
+                        input_player1_start: "rshift", input_player1_select: "capslock",
+                        input_player1_y: "space", input_player1_b: "lshift",
+                        input_player1_a: "i", input_player1_l: "k",
+                        input_player1_x: "j", input_player1_r: "l",
                         input_toggle_fast_forward: "p"
                     };
 
@@ -152,13 +135,12 @@
                         element: canvas, 
                         rom: romBlob,
                         core: coreConfig,
-                        retroarchConfig: inputConfig, // APPLY INPUT MAP
+                        retroarchConfig: inputConfig,
                         style: { width: '100%', height: '100%' }
                     });
                     
                     window.focus();
                     window.parent.postMessage({ status: 'running' }, '*');
-                    
                     if (!gamepadLoop) pollGamepads();
 
                 } catch (e) {
@@ -175,12 +157,36 @@
             }
             else if (command === 'load_state') {
                 if (emulatorInstance && stateData) {
+                    isProcessing = true;
                     try {
-                        const blob = await base64ToBlob(stateData);
+                        const rawBlob = await base64ToBlob(stateData);
+                        const blob = new Blob([rawBlob], { type: 'application/octet-stream' });
+
+                        // --- AUDIO-SANDWICH LOAD STRATEGY ---
+                        // 1. Suspend Audio (Stops the clock)
+                        if (window.emulatorAudioContext) {
+                            await window.emulatorAudioContext.suspend();
+                        }
+
+                        // 2. Load the state while clock is stopped
                         await emulatorInstance.loadState(blob);
+
+                        // 3. Resume Audio (Resyncs the clock)
+                        if (window.emulatorAudioContext) {
+                            await window.emulatorAudioContext.resume();
+                        }
+
+                        // 4. Force Focus & Resume Emulator Loop
+                        window.focus();
+                        await emulatorInstance.resume();
+
                         window.parent.postMessage({ status: 'load_complete' }, '*');
+
                     } catch (e) {
+                        console.error("Load Error:", e);
                         window.parent.postMessage({ status: 'error', message: "Load Failed" }, '*');
+                    } finally {
+                        isProcessing = false;
                     }
                 }
             }
