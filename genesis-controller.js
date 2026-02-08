@@ -16,7 +16,7 @@ window.openGenesisEmulator = async function() {
     // FIX 1: Cleanup any "Ghost" listeners from previous sessions immediately
     if (window._genesisListener) {
         window.removeEventListener('message', window._genesisListener);
-        window._genesisListener = null;
+        window._gbaListener = null;
     }
 
     let currentSlot = 1;
@@ -76,7 +76,9 @@ window.openGenesisEmulator = async function() {
     slotSelect.addEventListener('change', (e) => {
         currentSlot = e.target.value;
         slotSelect.blur();
-        const exists = localStorage.getItem(`gen_save_slot_${currentSlot}`) ? "DATA FOUND" : "EMPTY";
+        const romName = dropdown.value;
+        const storageKey = romName ? `gen_save_slot_${currentSlot}_${romName}` : `gen_save_slot_${currentSlot}`;
+        const exists = localStorage.getItem(storageKey) ? "DATA FOUND" : "EMPTY";
         debugLog.innerHTML = `<span style="color:#0f0;">SLOT ${currentSlot} SELECTED [${exists}]</span>`;
         setTimeout(() => debugLog.innerHTML = "", 2000);
     });
@@ -203,13 +205,14 @@ window.openGenesisEmulator = async function() {
 
             // FIX 3: Assign to GLOBAL variable so it persists/updates correctly
             window._genesisListener = function(e) {
+                const currentRomName = dropdown.value;
                 if (e.data.status === 'save_success') {
-                    localStorage.setItem(`gen_save_slot_${currentSlot}`, e.data.data);
+                    localStorage.setItem(`gen_save_slot_${currentSlot}_${currentRomName}`, e.data.data);
                     debugLog.innerHTML = `<span style="color:#0f0;">STATE SAVED [SLOT ${currentSlot}]</span>`;
                     setTimeout(() => debugLog.innerHTML = "", 2000);
                 }
                 else if (e.data.status === 'request_load') {
-                    const savedData = localStorage.getItem(`gen_save_slot_${currentSlot}`);
+                    const savedData = localStorage.getItem(`gen_save_slot_${currentSlot}_${currentRomName}`);
                     if (savedData) {
                         iframe.contentWindow.postMessage({ command: 'load_state', stateData: savedData }, '*');
                         debugLog.innerHTML = `<span style="color:yellow;">LOADING SLOT ${currentSlot}...</span>`;

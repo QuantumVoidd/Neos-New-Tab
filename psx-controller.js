@@ -37,7 +37,7 @@ window.openPSXEmulator = async function() {
                 <button id="psx-mute-btn" data-muted="false" class="nes-overlay-btn btn-bottom-right" title="Mute Audio" style="border-radius:50%; width:30px; height:30px; display:flex; justify-content:center; align-items:center; position:absolute; bottom:10px; right:10px; z-index:10; background:rgba(0,0,0,0.5); border:1px solid #00ff41; color:#00ff41; cursor:pointer;">&#128266;</button>
             </div>
             <div id="debug-log" style="color:red; font-family:'Courier New'; font-size:12px; margin-top:5px; height:20px;"></div>
-            <div style="display: block; width: 100%; box-sizing: border-box; margin: 5px auto 0 auto; font-size:0.6rem; opacity:0.7; font-family: 'Courier New', monospace; text-align:center; line-height:1.4;"><span style="color:#fff;">CONTROLS:</span> WASD = D-PAD | SPACE = <span style="color:#fff;">X</span> | BACKSPACE = <span style="color:#fff;">O</span> | Q/E = <span style="color:#fff;">L1/R1</span><br>1/3 = <span style="color:#fff;">SQUARE/TRIANGLE</span> | ENTER = <span style="color:#fff;">START</span> | SHIFT = <span style="color:#fff;">SELECT</span><br><span style="color:#aaa;">[CONTROLLER] SELECT + L1/R1 = LOAD/SAVE STATE</span></div>
+            <div style="display: block; width: 100%; box-sizing: border-box; margin: 5px auto 0 auto; font-size:0.6rem; opacity:0.7; font-family: 'Courier New', monospace; text-align:center; line-height:1.4;"><span style="color:#fff;">CONTROLS:</span> WASD = D-PAD | SPACE = <span style="color:#fff;">X</span> | BACKSPACE = <span style="color:#fff;">O</span> | Q/E = <span style="color:#fff;">L1/R1</span><br>1/3 = <span style="color:#fff;">SQUARE/TRIANGLE</span> | ENTER = <span style="color:#fff;">START</span> | SHIFT = <span style="color:#fff;">SELECT</span><br></div>
         </div>`;
 
     const dropdown = document.getElementById('psx-rom-select');
@@ -140,7 +140,10 @@ window.openPSXEmulator = async function() {
             const romResponse = await fetch(romUrl);
             const romBlob = await romResponse.blob();
 
-            const savedBase64 = localStorage.getItem(`psx_mem_${currentSlot}_${romName}`);
+            // MIGRATED: Fetch from chrome.storage.local instead of localStorage
+            const saveKey = `psx_mem_${currentSlot}_${romName}`;
+            const storageData = await chrome.storage.local.get([saveKey]);
+            const savedBase64 = storageData[saveKey];
             const saveBlob = savedBase64 ? base64ToBlob(savedBase64) : null;
 
             if (saveBlob) {
@@ -151,7 +154,6 @@ window.openPSXEmulator = async function() {
             iframe.src = chrome.runtime.getURL("psx_sandbox.html");
             iframe.style.width = "100%"; iframe.style.height = "100%"; iframe.style.border = "none";
             
-            // Maintain the Wake Lock permission fix
             iframe.allow = "screen-wake-lock";
 
             displayWrapper.insertBefore(iframe, document.getElementById('psx-fullscreen-btn'));
@@ -187,12 +189,14 @@ window.openPSXEmulator = async function() {
         muteBtn.blur();
     });
 
-    window._psxListener = function(e) {
+    window._psxListener = async function(e) {
         if (e.data.command === 'export_save') {
             const romName = dropdown.value;
             if (romName && e.data.data) {
                 const base64Data = bufferToBase64(e.data.data);
-                localStorage.setItem(`psx_mem_${currentSlot}_${romName}`, base64Data);
+                const saveKey = `psx_mem_${currentSlot}_${romName}`;
+                // MIGRATED: Save to chrome.storage.local instead of localStorage
+                await chrome.storage.local.set({ [saveKey]: base64Data });
             }
         }
     };

@@ -17,33 +17,23 @@ window.openGBAEmulator = async function() {
         window._gbaListener = null;
     }
 
-    let currentSlot = 1;
-
     output.innerHTML = `
         <div class="nes-terminal-wrapper">
             <p style="color:#00ff41; font-family:'Orbitron'; margin-bottom:15px; letter-spacing: 2px;">[ GBA_MAINFRAME ]</p>
             <div style="display:flex; justify-content:center; margin-bottom:10px;">
-                <select id="gba-rom-select" class="nes-model-selector" style="flex-grow:1; max-width:300px; margin-right: 10px;">
+                <select id="gba-rom-select" class="nes-model-selector" style="flex-grow:1; max-width:300px;">
                     <option value="" disabled selected>> INSERT CARTRIDGE...</option>
-                </select>
-                <select id="gba-slot-select" class="nes-model-selector" style="width: auto; min-width: 100px;">
-                    <option value="1" selected>SLOT 1</option>
-                    <option value="2">SLOT 2</option>
-                    <option value="3">SLOT 3</option>
-                    <option value="4">SLOT 4</option>
-                    <option value="5">SLOT 5</option>
                 </select>
             </div>
             <div id="gba-display-wrapper" class="nes-screen-container" style="position: relative; border: 1px solid #00ff41; width: 100%; aspect-ratio: 3 / 2; background: black url('${chrome.runtime.getURL("Emulators/gba/cover.jpg")}') no-repeat center center; background-size: cover;">
                 <button id="gba-fullscreen-btn" class="nes-overlay-btn btn-top-right" title="Fullscreen" style="border-radius:50%; width:30px; height:30px; display:flex; justify-content:center; align-items:center; position:absolute; top:10px; right:10px; z-index:10; background:rgba(0,0,0,0.5); border:1px solid #00ff41; color:#00ff41; cursor:pointer;">&#9974;</button>
                 <button id="gba-mute-btn" data-muted="false" class="nes-overlay-btn btn-bottom-right" title="Mute Audio" style="border-radius:50%; width:30px; height:30px; display:flex; justify-content:center; align-items:center; position:absolute; bottom:10px; right:10px; z-index:10; background:rgba(0,0,0,0.5); border:1px solid #00ff41; color:#00ff41; cursor:pointer;">&#128266;</button>
             </div>
-            <div id="debug-log" style="color:red; font-family:'Courier New'; font-size:12px; margin-top:5px; height:20px;"></div>
-            <div style="display: block; width: 100%; box-sizing: border-box; margin: 5px auto 0 auto; font-size:0.65rem; opacity:0.7; font-family: 'Courier New', monospace; text-align:center; line-height:1.5;"><span style="color:#fff;">CONTROLS:</span> WASD = D-PAD | ENTER = <span style="color:#fff;">START</span> | SHIFT = <span style="color:#fff;">SELECT</span><br>BACKSPACE = <span style="color:#fff;">B</span> | SPACE = <span style="color:#fff;">A</span> | Q = <span style="color:#fff;">L</span> | E = <span style="color:#fff;">R</span><br><span style="color:#aaa;">[1] SAVE | [4] LOAD | [P] FAST FWD</span></div>
+            <div id="debug-log" style="color:#00ff41; font-family:'Courier New'; font-size:12px; margin-top:5px; height:20px; text-align:center;"></div>
+            <div style="display: block; width: 100%; box-sizing: border-box; margin: 5px auto 0 auto; font-size:0.65rem; opacity:0.7; font-family: 'Courier New', monospace; text-align:center; line-height:1.5;"><span style="color:#fff;">CONTROLS:</span> WASD = D-PAD | ENTER = <span style="color:#fff;">START</span> | SHIFT = <span style="color:#fff;">SELECT</span><br>BACKSPACE = <span style="color:#fff;">B</span> | SPACE = <span style="color:#fff;">A</span> | Q = <span style="color:#fff;">L</span> | E = <span style="color:#fff;">R</span></div>
         </div>`;
 
     const dropdown = document.getElementById('gba-rom-select');
-    const slotSelect = document.getElementById('gba-slot-select');
     const displayWrapper = document.getElementById('gba-display-wrapper');
     const fullBtn = document.getElementById('gba-fullscreen-btn');
     const muteBtn = document.getElementById('gba-mute-btn');
@@ -62,31 +52,8 @@ window.openGBAEmulator = async function() {
         input_player1_select: 'shift'
     };
 
-    const handleHotkeys = (e) => {
-        const iframe = displayWrapper.querySelector('iframe');
-        if (!iframe) return;
-        if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
-        if (e.key === '1') {
-            e.stopImmediatePropagation();
-            iframe.contentWindow.postMessage({ command: 'save_state', slot: currentSlot }, '*');
-        }
-        if (e.key === '4') {
-            e.stopImmediatePropagation();
-            window._gbaListener({ data: { status: 'request_load' } });
-        }
-    };
-    window.addEventListener('keydown', handleHotkeys, true);
-
-    ['mousedown', 'click', 'mouseup', 'focus'].forEach(event => {
-        dropdown.addEventListener(event, (e) => e.stopPropagation());
-        slotSelect.addEventListener(event, (e) => e.stopPropagation());
-    });
-
-    slotSelect.addEventListener('change', (e) => {
-        currentSlot = parseInt(e.target.value);
-        const exists = localStorage.getItem(`gba_save_slot_${currentSlot}`) ? "DATA FOUND" : "EMPTY";
-        debugLog.innerHTML = `<span style="color:#00ff41;">SLOT ${currentSlot} SELECTED [${exists}]</span>`;
-    });
+    dropdown.addEventListener('mousedown', (e) => e.stopPropagation());
+    dropdown.addEventListener('click', (e) => e.stopPropagation());
 
     fullBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -127,44 +94,33 @@ window.openGBAEmulator = async function() {
             const romUrl = chrome.runtime.getURL('Emulators/gba/roms/' + romName);
             const romResponse = await fetch(romUrl);
             const romBlob = await romResponse.blob();
+
             const iframe = document.createElement('iframe');
             iframe.src = chrome.runtime.getURL("gba_sandbox.html");
             iframe.style.width = "100%"; iframe.style.height = "100%"; iframe.style.border = "none";
             displayWrapper.insertBefore(iframe, fullBtn);
+            
             iframe.onload = () => {
                 iframe.contentWindow.postMessage({ 
                     command: 'start', 
                     romBlob: romBlob,
+                    romName: romName,
                     retroarchConfig: gbaRetroarchConfig 
                 }, '*');
                 iframe.contentWindow.focus();
             };
-        } catch (e) { debugLog.innerHTML = `[ERROR] ${e.message}`; }
+        } catch (e) { 
+            debugLog.innerHTML = `[ERROR] ${e.message}`; 
+            console.error(e);
+        }
     };
 
-    window._gbaListener = function(e) {
-        const iframe = displayWrapper.querySelector('iframe');
-        if (e.data.status === 'save_success') {
-            localStorage.setItem(`gba_save_slot_${currentSlot}`, e.data.data);
-            debugLog.innerHTML = `<span style="color:#00ff41;">STATE SAVED [SLOT ${currentSlot}]</span>`;
+    window._gbaListener = async function(e) {
+        if (e.data.status === 'running') {
+            debugLog.innerHTML = `<span style="color:#00ff41;">SYSTEM ONLINE</span>`;
         }
-        else if (e.data.status === 'request_load') {
-            const savedData = localStorage.getItem(`gba_save_slot_${currentSlot}`);
-            if (savedData && iframe) {
-                iframe.contentWindow.postMessage({ command: 'load_state', stateData: savedData }, '*');
-                debugLog.innerHTML = `<span style="color:yellow;">LOADING SLOT ${currentSlot}...</span>`;
-            } else {
-                debugLog.innerHTML = `<span style="color:red;">SLOT ${currentSlot} EMPTY</span>`;
-            }
-        }
-        else if (e.data.status === 'load_complete') {
-            debugLog.innerHTML = `<span style="color:#00ff41;">LOAD COMPLETE</span>`;
-        }
-        else if (e.data.status === 'gamepad_save') {
-             iframe.contentWindow.postMessage({ command: 'save_state', slot: currentSlot }, '*');
-        }
-        else if (e.data.status === 'gamepad_load') {
-             window._gbaListener({ data: { status: 'request_load' } });
+        if (e.data.status === 'error') {
+            debugLog.innerHTML = `<span style="color:red;">[ERROR] ${e.data.message}</span>`;
         }
     };
     window.addEventListener('message', window._gbaListener);

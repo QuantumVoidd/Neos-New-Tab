@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Neo's New Tab",
-  "version": "3.50.0",
+  "version": "3.51.0",
   "description": "A high-performance Matrix-style new tab dashboard with customizable visuals and Sentinel Swarm.",
   "icons": {
     "16": "icon16.png",
@@ -35,7 +35,9 @@
       "emulator_sandbox.html",
       "snes_sandbox.html",
       "gba_sandbox.html",
-      "psx_sandbox.html"
+      "psx_sandbox.html",
+      "nes_sandbox.html",
+      "Emulators/sms/sms_sandbox.html"
     ]
   },
   "chrome_url_overrides": {
@@ -86,16 +88,22 @@
         "Emulators/gba/*",
         "Emulators/gba/roms/*",
         "Emulators/nes/*",
+        "Emulators/nes/roms/*",
         "Emulators/nes/nes-controller.js",
-        "Emulators/sms/jsms.js",
+        "Emulators/nes/nostalgist.umd.min.js",
+        "Emulators/nes/cover.jpg",
+        "Emulators/sms/gearsystem_libretro.js",
+        "Emulators/sms/gearsystem_libretro.wasm",
+        "Emulators/sms/sms_sandbox.html",
+        "Emulators/sms/nostalgist.umd.min.js",
         "Emulators/sms/roms/*",
         "Emulators/sms/sms-controller.js",
+        "Emulators/sms/cover.jpg",
         "Emulators/genesis/nostalgist.umd.min.js",
         "Emulators/genesis/genesis-controller.js",
         "Emulators/genesis/cores/*",
         "Emulators/genesis/roms/*",
         "Emulators/genesis/data/*",
-        "emulators/genesis/roms/*",
         "Emulators/snes/cores/*",
         "Emulators/snes/roms/*",
         "Emulators/snes/snes-controller.js",
@@ -106,7 +114,8 @@
         "Emulators/psx/cover.jpg",
         "snes_sandbox.html",
         "gba_sandbox.html",
-        "psx_sandbox.html"
+        "psx_sandbox.html",
+        "nes_sandbox.html"
       ],
       "matches": [
         "<all_urls>"

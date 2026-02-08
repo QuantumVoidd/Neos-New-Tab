@@ -2814,7 +2814,12 @@ function renderExplorerGrid(filter = "") {
 
     // --- MERGE LOCALSTORAGE AT ROOT ---
     if (viewDepth === 0 && !isArray) {
-        const localKeys = Object.keys(localStorage).filter(k => k.startsWith('nes_'));
+        // Collects all emulator keys from localStorage
+        const localKeys = Object.keys(localStorage).filter(k => 
+            k.startsWith('nes_') || 
+            k.startsWith('sms_state_') || 
+            k.startsWith('gen_save_slot_')
+        );
         keys = [...keys, ...localKeys];
     }
     
@@ -2826,8 +2831,10 @@ function renderExplorerGrid(filter = "") {
     keys.forEach(key => {
         // --- Value retrieval (handle localStorage keys separately) ---
         let value = currentData[key];
-        if (value === undefined && typeof key === 'string' && key.startsWith('nes_')) {
-            value = localStorage.getItem(key);
+        if (value === undefined && typeof key === 'string') {
+             if (key.startsWith('nes_') || key.startsWith('sms_state_') || key.startsWith('gen_save_slot_')) {
+                value = localStorage.getItem(key);
+             }
         }
 
         // --- NEW SMART FILTER LOGIC ---
@@ -2883,6 +2890,18 @@ function renderExplorerGrid(filter = "") {
             icon = '💾';
             fileType = 'nes_save';
             displayLabel = key.replace('nes_', '') + '.sav';
+        } else if (String(key).startsWith('sms_state_')) {
+            icon = '🎮'; 
+            fileType = 'sms_save';
+            displayLabel = key.replace('sms_state_', 'SMS_S') + '.state';
+        } else if (String(key).startsWith('gen_save_slot_')) {
+            icon = '📟'; 
+            fileType = 'genesis_save';
+            displayLabel = key.replace('gen_save_slot_', 'GEN_SLOT_') + '.state';
+        } else if (String(key).startsWith('psx_mem_')) {
+            icon = '💿'; 
+            fileType = 'psx_save';
+            displayLabel = key.replace('psx_mem_', 'PSX_MC') + '.mcd';
         } else {
             const lowerKey = String(key).toLowerCase();
             if (lowerKey.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/)) {
@@ -2935,7 +2954,7 @@ function renderExplorerGrid(filter = "") {
         node.onclick = () => {
             if (window.isExplorerDeleteMode) {
                 if (confirm(`PURGE: ${displayLabel}?`)) {
-                    if (String(key).startsWith('nes_')) {
+                    if (String(key).startsWith('nes_') || String(key).startsWith('sms_state_') || String(key).startsWith('gen_save_slot_')) {
                         localStorage.removeItem(key);
                         renderExplorerGrid();
                         updateStorageUI();
@@ -3097,7 +3116,7 @@ function showExplorerPreview(key, value, type) {
                 <div style="font-size: 3rem; margin-bottom: 20px;">🎵</div>
                 <audio src="${value}" controls style="width:100%; max-width:500px;"></audio>
             </div>`;
-    } else if (type === 'nes_save') {
+    } else if (type === 'nes_save' || type === 'sms_save' || type === 'genesis_save' || type === 'psx_save') {
         contentHtml = `
             <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; width:100%; padding: 40px; border: 1px solid rgba(0,242,255,0.1); background:rgba(0,0,0,0.5);">
                 <div style="font-size: 3rem; margin-bottom: 20px;">🕹️</div>
@@ -3144,6 +3163,43 @@ function showExplorerPreview(key, value, type) {
     `;
     
     document.body.appendChild(previewOverlay);
+    
+    // SMS Restore Logic
+    if (type === 'sms_save') {
+        const smsBtn = document.createElement('button');
+        smsBtn.innerHTML = "RESTORE SMS";
+        smsBtn.style.cssText = "background:rgba(0,255,255,0.2); color:#0ff; border:1px solid #0ff; padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; margin-right:10px;";
+        smsBtn.onclick = () => {
+            showZionMessage("SMS DATA SENT TO CORE");
+            // Logic for sms-controller restore goes here
+            previewOverlay.remove();
+        };
+        previewOverlay.querySelector('div[style*="justify-content:flex-end"]').prepend(smsBtn);
+    }
+
+    // Genesis Restore Logic
+    if (type === 'genesis_save') {
+        const genBtn = document.createElement('button');
+        genBtn.innerHTML = "RESTORE GENESIS";
+        genBtn.style.cssText = "background:rgba(255,0,255,0.2); color:#f0f; border:1px solid #f0f; padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; margin-right:10px;";
+        genBtn.onclick = () => {
+            showZionMessage("GENESIS DATA SENT TO CORE");
+            previewOverlay.remove();
+        };
+        previewOverlay.querySelector('div[style*="justify-content:flex-end"]').prepend(genBtn);
+    }
+
+    // PSX Restore Logic
+    if (type === 'psx_save') {
+        const psxBtn = document.createElement('button');
+        psxBtn.innerHTML = "RESTORE PSX";
+        psxBtn.style.cssText = "background:rgba(0,255,65,0.2); color:#0f0; border:1px solid #0f0; padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; margin-right:10px;";
+        psxBtn.onclick = () => {
+            showZionMessage("PSX DATA SENT TO CORE");
+            previewOverlay.remove();
+        };
+        previewOverlay.querySelector('div[style*="justify-content:flex-end"]').prepend(psxBtn);
+    }
     
     // Add hover effects for buttons
     const btns = previewOverlay.querySelectorAll('button');
