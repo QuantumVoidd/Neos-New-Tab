@@ -1413,6 +1413,7 @@ const CLI_COMMANDS = {
     '/rampage2': () => { openMatrixRampage2Game(); },
     '/bullet': () => { openMatrixBulletTimeGame(); },
     '/fighter': () => { openMatrixFighterGame(); },
+    '/psx': () => { const btn = document.getElementById('btn-psx'); if (btn) btn.click(); },
     '/play': (gameName) => {
         if(!gameName) return showZionMessage("USAGE: /play [zion|rampage|tunnel]");
         const target = gameName.toLowerCase().trim();
@@ -4193,6 +4194,12 @@ function closeTerminalModal() {
         window.activeGBAInstance = null;
     }
 
+    // --- STOP PSX EMULATOR ---
+    if (window._psxListener) {
+        window.removeEventListener('message', window._psxListener);
+        window._psxListener = null;
+    }
+
     // Use centralized purge logic
     purgeTerminalMedia();
     
@@ -4764,6 +4771,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (cmdInput) cmdInput.placeholder = "Type 'exit' to close emulation...";
                 } else {
                     showZionMessage("ERROR: SNES CORE OFFLINE");
+                }
+            });
+        });
+    }
+
+    // --- PSX EMULATOR INTEGRATION ---
+    const psxBtn = document.getElementById('btn-psx');
+    if (psxBtn) {
+        psxBtn.addEventListener('click', () => {
+            // Load the controller script dynamically
+            loadScript("Emulators/psx/psx-controller.js").then(() => {
+                // Check if the function exists in the global scope
+                if (typeof window.openPSXEmulator === 'function') {
+                    // Launch the emulator
+                    window.openPSXEmulator();
+                    
+                    // Update terminal prompt to show exit instructions
+                    const cmdInput = document.getElementById('terminal-cmd-input');
+                    if (cmdInput) cmdInput.placeholder = "Type 'exit' to close emulation...";
+                } else {
+                    showZionMessage("ERROR: PSX CORE OFFLINE");
                 }
             });
         });

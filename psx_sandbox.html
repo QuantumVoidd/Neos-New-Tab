@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: black; overflow: hidden; display: flex; flex-direction: column; }
+        #emulator-container { width: 100% !important; height: 100% !important; flex-grow: 1; display: flex; justify-content: center; align-items: center; }
+        canvas { display: block; width: 100% !important; height: 100% !important; image-rendering: pixelated; }
+        
+        #start-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: url('Emulators/psx/cover.jpg');
+            background-size: cover; background-position: center; background-repeat: no-repeat;
+            display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+            box-sizing: border-box; padding-bottom: 50px; z-index: 100; display: none; 
+        }
+
+        #start-btn { 
+            background: rgba(0, 0, 0, 0.6); 
+            border: 2px solid #00ff41; 
+            color: #00ff41; 
+            padding: 15px 40px; 
+            font-size: 1.5rem; 
+            cursor: pointer; 
+            text-transform: uppercase; 
+            box-shadow: 0 0 15px #00ff41; 
+            border-radius: 50px;
+            transition: all 0.2s;
+            backdrop-filter: blur(4px);
+            font-family: inherit;
+        }
+
+        #start-btn:hover {
+            background: #00ff41;
+            color: black;
+            box-shadow: 0 0 30px #00ff41;
+        }
+    </style>
+</head>
+<body>
+    <div id="emulator-container"></div>
+    <div id="start-overlay"><button id="start-btn">BOOT SYSTEM</button></div>
+
+    <script>
+        // --- FIX: Wake Lock Stub to prevent Permissions Policy violations ---
+        if ('wakeLock' in navigator) {
+            // Overwrite the request method with a dummy promise to satisfy Emscripten
+            Object.defineProperty(navigator.wakeLock, 'request', {
+                value: async () => ({
+                    addEventListener: () => {},
+                    release: async () => {},
+                    released: false
+                }),
+                writable: false
+            });
+        }
+
+        (function() {
+            const originalConnect = AudioNode.prototype.connect;
+            AudioNode.prototype.connect = function(destination, output, input) {
+                if (destination && destination instanceof AudioDestinationNode) {
+                    const ctx = destination.context;
+                    if (!ctx._masterGain) {
+                        ctx._masterGain = ctx.createGain();
+                        ctx._masterGain.gain.value = 1.0; 
+                        originalConnect.call(ctx._masterGain, destination);
+                        window.emulatorAudioContext = ctx;
+                    }
+                    return originalConnect.call(this, ctx._masterGain, output, input);
+                }
+                return originalConnect.apply(this, arguments);
+            };
+        })();
+    </script>
+
+    <script src="Emulators/psx/nostalgist.umd.min.js"></script>
+
+    <script>
+        let emulatorInstance = null;
+        let pendingConfig = null;
+        let autoSaveInterval = null;
+
+        async function launchEmulator() {
+            if (!pendingConfig) return;
+            const container = document.getElementById('emulator-container');
+            const overlay = document.getElementById('start-overlay');
+            try {
+                if (window.emulatorAudioContext && window.emulatorAudioContext.state === 'suspended') {
+                    await window.emulatorAudioContext.resume();
+                } else if (window.AudioContext) {
+                    new window.AudioContext().resume();
+                }
+
+                overlay.style.display = 'none';
+                container.innerHTML = '';
+                const canvas = document.createElement('canvas');
+                container.appendChild(canvas);
+
+                let romToLoad = pendingConfig.romBlob;
+                if (pendingConfig.romName) {
+                    romToLoad = new File([pendingConfig.romBlob], pendingConfig.romName);
+                }
+
+                const launchOptions = {
+                    element: canvas, 
+                    rom: romToLoad,
+                    core: 'pcsx_rearmed',
+                    resolveCoreJs(core) { return `Emulators/psx/${core}_libretro.js`; },
+                    resolveCoreWasm(core) { return `Emulators/psx/${core}_libretro.wasm`; },
+                    retroarchConfig: pendingConfig.retroarchConfig,
+                    style: { width: '100%', height: '100%', display: 'block' }
+                };
+
+                if (pendingConfig.saveData) {
+                    launchOptions.sram = pendingConfig.saveData; 
+                }
+
+                emulatorInstance = await Nostalgist.launch(launchOptions);
+                
+                window.focus();
+                window.parent.postMessage({ status: 'running' }, '*');
+
+                if (autoSaveInterval) clearInterval(autoSaveInterval);
+                autoSaveInterval = setInterval(async () => {
+                    if (!emulatorInstance) return;
+                    try {
+                        let saveBlob = null;
+                        if (typeof emulatorInstance.saveSRAM === 'function') {
+                            saveBlob = await emulatorInstance.saveSRAM();
+                        }
+
+                        if (saveBlob) {
+                            const buffer = await saveBlob.arrayBuffer();
+                            window.parent.postMessage({ 
+                                command: 'export_save', 
+                                data: buffer 
+                            }, '*');
+                        }
+                    } catch (e) {}
+                }, 10000);
+
+            } catch (e) { window.parent.postMessage({ status: 'error', message: e.toString() }, '*'); }
+        }
+
+        window.addEventListener('message', async (event) => {
+            const { command, stateData, slot } = event.data;
+            if (command === 'start') {
+                pendingConfig = event.data;
+                document.getElementById('start-overlay').style.display = 'flex';
+            } 
+            else if (command === 'mute') {
+                const ctx = window.emulatorAudioContext;
+                if (ctx && ctx._masterGain) {
+                    const isMuted = ctx._masterGain.gain.value < 0.01;
+                    ctx._masterGain.gain.setTargetAtTime(isMuted ? 1.0 : 0.0, ctx.currentTime, 0.1);
+                }
+            }
+        });
+
+        document.getElementById('start-btn').addEventListener('click', launchEmulator);
+    </script>
+</body>
+</html>

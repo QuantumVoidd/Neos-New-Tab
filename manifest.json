@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Neo's New Tab",
-  "version": "3.49.0",
+  "version": "3.50.0",
   "description": "A high-performance Matrix-style new tab dashboard with customizable visuals and Sentinel Swarm.",
   "icons": {
     "16": "icon16.png",
@@ -34,7 +34,8 @@
       "sandbox.html",
       "emulator_sandbox.html",
       "snes_sandbox.html",
-      "gba_sandbox.html"
+      "gba_sandbox.html",
+      "psx_sandbox.html"
     ]
   },
   "chrome_url_overrides": {
@@ -99,8 +100,13 @@
         "Emulators/snes/roms/*",
         "Emulators/snes/snes-controller.js",
         "Emulators/snes/cover.jpg",
+        "Emulators/psx/*",
+        "Emulators/psx/roms/*",
+        "Emulators/psx/psx-controller.js",
+        "Emulators/psx/cover.jpg",
         "snes_sandbox.html",
-        "gba_sandbox.html"
+        "gba_sandbox.html",
+        "psx_sandbox.html"
       ],
       "matches": [
         "<all_urls>"
