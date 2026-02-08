@@ -7,6 +7,12 @@ window.openGenesisEmulator = async function() {
     if (!modal || !output) return;
     modal.classList.remove('hidden');
 
+    // Initialize Terminal Rain Background (Added to match NES/GBA/SNES logic)
+    if (typeof initTerminalRain === 'function') {
+        initTerminalRain();
+        window.addEventListener('resize', initTerminalRain);
+    }
+
     // FIX 1: Cleanup any "Ghost" listeners from previous sessions immediately
     if (window._genesisListener) {
         window.removeEventListener('message', window._genesisListener);
@@ -111,7 +117,7 @@ window.openGenesisEmulator = async function() {
         setTimeout(() => debugLog.innerHTML = "", 3000);
     });
 
-    // --- FULL ROM LIST ---
+    // --- FULL ROM LIST PRESERVED ---
     const ROMS = [
         "Adventures of Batman & Robin, The (USA).md",
         "After Burner II (USA).md",

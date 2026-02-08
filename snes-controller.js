@@ -7,10 +7,15 @@ window.openSnesEmulator = async function() {
     if (!modal || !output) return;
     modal.classList.remove('hidden');
 
+    // Initialize Terminal Rain Background (Preserved logic)
+    if (typeof initTerminalRain === 'function') {
+        initTerminalRain();
+        window.addEventListener('resize', initTerminalRain);
+    }
+
     let messageListener = null;
 
     // 1. Setup Interface
-    // Added <style> block to handle :fullscreen behavior correctly
     output.innerHTML = `
         <style>
             #snes-display-wrapper:fullscreen {
@@ -68,7 +73,6 @@ window.openSnesEmulator = async function() {
         if(muteBtn) muteBtn.addEventListener(event, (e) => e.stopPropagation());
     });
 
-    // 4. EVENT LISTENERS
     fullBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         if (!document.fullscreenElement) {
@@ -98,6 +102,7 @@ window.openSnesEmulator = async function() {
         muteBtn.blur();
     });
 
+    // --- FULL 131 ROM LIST PRESERVED ---
     const ROMS = [
         "Alien 3 (USA).sfc",
         "Alien vs Predator (USA).sfc",
@@ -212,6 +217,7 @@ window.openSnesEmulator = async function() {
         "Taz-Mania (USA) (Rev 1).sfc",
         "Teenage Mutant Ninja Turtles - Tournament Fighters (USA).sfc",
         "Teenage Mutant Ninja Turtles IV - Turtles in Time (USA).sfc",
+        "Teenage Mutant Ninja Turtles IV - Turtles in Time (USA).sfc",
         "Terminator 2 - Judgment Day (USA).sfc",
         "Terminator, The (USA).sfc",
         "Tetris & Dr. Mario (USA).sfc",
@@ -270,7 +276,6 @@ window.openSnesEmulator = async function() {
             const romResponse = await fetch(romUrl);
             const romBlob = await romResponse.blob();
             
-            // IMPORTANT: Create a File object so the core sees the extension (.sfc/.smc)
             const romFile = new File([romBlob], romName, { type: "application/octet-stream" });
 
             const iframe = document.createElement('iframe');
@@ -287,7 +292,7 @@ window.openSnesEmulator = async function() {
             iframe.onload = () => {
                 iframe.contentWindow.postMessage({
                     command: 'start',
-                    romBlob: romFile, // Passing the File object
+                    romBlob: romFile,
                     coreConfig: {
                         name: 'snes9x',
                         js: corePaths.js,

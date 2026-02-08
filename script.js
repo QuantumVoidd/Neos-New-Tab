@@ -4187,6 +4187,12 @@ function closeTerminalModal() {
         window.activeSnesInstance = null;
     }
 
+    // --- STOP GBA EMULATOR ---
+    if (window.activeGBAInstance && typeof window.activeGBAInstance.destroy === 'function') {
+        window.activeGBAInstance.destroy();
+        window.activeGBAInstance = null;
+    }
+
     // Use centralized purge logic
     purgeTerminalMedia();
     
@@ -4758,6 +4764,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (cmdInput) cmdInput.placeholder = "Type 'exit' to close emulation...";
                 } else {
                     showZionMessage("ERROR: SNES CORE OFFLINE");
+                }
+            });
+        });
+    }
+
+    // --- GBA EMULATOR INTEGRATION ---
+    const gbaBtn = document.getElementById('btn-gba');
+    if (gbaBtn) {
+        gbaBtn.addEventListener('click', () => {
+            // Load the controller from the subfolder
+            loadScript("Emulators/gba/gba-controller.js").then(() => {
+                if (typeof window.openGBAEmulator === 'function') {
+                    window.openGBAEmulator();
+                    const cmdInput = document.getElementById('terminal-cmd-input');
+                    if (cmdInput) cmdInput.placeholder = "Type 'exit' to close emulation...";
+                } else {
+                    showZionMessage("ERROR: GBA CORE OFFLINE");
                 }
             });
         });
