@@ -61,6 +61,39 @@ let explorerStack = []; // Added for navigation depth tracking
 let explorerPath = ["root"]; // Tracks folder names for breadcrumbs
 window.isExplorerDeleteMode = false;
 
+// --- GBC SAVE STATE SYNC LOGIC ---
+// Called by gbc-controller.js after an export/save
+window.syncGbcSavesToExplorer = function() {
+    if (!explorerDataCache) explorerDataCache = {};
+
+    // 1. Ensure Path Consistency: Create saves/gbc if missing
+    if (!explorerDataCache.saves) explorerDataCache.saves = {};
+    if (!explorerDataCache.saves.gbc) explorerDataCache.saves.gbc = {};
+    
+    // Clear existing cache for this folder to prevent duplicates
+    explorerDataCache.saves.gbc = {};
+
+    // 2. Scan LocalStorage for GBC save keys
+    const gbcKeys = Object.keys(localStorage).filter(k => k.startsWith('gbc_state_'));
+    
+    gbcKeys.forEach(key => {
+        // Inject object into cache under root/saves/gbc/
+        // We store the raw localStorage string value here
+        explorerDataCache.saves.gbc[key] = localStorage.getItem(key);
+    });
+
+    // 3. Update Explorer View if Active
+    if (isExplorerActive) {
+        // Update the root reference in the stack to ensure navigation works
+        if (explorerStack.length > 0) {
+            explorerStack[0] = explorerDataCache;
+        }
+        
+        // Trigger a re-render of the grid
+        renderExplorerGrid();
+    }
+};
+
 // --- 3D VERTICAL RAIN SPECIFIC SETTINGS ---
 let verticalRainAlphabet = MATRIX_ALPHABET;
 let isVerticalRainBinary = false;
@@ -2741,13 +2774,21 @@ async function openRootExplorer(startFilter = "") {
     initExplorerControls(); 
     updateStorageUI(); 
 
+    // Ensure GBC saves structure exists
+    window.syncGbcSavesToExplorer();
+
     // --- FIX: LOAD DATA THEN APPLY FILTER ---
     explorerStack = []; 
     explorerPath = ["root"]; 
     
     chrome.storage.local.get(null, (data) => {
         explorerDataCache = data; 
-        explorerStack.push(data); 
+        
+        // RE-SYNC GBC into this cache instance to ensure it's available
+        // (syncGbcSavesToExplorer might have initialized an empty object if called before cache load)
+        window.syncGbcSavesToExplorer(); 
+
+        explorerStack.push(explorerDataCache); 
         
         // Render immediately with the requested filter (No timeouts needed)
         renderExplorerGrid(startFilter);
@@ -2818,7 +2859,9 @@ function renderExplorerGrid(filter = "") {
         const localKeys = Object.keys(localStorage).filter(k => 
             k.startsWith('nes_') || 
             k.startsWith('sms_state_') || 
-            k.startsWith('gen_save_slot_')
+            k.startsWith('gen_save_slot_') ||
+            k.startsWith('psx_mem_') ||
+            k.startsWith('gba_state_')
         );
         keys = [...keys, ...localKeys];
     }
@@ -2832,7 +2875,7 @@ function renderExplorerGrid(filter = "") {
         // --- Value retrieval (handle localStorage keys separately) ---
         let value = currentData[key];
         if (value === undefined && typeof key === 'string') {
-             if (key.startsWith('nes_') || key.startsWith('sms_state_') || key.startsWith('gen_save_slot_')) {
+             if (key.startsWith('nes_') || key.startsWith('sms_state_') || key.startsWith('gen_save_slot_') || key.startsWith('psx_mem_') || key.startsWith('gba_state_')) {
                 value = localStorage.getItem(key);
              }
         }
@@ -2898,6 +2941,15 @@ function renderExplorerGrid(filter = "") {
             icon = '📟'; 
             fileType = 'genesis_save';
             displayLabel = key.replace('gen_save_slot_', 'GEN_SLOT_') + '.state';
+        } else if (String(key).startsWith('gba_state_')) {
+            icon = '📱'; // Gameboy Advance Icon
+            fileType = 'gba_save';
+            // Formats "gba_state_1_Pokemon" to "GBA_SLOT_1_Pokemon.state"
+            displayLabel = key.replace('gba_state_', 'GBA_SLOT_') + '.state'; 
+        } else if (String(key).startsWith('gbc_state_')) {
+            icon = '👾'; 
+            fileType = 'gbc_save';
+            displayLabel = key.replace('gbc_state_', 'GBC_SLOT_') + '.state';
         } else if (String(key).startsWith('psx_mem_')) {
             icon = '💿'; 
             fileType = 'psx_save';
@@ -2954,8 +3006,10 @@ function renderExplorerGrid(filter = "") {
         node.onclick = () => {
             if (window.isExplorerDeleteMode) {
                 if (confirm(`PURGE: ${displayLabel}?`)) {
-                    if (String(key).startsWith('nes_') || String(key).startsWith('sms_state_') || String(key).startsWith('gen_save_slot_')) {
+                    if (String(key).startsWith('nes_') || String(key).startsWith('sms_state_') || String(key).startsWith('gen_save_slot_') || String(key).startsWith('psx_mem_') || String(key).startsWith('gba_state_') || String(key).startsWith('gbc_state_')) {
                         localStorage.removeItem(key);
+                        // If it's a GBC save, we need to update the sync logic too
+                        if(String(key).startsWith('gbc_state_')) window.syncGbcSavesToExplorer();
                         renderExplorerGrid();
                         updateStorageUI();
                         return;
@@ -3116,7 +3170,7 @@ function showExplorerPreview(key, value, type) {
                 <div style="font-size: 3rem; margin-bottom: 20px;">🎵</div>
                 <audio src="${value}" controls style="width:100%; max-width:500px;"></audio>
             </div>`;
-    } else if (type === 'nes_save' || type === 'sms_save' || type === 'genesis_save' || type === 'psx_save') {
+    } else if (type === 'nes_save' || type === 'sms_save' || type === 'genesis_save' || type === 'psx_save' || type === 'gba_save' || type === 'gbc_save') {
         contentHtml = `
             <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; width:100%; padding: 40px; border: 1px solid rgba(0,242,255,0.1); background:rgba(0,0,0,0.5);">
                 <div style="font-size: 3rem; margin-bottom: 20px;">🕹️</div>
@@ -3199,6 +3253,36 @@ function showExplorerPreview(key, value, type) {
             previewOverlay.remove();
         };
         previewOverlay.querySelector('div[style*="justify-content:flex-end"]').prepend(psxBtn);
+    }
+
+    // GBA Restore Logic
+    if (type === 'gba_save') {
+        const gbaBtn = document.createElement('button');
+        gbaBtn.innerHTML = "RESTORE GBA";
+        gbaBtn.style.cssText = "background:rgba(138, 43, 226, 0.2); color:#8a2be2; border:1px solid #8a2be2; padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; margin-right:10px;";
+        gbaBtn.onclick = () => {
+            showZionMessage("GBA DATA SENT TO CORE");
+            previewOverlay.remove();
+        };
+        previewOverlay.querySelector('div[style*="justify-content:flex-end"]').prepend(gbaBtn);
+    }
+
+    // GBC Restore Logic
+    if (type === 'gbc_save') {
+        const gbcBtn = document.createElement('button');
+        gbcBtn.innerHTML = "RESTORE GBC";
+        gbcBtn.style.cssText = "background:rgba(150, 0, 255, 0.2); color:#d0f; border:1px solid #d0f; padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; margin-right:10px;";
+        gbcBtn.onclick = () => {
+            showZionMessage("GBC DATA SENT TO CORE");
+            if (window.activeGbcInstance && typeof window.activeGbcInstance.loadState === 'function') {
+                try {
+                     const state = JSON.parse(value);
+                     window.activeGbcInstance.loadState(state);
+                } catch(e) { console.error("Restore failed", e); }
+            }
+            previewOverlay.remove();
+        };
+        previewOverlay.querySelector('div[style*="justify-content:flex-end"]').prepend(gbcBtn);
     }
     
     // Add hover effects for buttons
@@ -4244,6 +4328,12 @@ function closeTerminalModal() {
         window.activeSnesInstance = null;
     }
 
+    // --- STOP GB/GBC EMULATOR ---
+    if (window.activeGBCInstance && typeof window.activeGBCInstance.destroy === 'function') {
+        window.activeGBCInstance.destroy();
+        window.activeGBCInstance = null;
+    }
+
     // --- STOP GBA EMULATOR ---
     if (window.activeGBAInstance && typeof window.activeGBAInstance.destroy === 'function') {
         window.activeGBAInstance.destroy();
@@ -4848,6 +4938,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (cmdInput) cmdInput.placeholder = "Type 'exit' to close emulation...";
                 } else {
                     showZionMessage("ERROR: PSX CORE OFFLINE");
+                }
+            });
+        });
+    }
+
+    // --- GB/GBC EMULATOR INTEGRATION ---
+    const gbcBtn = document.getElementById('btn-gbc');
+    if (gbcBtn) {
+        gbcBtn.addEventListener('click', () => {
+            // 1. Load the controller script we created
+            loadScript("Emulators/gbc/gbc-controller.js").then(() => {
+                // 2. Check if the function exists
+                if (typeof window.openGBCEmulator === 'function') {
+                    // 3. Launch the function (This opens the modal)
+                    window.openGBCEmulator();
+                    const cmdInput = document.getElementById('terminal-cmd-input');
+                    if (cmdInput) cmdInput.placeholder = "Type 'exit' to close emulation...";
+                } else {
+                    showZionMessage("ERROR: GBC CORE OFFLINE");
                 }
             });
         });
