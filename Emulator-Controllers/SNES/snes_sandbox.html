@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background-color: black; overflow: hidden;
+            display: flex; flex-direction: column; 
+        }
+        #emulator-container { 
+            width: 100% !important; height: 100% !important; 
+            flex-grow: 1;
+            display: flex; justify-content: center; align-items: center; 
+        }
+        canvas { 
+            display: block; width: 100% !important; height: 100% !important; 
+            image-rendering: pixelated; outline: none; 
+        }
+        
+        #notification {
+            position: absolute;
+            top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9); border: 2px solid #00ff41; color: #00ff41;
+            padding: 12px 24px; font-family: 'Courier New', monospace; font-weight: bold;
+            font-size: 18px; border-radius: 4px; display: none; z-index: 2000; 
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.3); text-align: center;
+        }
+
+        #start-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: url('Emulators/snes/cover.jpg');
+            background-size: cover; background-position: center; background-repeat: no-repeat;
+            display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+            box-sizing: border-box; padding-bottom: 50px; z-index: 100; display: none; 
+        }
+
+        #start-btn { 
+            background: rgba(0, 0, 0, 0.7); 
+            border: 2px solid #00ff41; 
+            color: #00ff41; 
+            padding: 15px 40px; font-size: 1.5rem; cursor: pointer; 
+            text-transform: uppercase; box-shadow: 0 0 15px #00ff41; 
+            border-radius: 50px; transition: all 0.2s; backdrop-filter: blur(4px);
+            font-family: inherit;
+        }
+        #start-btn:hover { background: #00ff41; color: black; box-shadow: 0 0 30px #00ff41; }
+    </style>
+</head>
+<body>
+    <div id="notification"></div>
+    <div id="emulator-container"></div>
+    <div id="start-overlay"><button id="start-btn">BOOT SYSTEM</button></div>
+
+    <script>
+        // Audio Context Fix
+        (function() {
+            const originalConnect = AudioNode.prototype.connect;
+            AudioNode.prototype.connect = function(destination, output, input) {
+                if (destination && destination instanceof AudioDestinationNode) {
+                    const ctx = destination.context;
+                    if (!ctx._masterGain) {
+                        ctx._masterGain = ctx.createGain();
+                        ctx._masterGain.gain.value = 1.0; 
+                        originalConnect.call(ctx._masterGain, destination);
+                        window.emulatorAudioContext = ctx;
+                    }
+                    return originalConnect.call(this, ctx._masterGain, output, input);
+                }
+                return originalConnect.apply(this, arguments);
+            };
+        })();
+    </script>
+
+    <script src="Emulators/genesis/nostalgist.umd.min.js"></script>
+
+    <script>
+        let emulatorInstance = null;
+        let pendingConfig = null;
+        let currentSaveBlob = null; 
+        let currentSlot = 1; 
+        
+        const INTERNAL_ROM_NAME = "game.sfc";
+
+        function showNotification(text, duration = 2000) {
+            const el = document.getElementById('notification');
+            if(el) {
+                el.innerText = text;
+                el.style.display = 'block';
+                if(el.hideTimeout) clearTimeout(el.hideTimeout);
+                if (duration > 0) {
+                    el.hideTimeout = setTimeout(() => { el.style.display = 'none'; }, duration);
+                }
+            }
+        }
+
+        // --- THE "HUNTER" FUNCTION ---
+        // Recursively searches the entire Emscripten FS for any file ending in .state
+        function scanFileSystemForState(FS, currentPath = '/') {
+            let found = null;
+            try {
+                if (!FS.analyzePath(currentPath).exists) return null;
+                
+                const items = FS.readdir(currentPath);
+                for (const item of items) {
+                    if (item === '.' || item === '..' || item === 'dev' || item === 'proc') continue;
+                    
+                    const fullPath = currentPath === '/' ? `/${item}` : `${currentPath}/${item}`;
+                    const lookup = FS.lookupPath(fullPath, { follow: true });
+                    
+                    if (lookup.node.isFolder) {
+                        // Recursively search subdirectories
+                        found = scanFileSystemForState(FS, fullPath);
+                        if (found) return found;
+                    } else {
+                        // Check if it's a state file
+                        if (item.endsWith('.state') || item.includes('.state')) {
+                            console.log(`[SNES] Found potential save: ${fullPath}`);
+                            return FS.readFile(fullPath);
+                        }
+                    }
+                }
+            } catch (e) { 
+                // Ignore permission errors in system folders
+            }
+            return found;
+        }
+
+        // --- KEY LISTENER ---
+        document.addEventListener('keydown', async (e) => {
+            if (!emulatorInstance) return;
+
+            // --- SAVE STATE (Key '1') ---
+            if (e.key === '1' || e.code === 'Digit1' || e.code === 'Numpad1') {
+                e.preventDefault(); 
+                e.stopPropagation();
+                
+                // Show sticky notification while working
+                showNotification(`SAVING SLOT ${currentSlot}...`, 0);
+                
+                try {
+                    // Create a timeout promise to prevent hanging
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error("Save Timed Out")), 5000)
+                    );
+
+                    // Try to get data with a race against the clock
+                    const data = await Promise.race([
+                        (async () => {
+                            let blob = null;
+
+                            // 1. Try API
+                            try {
+                                const result = await emulatorInstance.saveState();
+                                if (result && (result.state || result instanceof Blob)) {
+                                    blob = result.state || result;
+                                    console.log("[SNES] API Save Successful");
+                                }
+                            } catch(apiErr) {
+                                console.warn("[SNES] API Save Failed, switching to FS Scan...", apiErr);
+                            }
+
+                            // 2. Try FS Scan if API failed
+                            if (!blob) {
+                                await new Promise(r => setTimeout(r, 200)); // Wait for flush
+                                const Module = emulatorInstance.getEmscriptenModule();
+                                if (Module && Module.FS) {
+                                    const rawData = scanFileSystemForState(Module.FS, '/');
+                                    if (rawData) {
+                                        blob = new Blob([rawData]);
+                                        console.log("[SNES] FS Scan Successful");
+                                    }
+                                }
+                            }
+
+                            return blob;
+                        })(),
+                        timeoutPromise
+                    ]);
+
+                    if (!data) throw new Error("No data returned");
+
+                    // 3. Process Success
+                    currentSaveBlob = data;
+                    const buffer = await data.arrayBuffer();
+                    
+                    window.parent.postMessage({ 
+                        command: 'export_state', 
+                        slot: currentSlot,
+                        romName: pendingConfig.romName, 
+                        data: buffer 
+                    }, '*');
+                    
+                    showNotification(`SAVED SLOT ${currentSlot} ✓`, 3000);
+
+                } catch(err) { 
+                    console.error("[SNES] SAVE ERROR:", err);
+                    showNotification(`SAVE FAILED: ${err.message}`, 4000); 
+                }
+            }
+
+            // --- LOAD STATE (Key '4') ---
+            if (e.key === '4' || e.code === 'Digit4' || e.code === 'Numpad4') {
+                e.preventDefault(); 
+                e.stopPropagation();
+                
+                if (currentSaveBlob) {
+                    try {
+                        showNotification(`LOADING SLOT ${currentSlot}...`, 0);
+                        await emulatorInstance.loadState(currentSaveBlob);
+                        showNotification("STATE LOADED ✓", 2000);
+                    } catch(err) { 
+                        console.error("Load Exception:", err);
+                        showNotification("LOAD ERROR", 3000); 
+                    }
+                } else { 
+                    showNotification(`SLOT ${currentSlot} EMPTY`, 2000); 
+                }
+            }
+        }, { passive: false });
+
+        async function launchEmulator() {
+            if (!pendingConfig || !pendingConfig.romBlob) return;
+
+            const container = document.getElementById('emulator-container');
+            const overlay = document.getElementById('start-overlay');
+            
+            try {
+                if (window.emulatorAudioContext && window.emulatorAudioContext.state === 'suspended') {
+                    await window.emulatorAudioContext.resume();
+                }
+
+                overlay.style.display = 'none';
+                container.innerHTML = '';
+                
+                const canvas = document.createElement('canvas');
+                canvas.tabIndex = 0; 
+                container.appendChild(canvas);
+                canvas.focus();
+
+                const romToLoad = new File([pendingConfig.romBlob], INTERNAL_ROM_NAME);
+
+                // Initialize State if passed
+                if (pendingConfig.initialState) {
+                    if (pendingConfig.initialState instanceof Blob) {
+                         currentSaveBlob = pendingConfig.initialState;
+                    } else {
+                         currentSaveBlob = new Blob([pendingConfig.initialState]);
+                    }
+                }
+                
+                if (pendingConfig.initialSlot) currentSlot = pendingConfig.initialSlot;
+
+                emulatorInstance = await Nostalgist.launch({
+                    element: canvas, 
+                    rom: romToLoad,
+                    core: pendingConfig.coreConfig,
+                    retroarchConfig: {
+                        savestate_directory: '/states', // Try to guide it
+                        savestate_auto_index: false,
+                        savestate_auto_save: false,
+                        savestate_auto_load: false,
+                        ...pendingConfig.retroarchConfig
+                    }
+                });
+                
+                // Force create the directory just in case
+                try {
+                    const Module = emulatorInstance.getEmscriptenModule();
+                    if (Module && Module.FS && !Module.FS.analyzePath('/states').exists) {
+                        Module.FS.mkdir('/states');
+                    }
+                } catch(e) {}
+
+                // Load initial state if exists
+                if (currentSaveBlob) {
+                    setTimeout(async () => {
+                        try {
+                            await emulatorInstance.loadState(currentSaveBlob);
+                            showNotification(`RESTORED SLOT ${currentSlot}`, 2000);
+                        } catch(e) { console.warn("Auto-load failed", e); }
+                    }, 1000);
+                }
+
+                window.parent.postMessage({ status: 'running' }, '*');
+                canvas.focus();
+
+            } catch (e) { 
+                console.error("Launch Error:", e);
+                window.parent.postMessage({ status: 'error', message: e.toString() }, '*'); 
+            }
+        }
+
+        window.addEventListener('message', async (event) => {
+            const { command } = event.data;
+            
+            if (command === 'start') {
+                pendingConfig = event.data;
+                document.getElementById('start-overlay').style.display = 'flex';
+            }
+            
+            else if (command === 'import_slot') {
+                if (event.data.slot !== undefined) currentSlot = event.data.slot;
+                
+                if (event.data.blob || event.data.data) {
+                    const rawData = event.data.blob || event.data.data;
+                    currentSaveBlob = new Blob([rawData]);
+                    showNotification(`SLOT ${currentSlot} READY`, 2000);
+                } else {
+                    currentSaveBlob = null;
+                    showNotification(`SLOT ${currentSlot} EMPTY`, 2000);
+                }
+            }
+            
+            else if (command === 'mute') {
+                const ctx = window.emulatorAudioContext;
+                if (ctx && ctx._masterGain) {
+                    const isMuted = ctx._masterGain.gain.value < 0.01;
+                    ctx._masterGain.gain.setTargetAtTime(isMuted ? 1.0 : 0.0, ctx.currentTime, 0.1);
+                }
+            }
+        });
+        
+        window.addEventListener("gamepadconnected", (e) => {
+            window.parent.postMessage({ status: 'gamepad_connected', id: e.gamepad.id }, '*');
+        });
+
+        window.addEventListener('click', () => {
+             const canvas = document.querySelector('canvas');
+             if(canvas) canvas.focus();
+        });
+
+        document.getElementById('start-btn').addEventListener('click', launchEmulator);
+    </script>
+</body>
+</html>
