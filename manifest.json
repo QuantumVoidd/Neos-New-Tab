@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Neo's New Tab",
-  "version": "3.52.0",
+  "version": "3.53.0",
   "description": "A high-performance Matrix-style new tab dashboard with customizable visuals and Sentinel Swarm.",
   "icons": {
     "16": "icon16.png",
@@ -27,7 +27,7 @@
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; frame-src https://eyes.nasa.gov https://discord.com https://github.com https://quantumvoidd.github.io blob: data:;",
-    "sandbox": "sandbox allow-scripts allow-forms allow-popups allow-modals; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; worker-src 'self' blob:; child-src 'self' blob:;"
+    "sandbox": "sandbox allow-scripts allow-forms allow-popups allow-modals; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' blob:; worker-src 'self' blob:; child-src 'self' blob:;"
   },
   "sandbox": {
     "pages": [
@@ -38,7 +38,22 @@
       "psx_sandbox.html",
       "nes_sandbox.html",
       "Emulators/sms/sms_sandbox.html",
-      "Emulators/gbc/gbc_sandbox.html"
+      "Emulators/gbc/gbc_sandbox.html",
+      "Arcade/space_invaders/spaceinvaders_sandbox.html",
+      "Arcade/pacman/pacman_sandbox.html",
+      "Arcade/mspacman/mspacman_sandbox.html",
+      "Arcade/frogger/frogger_sandbox.html",
+      "Arcade/asteroids/asteroids_sandbox.html",
+      "Arcade/donkeykong/donkeykong_sandbox.html",
+      "Games/matrixrampage/rampage.html",
+      "Games/matrixrampage2/rampage2.html",
+      "Games/matrixpandemonium/pandemonium.html",
+      "Games/citizensofzion/citizensofzion.html",
+      "Games/matrixdockdefence/matrixdockdefence.html",
+      "Games/matrixoverloaded/matrixoverloaded.html",
+      "Games/matrixtunnelrecon/matrixtunnelrecon.html",
+      "Games/matrixbullettime/bullettime.html",
+      "Games/matrixfighter/matrixfighter.html"
     ]
   },
   "chrome_url_overrides": {
@@ -121,7 +136,22 @@
         "snes_sandbox.html",
         "gba_sandbox.html",
         "psx_sandbox.html",
-        "nes_sandbox.html"
+        "nes_sandbox.html",
+        "Arcade/space_invaders/*",
+        "Arcade/pacman/*",
+        "Arcade/mspacman/*",
+        "Arcade/frogger/*",
+        "Arcade/asteroids/*",
+        "Arcade/donkeykong/*",
+        "Games/matrixrampage/*",
+        "Games/matrixrampage2/*",
+        "Games/matrixpandemonium/*",
+        "Games/citizensofzion/*",
+        "Games/matrixdockdefence/*",
+        "Games/matrixoverloaded/*",
+        "Games/matrixtunnelrecon/*",
+        "Games/matrixbullettime/*",
+        "Games/matrixfighter/*"
       ],
       "matches": [
         "<all_urls>"

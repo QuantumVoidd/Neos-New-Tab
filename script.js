@@ -61,6 +61,12 @@ let explorerStack = []; // Added for navigation depth tracking
 let explorerPath = ["root"]; // Tracks folder names for breadcrumbs
 window.isExplorerDeleteMode = false;
 
+// --- ARCADE RAIN GLOBALS ---
+let matrixRain;      // Existing bottom bar
+let topMatrixRain;   // New top bar
+let topCanvas, tctx;
+let arcadeAnimationId = null;
+
 // --- GBC SAVE STATE SYNC LOGIC ---
 // Called by gbc-controller.js after an export/save
 window.syncGbcSavesToExplorer = function() {
@@ -3678,579 +3684,6 @@ async function openAsteroidTerminal() {
     await streamText(output, `> SYSTEM READY.\n`);
 }
 
-async function openTunnelGame() {
-    const modal = document.getElementById('matrix-modal');
-    const output = document.getElementById('terminal-output');
-    const input = document.getElementById('terminal-cmd-input');
-
-    if (!modal || !output || !input) return;
-    
-    input.placeholder = "Type 'exit' to close...";
-
-    // Purge previous
-    purgeTerminalMedia();
-
-    // Reset UI
-    modal.classList.remove('hidden');
-    output.innerHTML = "";
-    input.value = "";
-    terminalCurrentData = null;
-    
-    // Init Effects
-    initTerminalRain();
-    window.addEventListener('resize', initTerminalRain);
-    initTerminalCursor();
-    
-    await streamText(output, "> INITIALIZING TUNNEL RECONNAISSANCE SIMULATION...\n> ESTABLISHING SECURE CONNECTION...\n");
-
-    // Container
-    const frame = createMediaFrame(); 
-    frame.style.width = "101%";
-    frame.style.maxWidth = "103%";
-    frame.style.boxSizing = "border-box";
-    frame.style.marginTop = "5px"; 
-    frame.style.marginBottom = "5px";
-    
-    const wrapper = document.createElement('div');
-    wrapper.className = 'media-wrapper';
-    
-    wrapper.style.position = 'relative'; 
-    wrapper.style.width = '100%';
-    wrapper.style.height = '61vh'; 
-    wrapper.style.minHeight = '300px'; 
-    wrapper.style.backgroundColor = '#000'; 
-
-    // Iframe
-    const iframe = document.createElement('iframe');
-    
-    // --- THIS IS THE FIX ---
-    // We point to the local file using chrome.runtime.getURL
-    iframe.src = chrome.runtime.getURL("Games/game.html");
-    
-    iframe.style.width = "100%";
-    iframe.style.height = "100%";
-    iframe.style.border = "none";
-    iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
-    
-    wrapper.appendChild(iframe);
-    frame.appendChild(wrapper);
-    output.appendChild(frame);
-
-    input.focus();
-    await streamText(output, `> SIMULATION LOADED. PREPARE FOR ENTRY.\n`);
-}
-async function openMatrixRampageGame() {
-    const modal = document.getElementById('matrix-modal');
-    const output = document.getElementById('terminal-output');
-    const input = document.getElementById('terminal-cmd-input');
-
-    if (!modal || !output || !input) return;
-    
-    input.placeholder = "Type 'exit' to close...";
-
-    // Purge previous
-    purgeTerminalMedia();
-
-    modal.classList.remove('hidden');
-    output.innerHTML = "";
-    input.value = "";
-    terminalCurrentData = null;
-    
-    initTerminalRain();
-    window.addEventListener('resize', initTerminalRain);
-    initTerminalCursor();
-    
-    await streamText(output, "> LOADING COMBAT TRAINING PROGRAM: RELOADED...\n> ACCESSING MAINFRAME...\n");
-
-    const frame = createMediaFrame(); 
-    frame.style.width = "100%";
-    frame.style.maxWidth = "100%";
-    frame.style.boxSizing = "border-box";
-    frame.style.marginTop = "5px"; 
-    frame.style.marginBottom = "5px";
-    
-    const wrapper = document.createElement('div');
-    wrapper.className = 'media-wrapper';
-    wrapper.style.position = 'relative'; 
-    wrapper.style.width = '100%';
-    wrapper.style.height = '61vh'; // Matching our perfected height
-    wrapper.style.minHeight = '300px'; 
-    wrapper.style.backgroundColor = '#000'; 
-    wrapper.style.overflow = 'hidden'; // Prevents bottom leaking
-    wrapper.style.borderRadius = '2px';
-
-    const iframe = document.createElement('iframe');
-    
-    // --- LOCAL LINK FIX ---
-    iframe.src = chrome.runtime.getURL("Games/rampage.html");
-    
-    iframe.style.width = "100%";
-    iframe.style.height = "109%";
-    iframe.style.border = "none";
-    iframe.style.display = "block";
-    iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
-    
-    addFullscreenOverlay(wrapper, iframe);
-
-    wrapper.appendChild(iframe);
-    frame.appendChild(wrapper);
-    output.appendChild(frame);
-
-    input.focus();
-    await streamText(output, `> PROGRAM READY. FREE YOUR MIND.\n`);
-}
-
-async function openMatrixPandemoniumGame() {
-    const modal = document.getElementById('matrix-modal');
-    const output = document.getElementById('terminal-output');
-    const input = document.getElementById('terminal-cmd-input');
-
-    if (!modal || !output || !input) return;
-    
-    input.placeholder = "Type 'exit' to close...";
-
-    // Purge previous
-    purgeTerminalMedia();
-
-    modal.classList.remove('hidden');
-    output.innerHTML = "";
-    input.value = "";
-    terminalCurrentData = null;
-    
-    initTerminalRain();
-    window.addEventListener('resize', initTerminalRain);
-    initTerminalCursor();
-    
-    await streamText(output, "> LOADING COMBAT TRAINING PROGRAM: RELOADED...\n> ACCESSING MAINFRAME...\n");
-
-    const frame = createMediaFrame(); 
-    frame.style.width = "100%";
-    frame.style.maxWidth = "100%";
-    frame.style.boxSizing = "border-box";
-    frame.style.marginTop = "5px"; 
-    frame.style.marginBottom = "5px";
-    
-    const wrapper = document.createElement('div');
-    wrapper.className = 'media-wrapper';
-    wrapper.style.position = 'relative'; 
-    wrapper.style.width = '100%';
-    wrapper.style.height = '61vh'; // Matching our perfected height
-    wrapper.style.minHeight = '300px'; 
-    wrapper.style.backgroundColor = '#000'; 
-    wrapper.style.overflow = 'hidden'; // Prevents bottom leaking
-    wrapper.style.borderRadius = '2px';
-
-    const iframe = document.createElement('iframe');
-    
-    // --- LOCAL LINK FIX ---
-    iframe.src = chrome.runtime.getURL("Games/pandemonium.html");
-    
-    iframe.style.width = "100%";
-    iframe.style.height = "109%";
-    iframe.style.border = "none";
-    iframe.style.display = "block";
-    iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
-
-    addFullscreenOverlay(wrapper, iframe);
-
-    wrapper.appendChild(iframe);
-    frame.appendChild(wrapper);
-    output.appendChild(frame);
-
-    input.focus();
-    await streamText(output, `> PROGRAM READY. FREE YOUR MIND.\n`);
-}
-    async function openCitizensOfZionGame() {
-    const modal = document.getElementById('matrix-modal');
-    const output = document.getElementById('terminal-output');
-    const input = document.getElementById('terminal-cmd-input');
-
-    if (!modal || !output || !input) return;
-    
-    input.placeholder = "Type 'exit' to close...";
-
-    // Purge previous
-    purgeTerminalMedia();
-
-    modal.classList.remove('hidden');
-    output.innerHTML = "";
-    input.value = "";
-    terminalCurrentData = null;
-    
-    initTerminalRain();
-    window.addEventListener('resize', initTerminalRain);
-    initTerminalCursor();
-    
-    await streamText(output, "> LOADING COMBAT TRAINING PROGRAM: RELOADED...\n> ACCESSING MAINFRAME...\n");
-
-    const frame = createMediaFrame(); 
-    frame.style.width = "100%";
-    frame.style.maxWidth = "100%";
-    frame.style.boxSizing = "border-box";
-    frame.style.marginTop = "5px"; 
-    frame.style.marginBottom = "5px";
-    
-    const wrapper = document.createElement('div');
-    wrapper.className = 'media-wrapper';
-    wrapper.style.position = 'relative'; 
-    wrapper.style.width = '100%';
-    wrapper.style.height = '61vh'; // Matching our perfected height
-    wrapper.style.minHeight = '300px'; 
-    wrapper.style.backgroundColor = '#000'; 
-    wrapper.style.overflow = 'hidden'; // Prevents bottom leaking
-    wrapper.style.borderRadius = '2px';
-
-    const iframe = document.createElement('iframe');
-    
-    // --- LOCAL LINK FIX ---
-    iframe.src = chrome.runtime.getURL("Games/citizensofzion.html");
-    
-    iframe.style.width = "100%";
-    iframe.style.height = "103%";
-    iframe.style.border = "none";
-    iframe.style.display = "block";
-    iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
-
-    addFullscreenOverlay(wrapper, iframe);
-
-
-    wrapper.appendChild(iframe);
-    frame.appendChild(wrapper);
-    output.appendChild(frame);
-
-    input.focus();
-    await streamText(output, `> PROGRAM READY. FREE YOUR MIND.\n`);
-}
-
-async function openDockDefenceGame() {
-    const modal = document.getElementById('matrix-modal');
-    const output = document.getElementById('terminal-output');
-    const input = document.getElementById('terminal-cmd-input');
-
-    if (!modal || !output || !input) return;
-    
-    input.placeholder = "Type 'exit' to close...";
-
-    // Purge previous
-    purgeTerminalMedia();
-
-    modal.classList.remove('hidden');
-    output.innerHTML = "";
-    input.value = "";
-    terminalCurrentData = null;
-    
-    initTerminalRain();
-    window.addEventListener('resize', initTerminalRain);
-    initTerminalCursor();
-    
-    await streamText(output, "> LOADING COMBAT TRAINING PROGRAM: RELOADED...\n> ACCESSING MAINFRAME...\n");
-
-    const frame = createMediaFrame(); 
-    frame.style.width = "101%";
-    frame.style.maxWidth = "103%";
-    frame.style.boxSizing = "border-box";
-    frame.style.marginTop = "5px"; 
-    frame.style.marginBottom = "5px";
-    
-    const wrapper = document.createElement('div');
-    wrapper.className = 'media-wrapper';
-    wrapper.style.position = 'relative'; 
-    wrapper.style.width = '100%';
-    wrapper.style.height = '61vh'; // Matching our perfected height
-    wrapper.style.minHeight = '300px'; 
-    wrapper.style.backgroundColor = '#000'; 
-    wrapper.style.overflow = 'hidden'; // Prevents bottom leaking
-    wrapper.style.borderRadius = '2px';
-
-    const iframe = document.createElement('iframe');
-    
-    // --- LOCAL LINK FIX ---
-    iframe.src = chrome.runtime.getURL("Games/dockdefence.html");
-    
-    iframe.style.width = "100%";
-    iframe.style.height = "103%";
-    iframe.style.border = "none";
-    iframe.style.display = "block";
-    iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
-
-    addFullscreenOverlay(wrapper, iframe);
-
-    wrapper.appendChild(iframe);
-    frame.appendChild(wrapper);
-    output.appendChild(frame);
-
-    input.focus();
-    await streamText(output, `> PROGRAM READY. FREE YOUR MIND.\n`);
-}
-
-async function openMatrixOverloadedGame() {
-    const modal = document.getElementById('matrix-modal');
-    const output = document.getElementById('terminal-output');
-    const input = document.getElementById('terminal-cmd-input');
-
-    if (!modal || !output || !input) return;
-    
-    input.placeholder = "Type 'exit' to close...";
-
-    // Purge previous
-    purgeTerminalMedia();
-
-    modal.classList.remove('hidden');
-    output.innerHTML = "";
-    input.value = "";
-    terminalCurrentData = null;
-    
-    initTerminalRain();
-    window.addEventListener('resize', initTerminalRain);
-    initTerminalCursor();
-    
-    await streamText(output, "> LOADING COMBAT TRAINING PROGRAM: RELOADED...\n> ACCESSING MAINFRAME...\n");
-
-    const frame = createMediaFrame(); 
-    frame.style.width = "100%";
-    frame.style.maxWidth = "100%";
-    frame.style.boxSizing = "border-box";
-    frame.style.marginTop = "5px"; 
-    frame.style.marginBottom = "5px";
-    
-    const wrapper = document.createElement('div');
-    wrapper.className = 'media-wrapper';
-    wrapper.style.position = 'relative'; 
-    wrapper.style.width = '100%';
-    wrapper.style.height = '61vh'; // Matching our perfected height
-    wrapper.style.minHeight = '300px'; 
-    wrapper.style.backgroundColor = '#000'; 
-    wrapper.style.overflow = 'hidden'; // Prevents bottom leaking
-    wrapper.style.borderRadius = '2px';
-
-    const iframe = document.createElement('iframe');
-    
-    // --- LOCAL LINK FIX ---
-    iframe.src = chrome.runtime.getURL("Games/overloaded.html");
-    
-    iframe.style.width = "100%";
-    iframe.style.height = "103%";
-    iframe.style.border = "none";
-    iframe.style.display = "block";
-    iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
-
-    addFullscreenOverlay(wrapper, iframe);
-
-    wrapper.appendChild(iframe);
-    frame.appendChild(wrapper);
-    output.appendChild(frame);
-
-    input.focus();
-    await streamText(output, `> PROGRAM READY. FREE YOUR MIND.\n`);
-}
-
-async function openMatrixRampage2Game() {
-    const modal = document.getElementById('matrix-modal');
-    const output = document.getElementById('terminal-output');
-    const input = document.getElementById('terminal-cmd-input');
-
-    if (!modal || !output || !input) return;
-    
-    input.placeholder = "Type 'exit' to close...";
-    purgeTerminalMedia();
-
-    modal.classList.remove('hidden');
-    output.innerHTML = "";
-    input.value = "";
-    terminalCurrentData = null;
-    
-    initTerminalRain();
-    window.addEventListener('resize', initTerminalRain);
-    initTerminalCursor();
-    
-    await streamText(output, "> LOADING COMBAT TRAINING PROGRAM: RAMPAGE V2...\n> ACCESSING MAINFRAME...\n");
-
-    // --- CROP CONFIGURATION ---
-    // This controls how much is cut off from the BOTTOM.
-    // Increase if you still see the ad (e.g., "80px").
-    const cutAmount = "35px"; 
-    // --------------------------
-
-    const frame = createMediaFrame(); 
-    frame.style.width = "100%";
-    frame.style.maxWidth = "100%";
-    frame.style.boxSizing = "border-box";
-    frame.style.marginTop = "5px"; 
-    frame.style.marginBottom = "5px";
-    
-    const wrapper = document.createElement('div');
-    wrapper.className = 'media-wrapper';
-    wrapper.style.position = 'relative'; 
-    wrapper.style.width = '100%';
-    wrapper.style.height = '61vh'; 
-    wrapper.style.minHeight = '300px'; 
-    wrapper.style.backgroundColor = '#000'; 
-    wrapper.style.overflow = 'hidden'; 
-    wrapper.style.borderRadius = '2px';
-
-    const iframe = document.createElement('iframe');
-    iframe.src = chrome.runtime.getURL("Games/rampage2.html");
-    
-    // --- THE BOTTOM CROP LOGIC ---
-    iframe.style.width = "100%";
-    
-    // 1. Make the iframe taller (Game + Ad area)
-    iframe.style.height = `calc(100% + ${cutAmount})`; 
-    
-    // 2. Ensure the top stays aligned (The extra height spills off the bottom)
-    iframe.style.marginTop = "0px";
-    iframe.style.border = "none";
-    iframe.style.display = "block";
-    iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
-
-    addFullscreenOverlay(wrapper, iframe);
-
-    wrapper.appendChild(iframe);
-    frame.appendChild(wrapper);
-    output.appendChild(frame);
-
-    input.focus();
-    await streamText(output, `> PROGRAM READY. FREE YOUR MIND.\n`);
-}
-
-async function openMatrixBulletTimeGame() {
-    const modal = document.getElementById('matrix-modal');
-    const output = document.getElementById('terminal-output');
-    const input = document.getElementById('terminal-cmd-input');
-
-    if (!modal || !output || !input) return;
-    
-    input.placeholder = "Type 'exit' to close...";
-    purgeTerminalMedia();
-
-    modal.classList.remove('hidden');
-    output.innerHTML = "";
-    input.value = "";
-    terminalCurrentData = null;
-    
-    initTerminalRain();
-    window.addEventListener('resize', initTerminalRain);
-    initTerminalCursor();
-    
-    await streamText(output, "> LOADING COMBAT TRAINING PROGRAM: RAMPAGE V2...\n> ACCESSING MAINFRAME...\n");
-
-    // --- CROP CONFIGURATION ---
-    // This controls how much is cut off from the BOTTOM.
-    // Increase if you still see the ad (e.g., "80px").
-    const cutAmount = "35px"; 
-    // --------------------------
-
-    const frame = createMediaFrame(); 
-    frame.style.width = "100%";
-    frame.style.maxWidth = "100%";
-    frame.style.boxSizing = "border-box";
-    frame.style.marginTop = "5px"; 
-    frame.style.marginBottom = "5px";
-    
-    const wrapper = document.createElement('div');
-    wrapper.className = 'media-wrapper';
-    wrapper.style.position = 'relative'; 
-    wrapper.style.width = '100%';
-    wrapper.style.height = '61vh'; 
-    wrapper.style.minHeight = '300px'; 
-    wrapper.style.backgroundColor = '#000'; 
-    wrapper.style.overflow = 'hidden'; 
-    wrapper.style.borderRadius = '2px';
-
-    const iframe = document.createElement('iframe');
-    iframe.src = chrome.runtime.getURL("Games/bullettime.html");
-    
-    // --- THE BOTTOM CROP LOGIC ---
-    iframe.style.width = "100%";
-    
-    // 1. Make the iframe taller (Game + Ad area)
-    iframe.style.height = `calc(100% + ${cutAmount})`; 
-    
-    // 2. Ensure the top stays aligned (The extra height spills off the bottom)
-    iframe.style.marginTop = "0px";
-    iframe.style.border = "none";
-    iframe.style.display = "block";
-    iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
-
-    addFullscreenOverlay(wrapper, iframe);
-
-    wrapper.appendChild(iframe);
-    frame.appendChild(wrapper);
-    output.appendChild(frame);
-
-    input.focus();
-    await streamText(output, `> PROGRAM READY. FREE YOUR MIND.\n`);
-}
-
-async function openMatrixFighterGame() {
-    const modal = document.getElementById('matrix-modal');
-    const output = document.getElementById('terminal-output');
-    const input = document.getElementById('terminal-cmd-input');
-
-    if (!modal || !output || !input) return;
-    
-    input.placeholder = "Type 'exit' to close...";
-    purgeTerminalMedia();
-
-    modal.classList.remove('hidden');
-    output.innerHTML = "";
-    input.value = "";
-    terminalCurrentData = null;
-    
-    initTerminalRain();
-    window.addEventListener('resize', initTerminalRain);
-    initTerminalCursor();
-    
-    await streamText(output, "> LOADING COMBAT TRAINING PROGRAM: RAMPAGE V2...\n> ACCESSING MAINFRAME...\n");
-
-    // --- CROP CONFIGURATION ---
-    // This controls how much is cut off from the BOTTOM.
-    // Increase if you still see the ad (e.g., "80px").
-    const cutAmount = "0px"; 
-    // --------------------------
-
-    const frame = createMediaFrame(); 
-    frame.style.width = "100%";
-    frame.style.maxWidth = "100%";
-    frame.style.boxSizing = "border-box";
-    frame.style.marginTop = "5px"; 
-    frame.style.marginBottom = "5px";
-    
-    const wrapper = document.createElement('div');
-    wrapper.className = 'media-wrapper';
-    wrapper.style.position = 'relative'; 
-    wrapper.style.width = '100%';
-    wrapper.style.height = '61vh'; 
-    wrapper.style.minHeight = '300px'; 
-    wrapper.style.backgroundColor = '#000'; 
-    wrapper.style.overflow = 'hidden'; 
-    wrapper.style.borderRadius = '2px';
-
-    const iframe = document.createElement('iframe');
-    iframe.src = chrome.runtime.getURL("Games/matrixfighter.html");
-    
-    // --- THE BOTTOM CROP LOGIC ---
-    iframe.style.width = "100%";
-    
-    // 1. Make the iframe taller (Game + Ad area)
-    iframe.style.height = `calc(100% + ${cutAmount})`; 
-    
-    // 2. Ensure the top stays aligned (The extra height spills off the bottom)
-    iframe.style.marginTop = "0px";
-    iframe.style.border = "none";
-    iframe.style.display = "block";
-    iframe.allow = "autoplay; gamepad; fullscreen; accelerometer; encrypted-media; gyroscope; picture-in-picture";
-
-    addFullscreenOverlay(wrapper, iframe);
-
-    wrapper.appendChild(iframe);
-    frame.appendChild(wrapper);
-    output.appendChild(frame);
-
-    input.focus();
-    await streamText(output, `> PROGRAM READY. FREE YOUR MIND.\n`);
-}
-
 function openOracleTerminal() {
     const modal = document.getElementById('matrix-modal');
     const output = document.getElementById('terminal-output');
@@ -5021,11 +4454,11 @@ function openGame(gameName) {
         openDockDefenceGame();
     } else if (gameName === 'overloaded') {
         openMatrixOverloadedGame();
-    } else if (gameName === 'rampage2') { // <--- THIS WAS MISSING
+    } else if (gameName === 'rampage2') { 
         openMatrixRampage2Game();
-    } else if (gameName === 'bullettime') { // <--- THIS WAS MISSING
+    } else if (gameName === 'bullettime') {  
         openMatrixBulletTimeGame();
-    } else if (gameName === 'matrixfighter') { // <--- THIS WAS MISSING
+    } else if (gameName === 'matrixfighter') { 
         openMatrixFighterGame();
   }
 }
@@ -5383,169 +4816,708 @@ async function openNewsInTerminal(article) {
         window.addEventListener('resize', initTerminalRain);
     }
     if (typeof initTerminalCursor === 'function') initTerminalCursor();
-    setTimeout(() => { input.focus(); }, 50);
+    setTimeout(() => { input.focus(); },  50);
 
-    // 3. Stream Header Info
-    const dateStr = article.pubDate ? new Date(article.pubDate).toLocaleString().toUpperCase() : "UNKNOWN DATE";
-    await streamText(output, `> INCOMING NEWS TRANSMISSION...\n> SOURCE: ${article.source.toUpperCase()}\n> DATE:   ${dateStr}\n\n`);
-    await streamText(output, `> HEADLINE: ${article.title.toUpperCase()}\n`);
-    await streamText(output, `----------------------------------------\n\n`);
+// 3. Stream Header Info
+const dateStr = article.pubDate ? new Date(article.pubDate).toLocaleString().toUpperCase() : "UNKNOWN DATE";
+await streamText(output, `> INCOMING NEWS TRANSMISSION...\n> SOURCE: ${article.source.toUpperCase()}\n> DATE:   ${dateStr}\n\n`);
+await streamText(output, `> HEADLINE: ${article.title.toUpperCase()}\n`);
+await streamText(output, `----------------------------------------\n\n`);
 
-    // 4. DEEP SCAN LOGIC (The Fix)
-    // First, check if the RSS feed gave us enough content (usually it doesn't)
-    let contentToDisplay = article.fullContent || article.description;
-    const isContentShort = !contentToDisplay || contentToDisplay.length < 500;
+// 4. DEEP SCAN LOGIC (The Fix)
+// First, check if the RSS feed gave us enough content (usually it doesn't)
+let contentToDisplay = article.fullContent || article.description;
+const isContentShort = !contentToDisplay || contentToDisplay.length < 500;
 
-    if (isContentShort) {
-        await streamText(output, "> RSS DATA FRAGMENTED. INITIATING DEEP SCAN OF SOURCE...\n");
-        await streamText(output, `> TARGET: ${article.link}\n`);
-        await streamText(output, "> BYPASSING FIREWALLS... ");
+if (isContentShort) {
+    await streamText(output, "> RSS DATA FRAGMENTED. INITIATING DEEP SCAN OF SOURCE...\n");
+    await streamText(output, `> TARGET: ${article.link}\n`);
+    await streamText(output, "> BYPASSING FIREWALLS... ");
+    
+    try {
+        // Fetch the actual webpage
+        const res = await fetch(article.link);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         
-        try {
-            // Fetch the actual webpage
-            const res = await fetch(article.link);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            
-            await streamText(output, "ACCESS GRANTED.\n> PARSING HTML STRUCTURE... ");
-            
-            const htmlText = await res.text();
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlText, 'text/html');
-            
-            // Heuristic: Find the article body
-            // We look for common tag names used by news sites
-            let container = doc.querySelector('article') || 
-                            doc.querySelector('[role="main"]') || 
-                            doc.querySelector('.story-body') || 
-                            doc.querySelector('.article-body') || 
-                            doc.querySelector('.post-content') || 
-                            doc.querySelector('#content') || 
-                            doc.body;
-
-            // Extract all paragraph text
-            const paragraphs = Array.from(container.querySelectorAll('p'));
-            
-            // Filter out junk (menus, copyrights, short blurbs)
-            const cleanParagraphs = paragraphs
-                .map(p => p.textContent.trim())
-                .filter(text => {
-                    if (text.length < 60) return false; // Too short to be news
-                    if (text.toLowerCase().includes("cookies")) return false;
-                    if (text.toLowerCase().includes("copyright")) return false;
-                    if (text.toLowerCase().includes("all rights reserved")) return false;
-                    return true;
-                });
-            
-            if (cleanParagraphs.length > 0) {
-                // Success! Use the scraped text
-                contentToDisplay = cleanParagraphs.join('\n\n');
-                await streamText(output, "SUCCESS.\n\n");
-            } else {
-                await streamText(output, "FAILED (NO DATA). USING SUMMARY.\n\n");
-            }
-
-        } catch (e) {
-            console.error("Deep Scan Error:", e);
-            await streamText(output, "CONNECTION LOST. FALLING BACK TO RSS SUMMARY.\n\n");
-        }
-    } else {
-        await streamText(output, "\n");
-    }
-
-    // 5. Stream the Final Content (Scraped or RSS)
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = contentToDisplay;
-    
-    // Remove scripts/styles just in case
-    const scripts = tempDiv.querySelectorAll('script, style');
-    scripts.forEach(s => s.remove());
-    
-    let cleanText = tempDiv.innerText || tempDiv.textContent || "";
-    
-    // Clean up whitespace
-    cleanText = cleanText.replace(/\n\s*\n/g, '\n\n').trim();
-    
-    if (cleanText) {
-        await streamText(output, cleanText + "\n\n");
-    } else {
-        await streamText(output, "> [DATA ENCRYPTED: CONTENT UNAVAILABLE]\n\n");
-    }
-
-    // 6. Render Media (Image/Video from RSS)
-    if (article.mediaUrl) {
-        const frame = createMediaFrame();
-        const wrapper = document.createElement('div');
-        wrapper.className = 'media-wrapper';
+        await streamText(output, "ACCESS GRANTED.\n> PARSING HTML STRUCTURE... ");
         
-        let mediaEl;
+        const htmlText = await res.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlText, 'text/html');
         
-        if (article.mediaType === 'video') {
-            mediaEl = document.createElement('video');
-            mediaEl.src = article.mediaUrl;
-            mediaEl.autoplay = true;
-            mediaEl.loop = true;
-            mediaEl.muted = true;
-            mediaEl.controls = false;
-            mediaEl.className = 'terminal-media';
-            
-            const controls = document.createElement('div');
-            controls.className = 'media-controls';
-            
-            const btnVol = createButton('🔇', () => {
-                mediaEl.muted = !mediaEl.muted;
-                btnVol.innerHTML = mediaEl.muted ? '🔇' : '🔊';
+        // Heuristic: Find the article body
+        // We look for common tag names used by news sites
+        let container = doc.querySelector('article') || 
+                        doc.querySelector('[role="main"]') || 
+                        doc.querySelector('.story-body') || 
+                        doc.querySelector('.article-body') || 
+                        doc.querySelector('.post-content') || 
+                        doc.querySelector('#content') || 
+                        doc.body;
+
+        // Extract all paragraph text
+        const paragraphs = Array.from(container.querySelectorAll('p'));
+        
+        // Filter out junk (menus, copyrights, short blurbs)
+        const cleanParagraphs = paragraphs
+            .map(p => p.textContent.trim())
+            .filter(text => {
+                if (text.length < 60) return false; // Too short to be news
+                if (text.toLowerCase().includes("cookies")) return false;
+                if (text.toLowerCase().includes("copyright")) return false;
+                if (text.toLowerCase().includes("all rights reserved")) return false;
+                return true;
             });
-            
-            const btnFull = createButton('⛶', () => toggleFullscreen(mediaEl));
-            
-            controls.appendChild(btnVol);
-            controls.appendChild(btnFull);
-            wrapper.appendChild(mediaEl);
-            wrapper.appendChild(controls);
-        } else {
-            mediaEl = document.createElement('img');
-            mediaEl.src = article.mediaUrl;
-            mediaEl.className = 'terminal-media';
-            
-            const controls = document.createElement('div');
-            controls.className = 'media-controls';
-            const btnFull = createButton('⛶', () => toggleFullscreen(mediaEl));
-            
-            controls.appendChild(btnFull);
-            wrapper.appendChild(mediaEl);
-            wrapper.appendChild(controls);
-        }
         
-        frame.appendChild(wrapper);
-        output.appendChild(frame);
-        await streamText(output, `\n> VISUAL ATTACHMENT RENDERED.\n`);
+        if (cleanParagraphs.length > 0) {
+            // Success! Use the scraped text
+            contentToDisplay = cleanParagraphs.join('\n\n');
+            await streamText(output, "SUCCESS.\n\n");
+        } else {
+            await streamText(output, "FAILED (NO DATA). USING SUMMARY.\n\n");
+        }
+
+    } catch (e) {
+        console.error("Deep Scan Error:", e);
+        await streamText(output, "CONNECTION LOST. FALLING BACK TO RSS SUMMARY.\n\n");
     }
+} else {
+    await streamText(output, "\n");
+}
 
-    // 7. Footer & Source Button
-    const btnContainer = document.createElement('div');
-    btnContainer.style.marginTop = "30px";
-    btnContainer.style.marginBottom = "50px";
-    btnContainer.style.textAlign = "center";
-    btnContainer.style.width = "100%";
-    
-    const sourceBtn = document.createElement('button');
-    sourceBtn.className = 'matrix-btn';
-    sourceBtn.textContent = "[ OPEN ORIGINAL SOURCE ]";
-    
-    sourceBtn.style.padding = "12px 24px";
-    sourceBtn.style.fontSize = "0.9rem";
-    sourceBtn.style.whiteSpace = "nowrap";      
-    sourceBtn.style.display = "inline-block";   
-    sourceBtn.style.width = "auto";             
-    sourceBtn.style.minWidth = "200px";         
-    sourceBtn.style.cursor = "pointer";
+// 5. Stream the Final Content (Scraped or RSS)
+const tempDiv = document.createElement('div');
+tempDiv.innerHTML = contentToDisplay;
 
-    sourceBtn.onclick = () => window.open(article.link, '_blank');
+// Remove scripts/styles just in case
+const scripts = tempDiv.querySelectorAll('script, style');
+scripts.forEach(s => s.remove());
+
+let cleanText = tempDiv.innerText || tempDiv.textContent || "";
+
+// Clean up whitespace
+cleanText = cleanText.replace(/\n\s*\n/g, '\n\n').trim();
+
+if (cleanText) {
+    await streamText(output, cleanText + "\n\n");
+} else {
+    await streamText(output, "> [DATA ENCRYPTED: CONTENT UNAVAILABLE]\n\n");
+}
+
+// 6. Render Media (Image/Video from RSS)
+if (article.mediaUrl) {
+    const frame = createMediaFrame();
+    const wrapper = document.createElement('div');
+    wrapper.className = 'media-wrapper';
     
-    btnContainer.appendChild(sourceBtn);
-    output.appendChild(btnContainer);
+    let mediaEl;
     
-    output.scrollTop = output.scrollHeight;
+    if (article.mediaType === 'video') {
+        mediaEl = document.createElement('video');
+        mediaEl.src = article.mediaUrl;
+        mediaEl.autoplay = true;
+        mediaEl.loop = true;
+        mediaEl.muted = true;
+        mediaEl.controls = false;
+        mediaEl.className = 'terminal-media';
+        
+        const controls = document.createElement('div');
+        controls.className = 'media-controls';
+        
+        const btnVol = createButton('🔇', () => {
+            mediaEl.muted = !mediaEl.muted;
+            btnVol.innerHTML = mediaEl.muted ? '🔇' : '🔊';
+        });
+        
+        const btnFull = createButton('⛶', () => toggleFullscreen(mediaEl));
+        
+        controls.appendChild(btnVol);
+        controls.appendChild(btnFull);
+        wrapper.appendChild(mediaEl);
+        wrapper.appendChild(controls);
+    } else {
+        mediaEl = document.createElement('img');
+        mediaEl.src = article.mediaUrl;
+        mediaEl.className = 'terminal-media';
+        
+        const controls = document.createElement('div');
+        controls.className = 'media-controls';
+        const btnFull = createButton('⛶', () => toggleFullscreen(mediaEl));
+        
+        controls.appendChild(btnFull);
+        wrapper.appendChild(mediaEl);
+        wrapper.appendChild(controls);
+    }
+    
+    frame.appendChild(wrapper);
+    output.appendChild(frame);
+    await streamText(output, `\n> VISUAL ATTACHMENT RENDERED.\n`);
+}
+
+// 7. Footer & Source Button
+const btnContainer = document.createElement('div');
+btnContainer.style.marginTop = "30px";
+btnContainer.style.marginBottom = "50px";
+btnContainer.style.textAlign = "center";
+btnContainer.style.width = "100%";
+
+const sourceBtn = document.createElement('button');
+sourceBtn.className = 'matrix-btn';
+sourceBtn.textContent = "[ OPEN ORIGINAL SOURCE ]";
+
+sourceBtn.style.padding = "12px 24px";
+sourceBtn.style.fontSize = "0.9rem";
+sourceBtn.style.whiteSpace = "nowrap";      
+sourceBtn.style.display = "inline-block";   
+sourceBtn.style.width = "auto";             
+sourceBtn.style.minWidth = "200px";         
+sourceBtn.style.cursor = "pointer";
+
+sourceBtn.onclick = () => window.open(article.link, '_blank');
+
+btnContainer.appendChild(sourceBtn);
+output.appendChild(btnContainer);
+
+output.scrollTop = output.scrollHeight;
+
 }
 
 window.openNewsInTerminal = openNewsInTerminal;
+
+// --- ARCADE MODE RAIN IMPLEMENTATION ---
+
+class MatrixRain {
+    constructor(canvas, ctx, dpr) {
+        this.canvas = canvas;
+        this.ctx = ctx;
+        this.dpr = dpr;
+        // Scale font size by DPR so it looks sharp on high-res screens
+        this.fontSize = 14 * this.dpr; 
+        this.initialize();
+    }
+
+    initialize() {
+        // Calculate columns based on scaled width and scaled font size
+        // (Result is the same number of columns, just sharper pixels)
+        this.columns = Math.floor(this.canvas.width / this.fontSize);
+        this.drops = Array(this.columns).fill(1);
+    }
+
+    draw() {
+        // 1. Ghost Grid Fix: Increased opacity to 0.25
+        // This wipes the previous frame faster, preventing the static "grid" look
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // 2. Sync Color with Global Theme
+        this.ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--theme-color');
+        
+        // 3. Font Config
+        // Explicitly set weight to 'normal' and use scaled font size
+        this.ctx.font = 'normal ' + this.fontSize + 'px "Courier New", monospace';
+
+        // 4. Draw Drops
+        // Safety check for alphabet
+        const chars = (typeof MATRIX_ALPHABET !== 'undefined') ? MATRIX_ALPHABET : "0123456789ABCDEF";
+
+        for (let i = 0; i < this.drops.length; i++) {
+            const text = chars.charAt(Math.floor(Math.random() * chars.length));
+            
+            // Draw text at the calculated column position
+            this.ctx.fillText(text, i * this.fontSize, this.drops[i] * this.fontSize);
+
+            // Reset drops randomly to create rain effect
+            if (this.drops[i] * this.fontSize > this.canvas.height && Math.random() > 0.975) {
+                this.drops[i] = 0;
+            }
+            this.drops[i]++;
+        }
+    }
+}
+
+// Global functions for Arcade Mode
+window.initMatrixRain = function() {
+    // 1. Get DPI for high-res support (Retina/4K screens)
+    const dpr = window.devicePixelRatio || 1;
+
+    // 2. Get Elements safely
+    const bottomEl = document.getElementById('matrix-canvas'); // Bottom bar
+    const topEl = document.getElementById('top-bar-canvas');   // Top bar
+
+    // 3. Initialize Bottom Bar (Only if it exists)
+    if (bottomEl) {
+        const ctx = bottomEl.getContext('2d');
+        
+        // Get the visual size (CSS pixels)
+        const rect = bottomEl.getBoundingClientRect();
+        
+        // Set internal resolution to (CSS Width * DPI)
+        bottomEl.width = rect.width * dpr;
+        bottomEl.height = rect.height * dpr;
+        
+        window.matrixRain = new MatrixRain(bottomEl, ctx, dpr);
+    }
+
+    // 4. Initialize Top Bar (Only if it exists)
+    if (topEl) {
+        const tctx = topEl.getContext('2d');
+        
+        // FIX: Replaced hardcoded CSS size (600x80) with dynamic measurement
+        const rect = topEl.getBoundingClientRect();
+
+        // Set internal resolution to scale with DPI AND dynamic width
+        topEl.width = rect.width * dpr;
+        topEl.height = rect.height * dpr;
+
+        window.topMatrixRain = new MatrixRain(topEl, tctx, dpr);
+    }
+
+    // 5. Start Animation Loop (If at least ONE exists)
+    if (window.matrixRain || window.topMatrixRain) {
+        if (typeof arcadeAnimationId !== 'undefined' && arcadeAnimationId) {
+            clearTimeout(arcadeAnimationId);
+        }
+        window.animateArcade();
+    }
+};
+
+window.animateArcade = function() {
+    const speedInput = document.getElementById('matrix-speed');
+    const speed = speedInput ? parseInt(speedInput.value) : 30;
+    const delay = 101 - speed;
+
+    // Draw whichever rains are active
+    if (window.matrixRain) window.matrixRain.draw();
+    if (window.topMatrixRain) window.topMatrixRain.draw();
+
+    arcadeAnimationId = setTimeout(() => {
+        requestAnimationFrame(window.animateArcade);
+    }, delay);
+};
+
+// Check if arcade mode is present on load
+document.addEventListener('DOMContentLoaded', () => {
+    // Attempt initialization if either canvas is found
+    if (document.getElementById('matrix-canvas') || document.getElementById('top-bar-canvas')) {
+        window.initMatrixRain();
+    }
+});
+
+// FIX: Automatically adjust if the user resizes the window
+window.addEventListener('resize', () => {
+    if (document.getElementById('matrix-canvas') || document.getElementById('top-bar-canvas')) {
+        window.initMatrixRain();
+    }
+});
+
+// ==========================================
+// SPACE INVADERS NATIVE BRIDGE
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const invaderBtn = document.getElementById('btn-spaceinvaders');
+    
+    if (invaderBtn) {
+        const newBtn = invaderBtn.cloneNode(true);
+        invaderBtn.parentNode.replaceChild(newBtn, invaderBtn);
+
+        newBtn.addEventListener('click', () => {
+            console.log("Initialize: Space Invaders Native");
+                        
+            loadScript("Arcade/space_invaders/spaceinvaders-controller.js").then(() => {
+                if (typeof window.openSpaceInvaders === 'function') {
+                    window.openSpaceInvaders(); 
+                } else {
+                    console.error("ERROR: spaceinvaders-controller.js logic failed to initialize.");
+                }
+            }).catch(err => {
+                console.error("Failed to load controller script:", err);
+            });
+        });
+    }
+});
+
+// ==========================================
+// PACMAN NATIVE BRIDGE
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const pacmanBtn = document.getElementById('btn-pacman');
+    
+    if (pacmanBtn) {
+        // Clone and replace to strip any old/stale event listeners
+        const newBtn = pacmanBtn.cloneNode(true);
+        pacmanBtn.parentNode.replaceChild(newBtn, pacmanBtn);
+
+        newBtn.addEventListener('click', () => {
+            console.log("Initialize: Pacman Native");
+                        
+            loadScript("Arcade/pacman/pacman-controller.js").then(() => {
+                if (typeof window.openPacman === 'function') {
+                    window.openPacman(); 
+                } else {
+                    console.error("ERROR: pacman-controller.js logic failed to initialize.");
+                }
+            }).catch(err => {
+                console.error("Failed to load controller script:", err);
+            });
+        });
+    }
+});
+
+// ==========================================
+// MSPACMAN NATIVE BRIDGE
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const mspacmanBtn = document.getElementById('btn-mspacman');
+    
+    if (mspacmanBtn) {
+        // Clone and replace to strip any old/stale event listeners
+        const newBtn = mspacmanBtn.cloneNode(true);
+        mspacmanBtn.parentNode.replaceChild(newBtn, mspacmanBtn);
+
+        newBtn.addEventListener('click', () => {
+            console.log("Initialize: MsPacman Native");
+                        
+            loadScript("Arcade/mspacman/mspacman-controller.js").then(() => {
+                if (typeof window.openMsPacman === 'function') {
+                    window.openMsPacman(); 
+                } else {
+                    console.error("ERROR: mspacman-controller.js logic failed to initialize.");
+                }
+            }).catch(err => {
+                console.error("Failed to load controller script:", err);
+            });
+        });
+    }
+});
+
+// ==========================================
+// FROGGER NATIVE BRIDGE
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const froggerBtn = document.getElementById('btn-frogger');
+    
+    if (froggerBtn) {
+        // Clone and replace to strip any old/stale event listeners
+        const newBtn = froggerBtn.cloneNode(true);
+        froggerBtn.parentNode.replaceChild(newBtn, froggerBtn);
+
+        newBtn.addEventListener('click', () => {
+            console.log("Initialize: Frogger Native");
+                        
+            loadScript("Arcade/frogger/frogger-controller.js").then(() => {
+                if (typeof window.openFrogger === 'function') {
+                    window.openFrogger(); 
+                } else {
+                    console.error("ERROR: frogger-controller.js logic failed to initialize.");
+                }
+            }).catch(err => {
+                console.error("Failed to load controller script:", err);
+            });
+        });
+    }
+});
+
+// ==========================================
+// ASTEROIDS NATIVE BRIDGE
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const asteroidsBtn = document.getElementById('btn-asteroids');
+    
+    if (asteroidsBtn) {
+        // Clone and replace to strip any old/stale event listeners
+        const newBtn = asteroidsBtn.cloneNode(true);
+        asteroidsBtn.parentNode.replaceChild(newBtn, asteroidsBtn);
+
+        newBtn.addEventListener('click', () => {
+            console.log("Initialize: Asteroids Native");
+                        
+            loadScript("Arcade/asteroids/asteroids-controller.js").then(() => {
+                if (typeof window.openAsteroids === 'function') {
+                    window.openAsteroids(); 
+                } else {
+                    console.error("ERROR: asteroids-controller.js logic failed to initialize.");
+                }
+            }).catch(err => {
+                console.error("Failed to load controller script:", err);
+            });
+        });
+    }
+});
+
+// ==========================================
+// DONKEY KONG NATIVE BRIDGE
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const donkeyBtn = document.getElementById('btn-donkey');
+    
+    if (donkeyBtn) {
+        // Clone and replace to strip any old/stale event listeners
+        const newBtn = donkeyBtn.cloneNode(true);
+        donkeyBtn.parentNode.replaceChild(newBtn, donkeyBtn);
+
+        newBtn.addEventListener('click', () => {
+            console.log("Initialize: Donkey Kong Native");
+                        
+            loadScript("Arcade/donkeykong/donkeykong-controller.js").then(() => {
+                if (typeof window.openDonkeyKong === 'function') {
+                    window.openDonkeyKong(); 
+                } else {
+                    console.error("ERROR: donkeykong-controller.js logic failed to initialize.");
+                }
+            }).catch(err => {
+                console.error("Failed to load controller script:", err);
+            });
+        });
+    }
+});
+
+// ==========================================
+// MATRIX RAMPAGE (SNAKE) NATIVE BRIDGE
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const snakeBtn = document.getElementById('btn-snake');
+    
+    if (snakeBtn) {
+        // Strip old listeners
+        const newBtn = snakeBtn.cloneNode(true);
+        snakeBtn.parentNode.replaceChild(newBtn, snakeBtn);
+
+        newBtn.addEventListener('click', () => {
+            console.log("Initialize: Matrix Rampage (Snake) Native");
+                        
+            loadScript("Games/matrixrampage/matrixrampage-controller.js").then(() => {
+                if (typeof window.openMatrixRampageGame === 'function') {
+                    window.openMatrixRampageGame(); 
+                } else {
+                    console.error("ERROR: matrixrampage-controller.js failed to initialize.");
+                }
+            }).catch(err => {
+                console.error("Failed to load controller script:", err);
+            });
+        });
+    }
+});
+
+// ==========================================
+// MATRIX RAMPAGE 2 NATIVE BRIDGE
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const rampage2Btn = document.getElementById('btn-rampage2');
+    
+    if (rampage2Btn) {
+        // Strip old listeners to prevent double-firing
+        const newBtn = rampage2Btn.cloneNode(true);
+        rampage2Btn.parentNode.replaceChild(newBtn, rampage2Btn);
+
+        newBtn.addEventListener('click', () => {
+            console.log("Initialize: Matrix Rampage 2 Native");
+                        
+            loadScript("Games/matrixrampage2/matrixrampage2-controller.js").then(() => {
+                // Assuming the global function follows a similar naming convention
+                if (typeof window.openMatrixRampage2Game === 'function') {
+                    window.openMatrixRampage2Game(); 
+                } else {
+                    console.error("ERROR: matrixrampage2-controller.js failed to initialize.");
+                }
+            }).catch(err => {
+                console.error("Failed to load Matrix Rampage 2 controller script:", err);
+            });
+        });
+    }
+});
+
+// ==========================================
+// MATRIX PANDEMONIUM NATIVE BRIDGE
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const pandemoniumBtn = document.getElementById('btn-pong');
+    
+    if (pandemoniumBtn) {
+        // Strip old listeners to prevent double-firing
+        const newBtn = pandemoniumBtn.cloneNode(true);
+        pandemoniumBtn.parentNode.replaceChild(newBtn, pandemoniumBtn);
+
+        newBtn.addEventListener('click', () => {
+            console.log("Initialize: Matrix Pandemonium Native");
+                        
+            loadScript("Games/matrixpandemonium/pandemonium-controller.js").then(() => {
+                // Initializing the specific Pandemonium global function
+                if (typeof window.openMatrixPandemoniumGame === 'function') {
+                    window.openMatrixPandemoniumGame(); 
+                } else {
+                    console.error("ERROR: pandemonium-controller.js failed to initialize.");
+                }
+            }).catch(err => {
+                console.error("Failed to load Matrix Pandemonium controller script:", err);
+            });
+        });
+    }
+});
+
+// ==========================================
+// CITIZENS OF ZION NATIVE BRIDGE
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const zionBtn = document.getElementById('btn-tetris');
+    
+    if (zionBtn) {
+        // Strip old listeners to prevent double-firing
+        const newBtn = zionBtn.cloneNode(true);
+        zionBtn.parentNode.replaceChild(newBtn, zionBtn);
+
+        newBtn.addEventListener('click', () => {
+            console.log("Initialize: Citizens of Zion Native");
+                        
+            loadScript("Games/citizensofzion/citizensofzion-controller.js").then(() => {
+                // Initializing the specific Citizens of Zion global function
+                if (typeof window.openCitizensOfZionGame === 'function') {
+                    window.openCitizensOfZionGame(); 
+                } else {
+                    console.error("ERROR: citizensofzion-controller.js failed to initialize.");
+                }
+            }).catch(err => {
+                console.error("Failed to load Citizens of Zion controller script:", err);
+            });
+        });
+    }
+});
+
+// ==========================================
+// MATRIX DOCK DEFENCE NATIVE BRIDGE
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const dockDefenceBtn = document.getElementById('btn-2048');
+    
+    if (dockDefenceBtn) {
+        // Strip old listeners to prevent double-firing
+        const newBtn = dockDefenceBtn.cloneNode(true);
+        dockDefenceBtn.parentNode.replaceChild(newBtn, dockDefenceBtn);
+
+        newBtn.addEventListener('click', () => {
+            console.log("Initialize: Matrix Dock Defence Native");
+                        
+            loadScript("Games/matrixdockdefence/matrixdockdefence-controller.js").then(() => {
+                // Initializing the specific Matrix Dock Defence global function
+                if (typeof window.openMatrixDockDefenceGame === 'function') {
+                    window.openMatrixDockDefenceGame(); 
+                } else {
+                    console.error("ERROR: matrixdockdefence-controller.js failed to initialize.");
+                }
+            }).catch(err => {
+                console.error("Failed to load Matrix Dock Defence controller script:", err);
+            });
+        });
+    }
+});
+
+// ==========================================
+// MATRIX OVERLOADED NATIVE BRIDGE
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const overloadedBtn = document.getElementById('btn-overloaded');
+    
+    if (overloadedBtn) {
+        // Strip old listeners to prevent double-firing
+        const newBtn = overloadedBtn.cloneNode(true);
+        overloadedBtn.parentNode.replaceChild(newBtn, overloadedBtn);
+
+        newBtn.addEventListener('click', () => {
+            console.log("Initialize: Matrix Overloaded Native");
+                        
+            loadScript("Games/matrixoverloaded/matrixoverloaded-controller.js").then(() => {
+                // Initializing the specific Matrix Overloaded global function
+                if (typeof window.openMatrixOverloadedGame === 'function') {
+                    window.openMatrixOverloadedGame(); 
+                } else {
+                    console.error("ERROR: matrixoverloaded-controller.js failed to initialize.");
+                }
+            }).catch(err => {
+                console.error("Failed to load Matrix Overloaded controller script:", err);
+            });
+        });
+    }
+});
+
+// ==========================================
+// MATRIX TUNNEL RECON NATIVE BRIDGE
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const tunnelBtn = document.getElementById('btn-tunnel');
+    
+    if (tunnelBtn) {
+        // Strip old listeners to prevent double-firing
+        const newBtn = tunnelBtn.cloneNode(true);
+        tunnelBtn.parentNode.replaceChild(newBtn, tunnelBtn);
+
+        newBtn.addEventListener('click', () => {
+            console.log("Initialize: Matrix Tunnel Recon Native");
+                        
+            loadScript("Games/matrixtunnelrecon/matrixtunnelrecon-controller.js").then(() => {
+                // Initializing the specific Matrix Tunnel Recon global function
+                if (typeof window.openMatrixTunnelReconGame === 'function') {
+                    window.openMatrixTunnelReconGame(); 
+                } else {
+                    console.error("ERROR: matrixtunnelrecon-controller.js failed to initialize.");
+                }
+            }).catch(err => {
+                console.error("Failed to load Matrix Tunnel Recon controller script:", err);
+            });
+        });
+    }
+});
+
+// ==========================================
+// MATRIX BULLET TIME NATIVE BRIDGE
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const bulletTimeBtn = document.getElementById('btn-bullettime');
+    
+    if (bulletTimeBtn) {
+        // Strip old listeners to prevent double-firing
+        const newBtn = bulletTimeBtn.cloneNode(true);
+        bulletTimeBtn.parentNode.replaceChild(newBtn, bulletTimeBtn);
+
+        newBtn.addEventListener('click', () => {
+            console.log("Initialize: Matrix Bullet Time Native");
+                        
+            loadScript("Games/matrixbullettime/bullettime-controller.js").then(() => {
+                // Initializing the specific Matrix Bullet Time global function
+                if (typeof window.openMatrixBulletTimeGame === 'function') {
+                    window.openMatrixBulletTimeGame(); 
+                } else {
+                    console.error("ERROR: bullettime-controller.js failed to initialize.");
+                }
+            }).catch(err => {
+                console.error("Failed to load Matrix Bullet Time controller script:", err);
+            });
+        });
+    }
+});
+
+// ==========================================
+// MATRIX FIGHTER NATIVE BRIDGE
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const fighterBtn = document.getElementById('btn-matrixfighter');
+    
+    if (fighterBtn) {
+        // Strip old listeners to prevent double-firing
+        const newBtn = fighterBtn.cloneNode(true);
+        fighterBtn.parentNode.replaceChild(newBtn, fighterBtn);
+
+        newBtn.addEventListener('click', () => {
+            console.log("Initialize: Matrix Fighter Native");
+                        
+            loadScript("Games/matrixfighter/matrixfighter-controller.js").then(() => {
+                // Initializing the specific Matrix Fighter global function
+                if (typeof window.openMatrixFighterGame === 'function') {
+                    window.openMatrixFighterGame(); 
+                } else {
+                    console.error("ERROR: matrixfighter-controller.js failed to initialize.");
+                }
+            }).catch(err => {
+                console.error("Failed to load Matrix Fighter controller script:", err);
+            });
+        });
+    }
+});
