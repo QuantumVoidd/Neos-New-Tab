@@ -2237,7 +2237,7 @@ div[class*="puter-alert"],
     top: 3px !important;
     height: calc(100% - 6px) !important;
     z-index: 1; 
-    opacity: 0.3; 
+    opacity: 1.0; 
     pointer-events: none; 
     
     /* Match Left Sidebar Default */
@@ -2578,7 +2578,7 @@ button:focus {
     height: calc(100% - 3px) !important;
     
     /* Ensure opacity matches sidebars */
-    opacity: 0.3;
+    opacity: 1.0;
     pointer-events: none;
     z-index: 1;
 }

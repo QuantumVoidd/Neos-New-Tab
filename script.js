@@ -4,7 +4,7 @@ let termDrops = [];
 const canvas = document.getElementById('matrix'), ctx = canvas.getContext('2d');
 const sCanvas = document.getElementById('sentinel-layer'), sCtx = sCanvas.getContext('2d');
 const mainContainer = document.querySelector('.main-container');
-const MATRIX_ALPHABET = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789", BINARY_ALPHABET = "01", CLASSIC_GREEN = "#00FF41", 
+const MATRIX_ALPHABET = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ", BINARY_ALPHABET = "01", CLASSIC_GREEN = "#00FF41", 
 fontSize = 16;
 const HEX_ALPHABET = "0123456789ABCDEF";
 // New character sets
@@ -5521,3 +5521,4 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
