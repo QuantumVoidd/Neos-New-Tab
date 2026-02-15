@@ -1,35 +1,42 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <title>Matrix Bullet Time</title>
     <style>
-        /* Reset all margins and force full viewport size */
-        body, html { 
-            margin: 0; 
-            padding: 0; 
-            width: 100vw; 
-            height: 100vh; 
-            overflow: hidden; 
-            background-color: #000; 
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: black; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        #ruffle-container { width: 100%; height: 100%; }
+        ruffle-player { width: 100% !important; height: 100% !important; display: block !important; outline: none; }
+        #notification { 
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%); 
+            background: rgba(0, 0, 0, 0.9); border: 1px solid #00ff41; color: #00ff41; 
+            padding: 10px 20px; font-family: 'Courier New', monospace; z-index: 1000; 
+            display: none; pointer-events: none; border-radius: 5px; font-weight: bold;
         }
-        
-        /* Force container to fill the window */
-        #ruffle-container { 
-            width: 100vw; 
-            height: 100vh; 
-            display: block;
+        #start-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: black;
+            background-image: url('cover.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+            box-sizing: border-box; padding-bottom: 50px; z-index: 100;
         }
-        
-        /* Force the Ruffle element (custom tag) to fill the container */
-        ruffle-player {
-            width: 100%;
-            height: 100%;
-            display: block;
+        #start-btn { 
+            background: rgba(0, 0, 0, 0.6); border: 2px solid #00ff41; color: #00ff41; 
+            padding: 15px 40px; font-size: 1.5rem; cursor: pointer; text-transform: uppercase; 
+            box-shadow: 0 0 15px #00ff41; border-radius: 50px; transition: all 0.2s;
+            backdrop-filter: blur(4px); font-family: inherit;
         }
+        #start-btn:hover { background: #00ff41; color: black; box-shadow: 0 0 30px #00ff41; }
     </style>
+    <script src="../../Ruffle/ruffle.js"></script>
 </head>
 <body>
+    <div id="notification"></div>
     <div id="ruffle-container"></div>
-    <script src="../Ruffle/ruffle.js"></script>
+    <div id="start-overlay"><button id="start-btn"> PLAY </button></div>
     <script src="bullettime_launcher.js"></script>
 </body>
 </html>
