@@ -9,39 +9,33 @@
         }
         #emulator-container { 
             width: 100% !important; height: 100% !important; 
-            flex-grow: 1;
-            display: flex; justify-content: center; align-items: center; 
+            flex-grow: 1; display: flex; justify-content: center; align-items: center; 
         }
         canvas { 
             display: block; width: 100% !important; height: 100% !important; 
-            image-rendering: pixelated; outline: none; 
+            image-rendering: pixelated; outline: none;
         }
-        
+
         #notification {
             position: absolute;
             top: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.9); border: 2px solid #00ff41; color: #00ff41;
-            padding: 12px 24px; font-family: 'Courier New', monospace; font-weight: bold;
-            font-size: 18px; border-radius: 4px; display: none; z-index: 2000; 
-            box-shadow: 0 0 15px rgba(0, 255, 65, 0.3); text-align: center;
+            background: rgba(0, 0, 0, 0.8); border: 1px solid #0f0; color: #0f0;
+            padding: 10px 20px; font-family: 'Courier New', monospace; font-weight: bold;
+            font-size: 16px; border-radius: 5px; display: none; z-index: 1000; pointer-events: none;
         }
 
         #start-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: url('Emulators/snes/cover.jpg');
-            background-size: cover; background-position: center; background-repeat: no-repeat;
-            display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
-            box-sizing: border-box; padding-bottom: 50px; z-index: 100; display: none; 
+            background: url('Emulators/snes/cover.jpg') center/cover no-repeat;
+            display: flex; flex-direction: column; justify-content: flex-end; 
+            align-items: center; box-sizing: border-box; padding-bottom: 50px; 
+            z-index: 100; display: none; 
         }
-
-        #start-btn { 
-            background: rgba(0, 0, 0, 0.7); 
-            border: 2px solid #00ff41; 
-            color: #00ff41; 
-            padding: 15px 40px; font-size: 1.5rem; cursor: pointer; 
-            text-transform: uppercase; box-shadow: 0 0 15px #00ff41; 
-            border-radius: 50px; transition: all 0.2s; backdrop-filter: blur(4px);
-            font-family: inherit;
+        #start-btn {
+            background: rgba(0, 0, 0, 0.6); border: 2px solid #00ff41; color: #00ff41;
+            padding: 15px 40px; font-size: 1.5rem; cursor: pointer; font-family: inherit;
+            text-transform: uppercase; box-shadow: 0 0 15px #00ff41; transition: all 0.2s;
+            backdrop-filter: blur(4px); border-radius: 50px; 
         }
         #start-btn:hover { background: #00ff41; color: black; box-shadow: 0 0 30px #00ff41; }
     </style>
@@ -49,10 +43,10 @@
 <body>
     <div id="notification"></div>
     <div id="emulator-container"></div>
+    
     <div id="start-overlay"><button id="start-btn">BOOT SYSTEM</button></div>
 
     <script>
-        // Audio Context Fix
         (function() {
             const originalConnect = AudioNode.prototype.connect;
             AudioNode.prototype.connect = function(destination, output, input) {
@@ -75,113 +69,85 @@
 
     <script>
         let emulatorInstance = null;
-        let pendingConfig = null;
+        let gamepadLoop = null;
+        let pendingConfig = null; 
         let currentSaveBlob = null; 
         let currentSlot = 1; 
-        
-        const INTERNAL_ROM_NAME = "game.sfc";
 
-        function showNotification(text, duration = 2000) {
+        function showNotification(text) {
             const el = document.getElementById('notification');
             if(el) {
                 el.innerText = text;
                 el.style.display = 'block';
-                if(el.hideTimeout) clearTimeout(el.hideTimeout);
-                if (duration > 0) {
-                    el.hideTimeout = setTimeout(() => { el.style.display = 'none'; }, duration);
-                }
+                setTimeout(() => { el.style.display = 'none'; }, 2000);
             }
         }
 
-        // --- THE "HUNTER" FUNCTION ---
-        // Recursively searches the entire Emscripten FS for any file ending in .state
-        function scanFileSystemForState(FS, currentPath = '/') {
-            let found = null;
-            try {
-                if (!FS.analyzePath(currentPath).exists) return null;
-                
-                const items = FS.readdir(currentPath);
-                for (const item of items) {
-                    if (item === '.' || item === '..' || item === 'dev' || item === 'proc') continue;
+        function pollGamepads() {
+            gamepadLoop = requestAnimationFrame(pollGamepads);
+            navigator.getGamepads();
+        }
+
+        // The ultimate arbiter of file completion. Waits dynamically until the file completely stops writing.
+        async function waitForAnyStableStateFile(FS, dir) {
+            let lastSize = 0;
+            let steadyCount = 0;
+            let targetName = null;
+            
+            for (let i = 0; i < 200; i++) { // Up to 20 seconds buffer for slow devices
+                await new Promise(r => setTimeout(r, 100));
+                try {
+                    const files = FS.readdir(dir);
+                    targetName = files.find(f => f.endsWith('.state') && f !== '.' && f !== '..');
                     
-                    const fullPath = currentPath === '/' ? `/${item}` : `${currentPath}/${item}`;
-                    const lookup = FS.lookupPath(fullPath, { follow: true });
-                    
-                    if (lookup.node.isFolder) {
-                        // Recursively search subdirectories
-                        found = scanFileSystemForState(FS, fullPath);
-                        if (found) return found;
-                    } else {
-                        // Check if it's a state file
-                        if (item.endsWith('.state') || item.includes('.state')) {
-                            console.log(`[SNES] Found potential save: ${fullPath}`);
-                            return FS.readFile(fullPath);
+                    if (targetName) {
+                        const stat = FS.stat(`${dir}/${targetName}`);
+                        if (stat.size > 1000) { 
+                            if (stat.size === lastSize) {
+                                steadyCount++;
+                                if (steadyCount >= 4) { // Needs to be totally stable for 400ms
+                                    return {
+                                        name: targetName,
+                                        data: FS.readFile(`${dir}/${targetName}`)
+                                    };
+                                }
+                            } else {
+                                lastSize = stat.size;
+                                steadyCount = 0;
+                            }
                         }
                     }
-                }
-            } catch (e) { 
-                // Ignore permission errors in system folders
+                } catch(e) {}
             }
-            return found;
+            throw new Error("Timeout waiting for core to finish writing file.");
         }
 
-        // --- KEY LISTENER ---
-        document.addEventListener('keydown', async (e) => {
+        window.addEventListener('keydown', async (e) => {
             if (!emulatorInstance) return;
 
             // --- SAVE STATE (Key '1') ---
-            if (e.key === '1' || e.code === 'Digit1' || e.code === 'Numpad1') {
-                e.preventDefault(); 
-                e.stopPropagation();
-                
-                // Show sticky notification while working
-                showNotification(`SAVING SLOT ${currentSlot}...`, 0);
+            if (e.key === '1' || e.code === 'Digit1') {
+                e.preventDefault(); e.stopPropagation();
                 
                 try {
-                    // Create a timeout promise to prevent hanging
-                    const timeoutPromise = new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error("Save Timed Out")), 5000)
-                    );
+                    showNotification(`SAVING SLOT ${currentSlot}...`);
+                    const FS = emulatorInstance.getEmscriptenFS();
+                    const statesDir = '/home/web_user/retroarch/userdata/states';
 
-                    // Try to get data with a race against the clock
-                    const data = await Promise.race([
-                        (async () => {
-                            let blob = null;
+                    // 1. Wipe directory to guarantee we only read the new file
+                    try { FS.readdir(statesDir).forEach(f => { if (f.endsWith('.state')) FS.unlink(`${statesDir}/${f}`); }); } catch(e){}
 
-                            // 1. Try API
-                            try {
-                                const result = await emulatorInstance.saveState();
-                                if (result && (result.state || result instanceof Blob)) {
-                                    blob = result.state || result;
-                                    console.log("[SNES] API Save Successful");
-                                }
-                            } catch(apiErr) {
-                                console.warn("[SNES] API Save Failed, switching to FS Scan...", apiErr);
-                            }
+                    // 2. Trigger core to save
+                    emulatorInstance.saveState().catch(()=>{});
 
-                            // 2. Try FS Scan if API failed
-                            if (!blob) {
-                                await new Promise(r => setTimeout(r, 200)); // Wait for flush
-                                const Module = emulatorInstance.getEmscriptenModule();
-                                if (Module && Module.FS) {
-                                    const rawData = scanFileSystemForState(Module.FS, '/');
-                                    if (rawData) {
-                                        blob = new Blob([rawData]);
-                                        console.log("[SNES] FS Scan Successful");
-                                    }
-                                }
-                            }
-
-                            return blob;
-                        })(),
-                        timeoutPromise
-                    ]);
-
-                    if (!data) throw new Error("No data returned");
-
-                    // 3. Process Success
-                    currentSaveBlob = data;
-                    const buffer = await data.arrayBuffer();
+                    // 3. Wait for it to securely finish
+                    const stableFile = await waitForAnyStableStateFile(FS, statesDir);
+                    
+                    // Cache the confirmed name to use for loading later in the session
+                    window._snesActualSaveName = stableFile.name; 
+                    
+                    currentSaveBlob = new Blob([stableFile.data]);
+                    const buffer = await currentSaveBlob.arrayBuffer();
                     
                     window.parent.postMessage({ 
                         command: 'export_state', 
@@ -190,127 +156,147 @@
                         data: buffer 
                     }, '*');
                     
-                    showNotification(`SAVED SLOT ${currentSlot} ✓`, 3000);
+                    showNotification(`SAVED SLOT ${currentSlot}`);
+                    console.log(`[SNES] Exported ${Math.round(currentSaveBlob.size/1024)}KB to Slot ${currentSlot}`);
 
                 } catch(err) { 
-                    console.error("[SNES] SAVE ERROR:", err);
-                    showNotification(`SAVE FAILED: ${err.message}`, 4000); 
+                    console.error("Save Error:", err);
+                    showNotification("SAVE ERROR"); 
                 }
             }
 
             // --- LOAD STATE (Key '4') ---
-            if (e.key === '4' || e.code === 'Digit4' || e.code === 'Numpad4') {
-                e.preventDefault(); 
-                e.stopPropagation();
+            if (e.key === '4' || e.code === 'Digit4') {
+                e.preventDefault(); e.stopPropagation();
                 
                 if (currentSaveBlob) {
                     try {
-                        showNotification(`LOADING SLOT ${currentSlot}...`, 0);
-                        await emulatorInstance.loadState(currentSaveBlob);
-                        showNotification("STATE LOADED ✓", 2000);
+                        const FS = emulatorInstance.getEmscriptenFS();
+                        const statesDir = '/home/web_user/retroarch/userdata/states';
+                        
+                        // ON-DEMAND SYNCHRONIZATION
+                        if (!window._snesActualSaveName) {
+                            showNotification("SYNCING CORE... PLEASE WAIT");
+                            
+                            // Clear directory
+                            try { FS.readdir(statesDir).forEach(f => { if (f.endsWith('.state')) FS.unlink(`${statesDir}/${f}`); }); } catch(e){}
+                            
+                            // Trigger a dummy save solely to discover the name
+                            emulatorInstance.saveState().catch(()=>{});
+                            
+                            // Wait for the dummy save to completely finish writing
+                            const dummyFile = await waitForAnyStableStateFile(FS, statesDir);
+                            window._snesActualSaveName = dummyFile.name;
+                            console.log(`[SNES] Core signature locked: ${window._snesActualSaveName}`);
+                            
+                            // CLEAN BREAK: Stop execution to let the core catch its breath.
+                            showNotification("SYNC COMPLETE! PRESS 4 AGAIN");
+                            return; 
+                        }
+
+                        showNotification(`LOADING SLOT ${currentSlot}...`);
+
+                        // 1. Wipe directory to clean out the dummy save or any old states
+                        try { FS.readdir(statesDir).forEach(f => { if (f.endsWith('.state')) FS.unlink(`${statesDir}/${f}`); }); } catch(e){}
+
+                        // 2. Safely Inject our verified Save Data
+                        const buffer = await currentSaveBlob.arrayBuffer();
+                        const stateData = new Uint8Array(buffer);
+                        
+                        const blanketNames = [
+                            window._snesActualSaveName,
+                            'game.state',
+                            'game.sfc.state'
+                        ];
+
+                        blanketNames.forEach(name => {
+                            try { FS.writeFile(`${statesDir}/${name}`, stateData); } catch(e){}
+                        });
+
+                        // 3. Trigger Core Load
+                        await emulatorInstance.loadState(currentSaveBlob).catch(()=>{});
+                        
+                        // 4. Visually sync the notification with the WASM frame rendering delay
+                        setTimeout(() => {
+                            showNotification("STATE LOADED");
+                        }, 750);
+                        
                     } catch(err) { 
                         console.error("Load Exception:", err);
-                        showNotification("LOAD ERROR", 3000); 
+                        showNotification("LOAD ERROR"); 
                     }
                 } else { 
-                    showNotification(`SLOT ${currentSlot} EMPTY`, 2000); 
+                    showNotification(`SLOT ${currentSlot} EMPTY`); 
                 }
             }
-        }, { passive: false });
+        }, true);
 
         async function launchEmulator() {
-            if (!pendingConfig || !pendingConfig.romBlob) return;
-
+            if (!pendingConfig) return;
             const container = document.getElementById('emulator-container');
             const overlay = document.getElementById('start-overlay');
-            
+
             try {
                 if (window.emulatorAudioContext && window.emulatorAudioContext.state === 'suspended') {
                     await window.emulatorAudioContext.resume();
+                } else if (window.AudioContext) {
+                    new window.AudioContext().resume();
                 }
 
                 overlay.style.display = 'none';
                 container.innerHTML = '';
-                
                 const canvas = document.createElement('canvas');
                 canvas.tabIndex = 0; 
                 container.appendChild(canvas);
                 canvas.focus();
 
-                const romToLoad = new File([pendingConfig.romBlob], INTERNAL_ROM_NAME);
-
-                // Initialize State if passed
                 if (pendingConfig.initialState) {
-                    if (pendingConfig.initialState instanceof Blob) {
-                         currentSaveBlob = pendingConfig.initialState;
-                    } else {
-                         currentSaveBlob = new Blob([pendingConfig.initialState]);
-                    }
+                    currentSaveBlob = (pendingConfig.initialState instanceof Blob) 
+                        ? pendingConfig.initialState 
+                        : new Blob([pendingConfig.initialState]);
                 }
-                
                 if (pendingConfig.initialSlot) currentSlot = pendingConfig.initialSlot;
+
+                // Forcing Nostalgist's internal tracking to a standardized simple name
+                const safeRomFile = new File([pendingConfig.romBlob], "game.sfc", { type: "application/octet-stream" });
 
                 emulatorInstance = await Nostalgist.launch({
                     element: canvas, 
-                    rom: romToLoad,
+                    rom: safeRomFile,
                     core: pendingConfig.coreConfig,
-                    retroarchConfig: {
-                        savestate_directory: '/states', // Try to guide it
-                        savestate_auto_index: false,
-                        savestate_auto_save: false,
-                        savestate_auto_load: false,
-                        ...pendingConfig.retroarchConfig
-                    }
+                    retroarchConfig: pendingConfig.retroarchConfig,
+                    style: { width: '100%', height: '100%', display: 'block' }
                 });
                 
-                // Force create the directory just in case
-                try {
-                    const Module = emulatorInstance.getEmscriptenModule();
-                    if (Module && Module.FS && !Module.FS.analyzePath('/states').exists) {
-                        Module.FS.mkdir('/states');
-                    }
-                } catch(e) {}
-
-                // Load initial state if exists
-                if (currentSaveBlob) {
-                    setTimeout(async () => {
-                        try {
-                            await emulatorInstance.loadState(currentSaveBlob);
-                            showNotification(`RESTORED SLOT ${currentSlot}`, 2000);
-                        } catch(e) { console.warn("Auto-load failed", e); }
-                    }, 1000);
-                }
-
-                window.parent.postMessage({ status: 'running' }, '*');
+                window.focus();
                 canvas.focus();
+                window.parent.postMessage({ status: 'running' }, '*');
+                
+                if (!gamepadLoop) pollGamepads();
 
-            } catch (e) { 
-                console.error("Launch Error:", e);
-                window.parent.postMessage({ status: 'error', message: e.toString() }, '*'); 
+            } catch (e) {
+                console.error("Sandbox Error:", e);
+                window.parent.postMessage({ status: 'error', message: e.toString() }, '*');
             }
         }
 
-        window.addEventListener('message', async (event) => {
+        window.addEventListener('message', (event) => {
             const { command } = event.data;
-            
+
             if (command === 'start') {
                 pendingConfig = event.data;
                 document.getElementById('start-overlay').style.display = 'flex';
             }
-            
-            else if (command === 'import_slot') {
+            else if (command === 'import_slot' || command === 'import_state') {
                 if (event.data.slot !== undefined) currentSlot = event.data.slot;
-                
                 if (event.data.blob || event.data.data) {
-                    const rawData = event.data.blob || event.data.data;
-                    currentSaveBlob = new Blob([rawData]);
-                    showNotification(`SLOT ${currentSlot} READY`, 2000);
+                    currentSaveBlob = new Blob([event.data.blob || event.data.data]);
+                    showNotification(`SLOT ${currentSlot} READY`);
                 } else {
                     currentSaveBlob = null;
-                    showNotification(`SLOT ${currentSlot} EMPTY`, 2000);
+                    showNotification(`SLOT ${currentSlot} EMPTY`);
                 }
             }
-            
             else if (command === 'mute') {
                 const ctx = window.emulatorAudioContext;
                 if (ctx && ctx._masterGain) {
@@ -319,14 +305,14 @@
                 }
             }
         });
-        
-        window.addEventListener("gamepadconnected", (e) => {
-            window.parent.postMessage({ status: 'gamepad_connected', id: e.gamepad.id }, '*');
-        });
 
         window.addEventListener('click', () => {
              const canvas = document.querySelector('canvas');
              if(canvas) canvas.focus();
+        });
+
+        window.addEventListener("gamepadconnected", (e) => {
+            window.parent.postMessage({ status: 'gamepad_connected', id: e.gamepad.id }, '*');
         });
 
         document.getElementById('start-btn').addEventListener('click', launchEmulator);
