@@ -57,8 +57,8 @@ let isOracleTerminalActive = false;
 // --- EXPLORER STATE MANAGEMENT ---
 let isExplorerActive = false;
 let explorerDataCache = {};
-let explorerStack = []; // Added for navigation depth tracking
-let explorerPath = ["root"]; // Tracks folder names for breadcrumbs
+let explorerStack = []; 
+let explorerPath = []; 
 window.isExplorerDeleteMode = false;
 
 // --- ARCADE RAIN GLOBALS ---
@@ -73,29 +73,12 @@ window.syncGbcSavesToExplorer = function() {
     if (!explorerDataCache) explorerDataCache = {};
 
     // 1. Ensure Path Consistency: Create saves/gbc if missing
-    if (!explorerDataCache.saves) explorerDataCache.saves = {};
-    if (!explorerDataCache.saves.gbc) explorerDataCache.saves.gbc = {};
-    
-    // Clear existing cache for this folder to prevent duplicates
-    explorerDataCache.saves.gbc = {};
-
-    // 2. Scan LocalStorage for GBC save keys
-    const gbcKeys = Object.keys(localStorage).filter(k => k.startsWith('gbc_state_'));
-    
-    gbcKeys.forEach(key => {
-        // Inject object into cache under root/saves/gbc/
-        // We store the raw localStorage string value here
-        explorerDataCache.saves.gbc[key] = localStorage.getItem(key);
-    });
+    // Note: In the new VFS, we map these dynamically at the root level first
+    // This function ensures the cache object exists to prevent errors
+    if (!explorerDataCache) explorerDataCache = {};
 
     // 3. Update Explorer View if Active
     if (isExplorerActive) {
-        // Update the root reference in the stack to ensure navigation works
-        if (explorerStack.length > 0) {
-            explorerStack[0] = explorerDataCache;
-        }
-        
-        // Trigger a re-render of the grid
         renderExplorerGrid();
     }
 };
@@ -1421,19 +1404,27 @@ const CLI_COMMANDS = {
     '/root': () => { openRootExplorer(); showZionMessage("ACCESSING ROOT DIRECTORY..."); },
     '/mkdir': (folderName) => {
         if (!folderName) return showZionMessage("USAGE: /mkdir [folder_name]");
-        const cleanName = folderName.replace(/\s+/g, '_');
-        const storageKey = `folder_${Date.now()}_${cleanName}`;
-        
-        chrome.storage.local.set({ [storageKey]: {} }, () => {
-            showZionMessage(`DIRECTORY CREATED: ${cleanName}`);
-            if (isExplorerActive) {
-                chrome.storage.local.get(null, (updatedData) => {
-                    explorerDataCache = updatedData;
-                    explorerStack[0] = updatedData;
-                    renderExplorerGrid();
-                });
+        // Create folder in current Explorer view if active
+        if (isExplorerActive) {
+            let currentData = explorerStack[explorerStack.length - 1];
+            if (currentData[folderName]) {
+                 showZionMessage(`ERROR: ${folderName} ALREADY EXISTS`);
+            } else {
+                 currentData[folderName] = {};
+                 chrome.storage.local.set(explorerStack[0], () => {
+                     renderExplorerGrid();
+                     showZionMessage(`DIRECTORY CREATED: ${folderName}`);
+                 });
             }
-        });
+        } else {
+            // Create in root if explorer is closed
+             chrome.storage.local.get(null, (data) => {
+                 if (!data[folderName]) {
+                     data[folderName] = {};
+                     chrome.storage.local.set(data, () => showZionMessage(`DIRECTORY CREATED: ${folderName}`));
+                 }
+             });
+        }
     },
     
     // --- SPACE & NASA COMMANDS ---
@@ -1484,7 +1475,7 @@ const CLI_COMMANDS = {
     },
     '/vault': () => { 
         // Pass the filter directly to the opener
-        openRootExplorer("vault_"); 
+        openRootExplorer(); 
         showZionMessage("ACCESSING SECURE VAULT..."); 
     },
 };
@@ -2695,19 +2686,29 @@ function triggerVaultUpload() {
         const reader = new FileReader();
         reader.onload = function(evt) {
             const sizeKB = (file.size / 1024).toFixed(1);
-            const storageKey = `vault_${Date.now()}_(${sizeKB}KB)_${file.name.replace(/\s+/g, '_')}`;
+            // Default generic file name for root
+            let storageKey = `file_${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
             
-            chrome.storage.local.set({ [storageKey]: evt.target.result }, () => {
-                showZionMessage(`DATA UPLOADED: ${file.name}\nSIZE: ${sizeKB} KB`);
-                if (isExplorerActive) {
-                    chrome.storage.local.get(null, (updatedData) => {
-                        explorerDataCache = updatedData;
-                        explorerStack[0] = updatedData; 
-                        renderExplorerGrid();
-                    });
-                }
-                input.remove();
-            });
+            // Check if explorer is active to determine where to save
+            if (isExplorerActive && explorerStack.length > 0) {
+                 const currentData = explorerStack[explorerStack.length - 1];
+                 const cleanName = file.name.replace(/\s+/g, '_');
+                 // If inside a folder, we just use the name as key
+                 currentData[cleanName] = evt.target.result;
+                 
+                 // Save the root object back to storage
+                 chrome.storage.local.set(explorerStack[0], () => {
+                      showZionMessage(`DATA UPLOADED: ${cleanName}\nSIZE: ${sizeKB} KB`);
+                      renderExplorerGrid();
+                      input.remove();
+                 });
+            } else {
+                 // Fallback to root upload
+                 chrome.storage.local.set({ [storageKey]: evt.target.result }, () => {
+                    showZionMessage(`DATA UPLOADED: ${file.name}\nSIZE: ${sizeKB} KB`);
+                    input.remove();
+                });
+            }
         };
         file.type.startsWith('image/') || file.type.startsWith('audio/') || file.type.startsWith('video/') 
             ? reader.readAsDataURL(file) : reader.readAsText(file);
@@ -2717,6 +2718,10 @@ function triggerVaultUpload() {
 
 function extractVaultData(filename, data) {
     let blob;
+    // Check if it's a raw Base64 string from an emulator save (no data: prefix)
+    // Typical regex for Base64 (simplified)
+    const isBase64 = typeof data === 'string' && /^[A-Za-z0-9+/=]+$/.test(data.replace(/[\r\n]/g, ''));
+    
     if (typeof data === 'string' && data.startsWith('data:')) {
         const byteString = atob(data.split(',')[1]);
         const mimeString = data.split(',')[0].split(':')[1].split(';')[0];
@@ -2726,7 +2731,24 @@ function extractVaultData(filename, data) {
             ia[i] = byteString.charCodeAt(i);
         }
         blob = new Blob([ab], {type: mimeString});
-    } else {
+    } 
+    // Handle raw Base64 save files (SNES, GBA, etc.)
+    else if (isBase64 && (filename.endsWith('.state') || filename.endsWith('.sav') || filename.endsWith('.mcd'))) {
+        try {
+            const byteString = atob(data);
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) {
+                ia[i] = byteString.charCodeAt(i);
+            }
+            blob = new Blob([ab], {type: 'application/octet-stream'});
+        } catch(e) {
+            // Fallback to text if decoding fails
+             const strData = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
+             blob = new Blob([strData], {type: 'text/plain'});
+        }
+    }
+    else {
         const strData = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
         blob = new Blob([strData], {type: 'text/plain'});
     }
@@ -2742,7 +2764,7 @@ function extractVaultData(filename, data) {
     showZionMessage(`EXTRACTING: ${filename}`);
 }
 
-async function openRootExplorer(startFilter = "") {
+async function openRootExplorer() {
     const modal = document.getElementById('matrix-modal');
     const output = document.getElementById('terminal-output');
     const input = document.getElementById('terminal-cmd-input');
@@ -2752,8 +2774,8 @@ async function openRootExplorer(startFilter = "") {
     isExplorerActive = true;
     modal.classList.remove('hidden');
     
-    // Clear standard terminal output
-    output.innerHTML = "";
+    // Clear standard terminal output and inject the Matrix header
+    output.innerHTML = `<p style="color:#00ff41; font-family:'Orbitron'; margin-bottom:15px; letter-spacing: 2px;"> ROOT </p>`;
     
     // Initialize Background Rain
     initTerminalRain(); 
@@ -2783,28 +2805,24 @@ async function openRootExplorer(startFilter = "") {
     // Ensure GBC saves structure exists
     window.syncGbcSavesToExplorer();
 
-    // --- FIX: LOAD DATA THEN APPLY FILTER ---
+    // Reset Stack
     explorerStack = []; 
-    explorerPath = ["root"]; 
+    explorerPath = []; 
     
     chrome.storage.local.get(null, (data) => {
         explorerDataCache = data; 
         
-        // RE-SYNC GBC into this cache instance to ensure it's available
-        // (syncGbcSavesToExplorer might have initialized an empty object if called before cache load)
         window.syncGbcSavesToExplorer(); 
 
-        explorerStack.push(explorerDataCache); 
-        
-        // Render immediately with the requested filter (No timeouts needed)
-        renderExplorerGrid(startFilter);
-        
-        // Update input to match context
-        if (startFilter === "vault_") {
-            input.placeholder = "Filtering Secure Vault...";
-        } else {
-            input.placeholder = "Type filename to filter...";
+        // FIX: Only push the cache if the stack wasn't already seeded by the sync function
+        if (explorerStack.length === 0) {
+            explorerStack.push(explorerDataCache); 
         }
+        
+        // Render root
+        renderExplorerGrid();
+        
+        input.placeholder = "Search current folder...";
     });
     
     input.focus();
@@ -2820,7 +2838,7 @@ function renderExplorerGrid(filter = "") {
     if (!explorerStack || explorerStack.length === 0) {
         if (typeof explorerDataCache !== 'undefined' && explorerDataCache) {
             explorerStack = [explorerDataCache];
-            explorerPath = ["root"];
+            explorerPath = [];
         } else {
             grid.innerHTML = `<div class="explorer-empty" style="grid-column:1/-1; padding:20px; text-align:center; opacity:0.7;">INITIALIZING STORAGE STREAM...</div>`;
             return; 
@@ -2847,11 +2865,24 @@ function renderExplorerGrid(filter = "") {
     if (viewDepth > 0) {
         const backNode = document.createElement('div');
         backNode.className = 'explorer-node node-type-back';
-        backNode.innerHTML = `<div class="explorer-icon">↩</div><div class="explorer-label">RETURN</div>`;
+        // Enable generic drop on "Back" to move files up a level
+        backNode.ondragover = (e) => { e.preventDefault(); backNode.classList.add('drag-hover'); };
+        backNode.ondragleave = () => { backNode.classList.remove('drag-hover'); };
+        backNode.ondrop = (e) => {
+             e.preventDefault(); e.stopPropagation();
+             backNode.classList.remove('drag-hover');
+             const sourceKey = e.dataTransfer.getData('text/plain');
+             if(sourceKey) {
+                 // Move to parent folder
+                 moveFileUpLevel(sourceKey);
+             }
+        };
+
+        backNode.innerHTML = `<div class="explorer-icon">↩</div><div class="explorer-label">..</div>`;
         backNode.onclick = () => {
             explorerStack.pop();
             explorerPath.pop();
-            renderExplorerGrid(filter);
+            renderExplorerGrid();
         };
         grid.appendChild(backNode);
     }
@@ -2867,65 +2898,59 @@ function renderExplorerGrid(filter = "") {
             k.startsWith('sms_state_') || 
             k.startsWith('gen_save_slot_') ||
             k.startsWith('psx_mem_') ||
-            k.startsWith('gba_state_')
+            k.startsWith('gba_state_') ||
+            k.startsWith('snes_state_') 
         );
         keys = [...keys, ...localKeys];
     }
     
+    // Sort: Folders first, then Files
+    keys.sort((a, b) => {
+        const valA = (viewDepth === 0 && localStorage.getItem(a)) ? localStorage.getItem(a) : currentData[a];
+        const valB = (viewDepth === 0 && localStorage.getItem(b)) ? localStorage.getItem(b) : currentData[b];
+        const isFolderA = (typeof valA === 'object' && valA !== null);
+        const isFolderB = (typeof valB === 'object' && valB !== null);
+        
+        if (isFolderA && !isFolderB) return -1;
+        if (!isFolderA && isFolderB) return 1;
+        return String(a).localeCompare(String(b));
+    });
+
     // Empty Folder Message
     if (keys.length === 0 && viewDepth === 0) {
-         grid.innerHTML += `<div class="explorer-empty" style="grid-column: 1/-1; text-align:center; opacity:0.5; padding:20px;">NO FILES FOUND<br><span style="font-size:0.8em">CLICK 'UPLOAD' TO BEGIN</span></div>`;
+         grid.innerHTML += `<div class="explorer-empty" style="grid-column: 1/-1; text-align:center; opacity:0.5; padding:20px;">ROOT DIRECTORY EMPTY<br><span style="font-size:0.8em">CLICK 'UPLOAD' OR 'NEW FOLDER'</span></div>`;
     }
 
     keys.forEach(key => {
         // --- Value retrieval (handle localStorage keys separately) ---
         let value = currentData[key];
-        if (value === undefined && typeof key === 'string') {
-             if (key.startsWith('nes_') || key.startsWith('sms_state_') || key.startsWith('gen_save_slot_') || key.startsWith('psx_mem_') || key.startsWith('gba_state_')) {
+        if (value === undefined && typeof key === 'string' && viewDepth === 0) {
+             if (key.startsWith('nes_') || key.startsWith('sms_state_') || key.startsWith('gen_save_slot_') || key.startsWith('psx_mem_') || key.startsWith('gba_state_') || key.startsWith('snes_state_')) {
                 value = localStorage.getItem(key);
              }
         }
-
-        // --- NEW SMART FILTER LOGIC ---
-        if (filter) {
-            const f = filter.toLowerCase();
-            const lowerKey = String(key).toLowerCase();
-            let isMatch = false;
-
-            // 1. Check File Types
-            if (f === 'image') isMatch = /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(lowerKey);
-            else if (f === 'video') isMatch = /\.(mp4|webm|ogg|mov|avi|mkv)$/i.test(lowerKey);
-            else if (f === 'audio') isMatch = /\.(mp3|wav|aac|flac|m4a)$/i.test(lowerKey);
-            else if (f === 'code') isMatch = /\.(html|htm|js|css|json|py|cpp|txt)$/i.test(lowerKey);
-            // 2. Check Prefixes (Vault/Hack)
-            else if (f === 'vault_') isMatch = lowerKey.startsWith('vault_');
-            else if (f === 'hack_') isMatch = lowerKey.startsWith('hack_');
-            // 3. Default to Name Search
-            else isMatch = lowerKey.includes(f);
-
-            // Always show folders so you can browse, otherwise respect the match
-            const isDir = (typeof value === 'object' && value !== null);
-            if (!isMatch && !isDir) return; 
+        
+        // Search Filter
+        if(filter) {
+             if(!String(key).toLowerCase().includes(filter.toLowerCase())) return;
         }
-        // -----------------------------
-
-        // ... (Keep the rest of the code: const isFolder = ..., const node = ...)
 
         const isFolder = (typeof value === 'object' && value !== null);
         const node = document.createElement('div');
         node.className = 'explorer-node';
-        node.setAttribute('draggable', !isFolder); 
+        node.setAttribute('draggable', 'true'); 
 
         // --- LABEL CLEANUP ---
         let displayLabel = String(key);
-        if (isArray && typeof value === 'string' && value.startsWith('http')) {
-            try { displayLabel = new URL(value).hostname.replace('www.', ''); } catch(e) { displayLabel = "LINK"; }
-        } else if (displayLabel.startsWith('vault_') || displayLabel.startsWith('folder_')) {
-            displayLabel = displayLabel.split('_').slice(2).join('_');
+        // Clean up pseudo-prefixes if any remain from old uploads
+        if (displayLabel.startsWith('vault_') || displayLabel.startsWith('folder_') || displayLabel.startsWith('file_')) {
+            const parts = displayLabel.split('_');
+            if(parts.length > 2) displayLabel = parts.slice(2).join('_');
+            else displayLabel = parts.join('_');
         }
         if (displayLabel.length > 22) displayLabel = displayLabel.substring(0, 19) + '...';
 
-        // --- ICON & TYPE LOGIC (UPDATED) ---
+        // --- ICON & TYPE LOGIC ---
         let icon = '📄'; 
         let fileType = 'text'; // Default type
         
@@ -2936,30 +2961,19 @@ function renderExplorerGrid(filter = "") {
             icon = '🔗';
             fileType = 'link';
         } else if (String(key).startsWith('nes_')) {
-            icon = '💾';
-            fileType = 'nes_save';
-            displayLabel = key.replace('nes_', '') + '.sav';
+            icon = '💾'; fileType = 'nes_save'; displayLabel = key.replace('nes_', '') + '.sav';
         } else if (String(key).startsWith('sms_state_')) {
-            icon = '🎮'; 
-            fileType = 'sms_save';
-            displayLabel = key.replace('sms_state_', 'SMS_S') + '.state';
+            icon = '🎮'; fileType = 'sms_save'; displayLabel = key.replace('sms_state_', 'SMS_S') + '.state';
         } else if (String(key).startsWith('gen_save_slot_')) {
-            icon = '📟'; 
-            fileType = 'genesis_save';
-            displayLabel = key.replace('gen_save_slot_', 'GEN_SLOT_') + '.state';
+            icon = '📟'; fileType = 'genesis_save'; displayLabel = key.replace('gen_save_slot_', 'GEN_SLOT_') + '.state';
         } else if (String(key).startsWith('gba_state_')) {
-            icon = '📱'; // Gameboy Advance Icon
-            fileType = 'gba_save';
-            // Formats "gba_state_1_Pokemon" to "GBA_SLOT_1_Pokemon.state"
-            displayLabel = key.replace('gba_state_', 'GBA_SLOT_') + '.state'; 
+            icon = '📱'; fileType = 'gba_save'; displayLabel = key.replace('gba_state_', 'GBA_SLOT_') + '.state'; 
         } else if (String(key).startsWith('gbc_state_')) {
-            icon = '👾'; 
-            fileType = 'gbc_save';
-            displayLabel = key.replace('gbc_state_', 'GBC_SLOT_') + '.state';
+            icon = '👾'; fileType = 'gbc_save'; displayLabel = key.replace('gbc_state_', 'GBC_SLOT_') + '.state';
         } else if (String(key).startsWith('psx_mem_')) {
-            icon = '💿'; 
-            fileType = 'psx_save';
-            displayLabel = key.replace('psx_mem_', 'PSX_MC') + '.mcd';
+            icon = '💿'; fileType = 'psx_save'; displayLabel = key.replace('psx_mem_', 'PSX_MC') + '.mcd';
+        } else if (String(key).startsWith('snes_state_')) {
+            icon = '🎮'; fileType = 'snes_save'; displayLabel = key.replace('snes_state_', 'SNES_SLOT_') + '.state';
         } else {
             const lowerKey = String(key).toLowerCase();
             if (lowerKey.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/)) {
@@ -2980,17 +2994,15 @@ function renderExplorerGrid(filter = "") {
             <div class="explorer-label">${displayLabel}</div>
         `;
 
-        // --- DRAG START ---
-        if (!isFolder) {
-            node.ondragstart = (e) => {
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', key); 
-                node.style.opacity = '0.4';
-            };
-            node.ondragend = () => { node.style.opacity = '1'; };
-        }
+        // --- DRAG START (Files AND Folders can be dragged) ---
+        node.ondragstart = (e) => {
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', key); 
+            node.style.opacity = '0.4';
+        };
+        node.ondragend = () => { node.style.opacity = '1'; };
 
-        // --- DROP TARGET ---
+        // --- DROP TARGET (Folders only) ---
         if (isFolder) {
             node.ondragover = (e) => {
                 e.preventDefault(); 
@@ -3008,43 +3020,60 @@ function renderExplorerGrid(filter = "") {
             };
         }
 
-        // --- CLICK HANDLER (Updated to use fileType) ---
+        // --- CONTEXT MENU (Rename) ---
+        node.oncontextmenu = (e) => {
+            e.preventDefault();
+            if(confirm(`RENAME "${displayLabel}"?`)) {
+                const newName = prompt("Enter new name:", key);
+                if(newName && newName !== key) {
+                    renameItem(key, newName);
+                }
+            }
+        };
+
+        // --- CLICK HANDLER ---
         node.onclick = () => {
             if (window.isExplorerDeleteMode) {
                 if (confirm(`PURGE: ${displayLabel}?`)) {
-                    if (String(key).startsWith('nes_') || String(key).startsWith('sms_state_') || String(key).startsWith('gen_save_slot_') || String(key).startsWith('psx_mem_') || String(key).startsWith('gba_state_') || String(key).startsWith('gbc_state_')) {
+                    
+                    // 1. Check local storage keys first
+                    const isEmuSave = String(key).startsWith('nes_') || String(key).startsWith('sms_') || String(key).startsWith('gen_') || String(key).startsWith('psx_') || String(key).startsWith('gba_') || String(key).startsWith('gbc_') || String(key).startsWith('snes_');
+                    
+                    if (viewDepth === 0 && isEmuSave) {
                         localStorage.removeItem(key);
-                        // If it's a GBC save, we need to update the sync logic too
-                        if(String(key).startsWith('gbc_state_')) window.syncGbcSavesToExplorer();
-                        renderExplorerGrid();
-                        updateStorageUI();
-                        return;
                     }
 
-                    if (isArray) currentData.splice(key, 1);
-                    else delete currentData[key];
-
-                    if (viewDepth === 0) {
-                        chrome.storage.local.remove(key, () => { renderExplorerGrid(); updateStorageUI(); });
+                    // 2. Delete from VFS Cache
+                    if (isArray) {
+                        currentData.splice(key, 1);
                     } else {
-                        const parentData = explorerStack[viewDepth - 1];
-                        let folderKey = null;
-                        for (const k in parentData) { if (parentData[k] === currentData) { folderKey = k; break; } }
-                        
-                        if (folderKey) chrome.storage.local.set({ [folderKey]: currentData }, () => { renderExplorerGrid(); updateStorageUI(); });
-                        else if (explorerPath[viewDepth] === 'userNavLinks') chrome.storage.local.set({ userNavLinks: currentData }, () => { renderExplorerGrid(); updateStorageUI(); });
-                        else chrome.storage.local.get(null, (updated) => { explorerDataCache = updated; explorerStack[0] = updated; renderExplorerGrid(); });
+                        delete currentData[key];
                     }
+
+                    // 3. Save changes and explicitly clear root ghosts
+                    chrome.storage.local.set(explorerStack[0], () => { 
+                        // CRITICAL FIX: Explicitly remove key from database if at root!
+                        if (viewDepth === 0 && !isArray) {
+                            chrome.storage.local.remove(String(key), () => {
+                                if(String(key).startsWith('gbc_state_') && window.syncGbcSavesToExplorer) window.syncGbcSavesToExplorer();
+                                renderExplorerGrid(); 
+                                updateStorageUI();
+                            });
+                        } else {
+                            if(String(key).startsWith('gbc_state_') && window.syncGbcSavesToExplorer) window.syncGbcSavesToExplorer();
+                            renderExplorerGrid(); 
+                            updateStorageUI();
+                        }
+                    });
                 }
             } else {
                 if (isFolder) {
                     explorerStack.push(value); 
-                    explorerPath.push(displayLabel);
+                    explorerPath.push(key);
                     renderExplorerGrid();
                 } else if (typeof value === 'string' && value.startsWith('http')) {
                     window.open(value, '_blank');
                 } else {
-                    // Send the detected fileType (video, audio, etc) to the previewer
                     showExplorerPreview(key, value, fileType);
                 }
             }
@@ -3099,52 +3128,139 @@ function navigateToPath(index) {
     }
 }
 
-function moveFileToFolder(fileKey, folderKey) {
-    if (folderKey === 'userNavLinks') {
-        showZionMessage("ACCESS DENIED: SYSTEM DIRECTORY.\nTHIS FOLDER ACCEPTS LINKS ONLY.");
+function createNewFolder() {
+    const name = prompt("ENTER NEW FOLDER NAME:");
+    if(!name) return;
+    
+    // Get current view
+    let currentData = explorerStack[explorerStack.length - 1];
+    
+    // Check collision
+    if(currentData[name]) {
+        alert("DIRECTORY ALREADY EXISTS");
         return;
     }
+    
+    // Create Folder
+    currentData[name] = {};
+    
+    // Save Root
+    chrome.storage.local.set(explorerStack[0], () => {
+        renderExplorerGrid();
+    });
+}
 
-    // Fetch all data
-    chrome.storage.local.get(null, (allData) => {
-        const fileData = allData[fileKey];
-        
-        // --- FIX: Check for undefined specifically (allows empty files) ---
-        if (fileData === undefined) {
-            showZionMessage("SYSTEM OUT OF SYNC.\nREFRESHING DATA...");
-            // Force refresh to clear real ghost files
-            chrome.storage.local.get(null, (updated) => {
-                explorerDataCache = updated;
-                explorerStack[0] = updated; 
+function renameItem(oldKey, newKey) {
+    let currentData = explorerStack[explorerStack.length - 1];
+    
+    if(currentData[newKey]) {
+        alert("NAME ALREADY EXISTS");
+        return;
+    }
+    
+    const viewDepth = explorerStack.length - 1;
+    if (viewDepth === 0 && !currentData[oldKey] && localStorage.getItem(oldKey)) {
+        const val = localStorage.getItem(oldKey);
+        localStorage.setItem(newKey, val);
+        localStorage.removeItem(oldKey);
+        renderExplorerGrid();
+        return;
+    }
+    
+    // VFS Rename
+    const val = currentData[oldKey];
+    currentData[newKey] = val;
+    delete currentData[oldKey];
+    
+    chrome.storage.local.set(explorerStack[0], () => {
+        // --- CRITICAL VFS FIX: Explicitly remove old key from database root ---
+        if (viewDepth === 0) {
+            chrome.storage.local.remove(String(oldKey), () => {
                 renderExplorerGrid();
             });
-            return;
+        } else {
+            renderExplorerGrid();
         }
+    });
+}
 
-        let folderData = allData[folderKey];
-        
-        // Ensure folder is valid
-        if (!folderData || typeof folderData !== 'object' || Array.isArray(folderData)) {
-            folderData = {};
-        }
+function moveFileUpLevel(fileKey) {
+    if(explorerStack.length <= 1) return; // Already at root
+    
+    let currentData = explorerStack[explorerStack.length - 1];
+    let parentData = explorerStack[explorerStack.length - 2];
+    
+    const fileData = currentData[fileKey];
+    if(fileData === undefined) return;
+    
+    // Move
+    parentData[fileKey] = fileData;
+    delete currentData[fileKey];
+    
+    chrome.storage.local.set(explorerStack[0], () => {
+        // Go up one level in UI
+        explorerStack.pop();
+        explorerPath.pop();
+        renderExplorerGrid();
+    });
+}
 
-        // Add file to folder
+function moveFileToFolder(fileKey, folderKey) {
+    // Prevent moving into self
+    if(fileKey === folderKey) return;
+
+    // --- NEW SAFETY LOCK: Prevent Emulator Saves from leaving Root ---
+    const isEmuSave = String(fileKey).startsWith('nes_') || 
+                      String(fileKey).startsWith('sms_') || 
+                      String(fileKey).startsWith('gen_') || 
+                      String(fileKey).startsWith('psx_') || 
+                      String(fileKey).startsWith('gba_') || 
+                      String(fileKey).startsWith('gbc_') || 
+                      String(fileKey).startsWith('nes_') || 
+                      String(fileKey).startsWith('snes_');
+                      
+    if (isEmuSave) {
+        alert("SYSTEM ERROR: Emulator memory streams must remain in the ROOT directory to be accessed by the hardware.");
+        return;
+    }
+    
+    let currentData = explorerStack[explorerStack.length - 1];
+    const viewDepth = explorerStack.length - 1;
+    
+    // Get Folder Data
+    let folderData = currentData[folderKey];
+    if(!folderData || typeof folderData !== 'object') return; 
+
+    // Get Source Data
+    let fileData = currentData[fileKey];
+
+    // Check localStorage
+    if (viewDepth === 0 && localStorage.getItem(fileKey)) {
+        fileData = localStorage.getItem(fileKey);
+        localStorage.removeItem(fileKey);
+    }
+
+    if (fileData !== undefined) {
         folderData[fileKey] = fileData;
+        
+        if (currentData[fileKey] !== undefined) {
+            delete currentData[fileKey];
+        }
+    } 
+    else {
+        return; 
+    }
 
-        // 1. Update Folder
-        chrome.storage.local.set({ [folderKey]: folderData }, () => {
-            // 2. Delete Original File
-            chrome.storage.local.remove(fileKey, () => {
-                showZionMessage("RELOCATION COMPLETE");
-                
-                // 3. Refresh Root
-                chrome.storage.local.get(null, (updated) => {
-                    explorerDataCache = updated;
-                    explorerStack[0] = updated; 
-                    renderExplorerGrid();
-                });
+    // Save changes
+    chrome.storage.local.set(explorerStack[0], () => {
+        // --- CRITICAL VFS FIX: Explicitly remove ghost keys from database root ---
+        if (viewDepth === 0) {
+            chrome.storage.local.remove(String(fileKey), () => {
+                renderExplorerGrid();
             });
-        });
+        } else {
+            renderExplorerGrid();
+        }
     });
 }
 
@@ -3176,13 +3292,18 @@ function showExplorerPreview(key, value, type) {
                 <div style="font-size: 3rem; margin-bottom: 20px;">🎵</div>
                 <audio src="${value}" controls style="width:100%; max-width:500px;"></audio>
             </div>`;
-    } else if (type === 'nes_save' || type === 'sms_save' || type === 'genesis_save' || type === 'psx_save' || type === 'gba_save' || type === 'gbc_save') {
+    } else if (type === 'nes_save' || type === 'sms_save' || type === 'genesis_save' || type === 'psx_save' || type === 'gba_save' || type === 'gbc_save' || type === 'snes_save') {
+        
+        // Calculate Approx File Size
+        const sizeKB = Math.round((value.length * 0.75) / 1024);
+
         contentHtml = `
             <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; width:100%; padding: 40px; border: 1px solid rgba(0,242,255,0.1); background:rgba(0,0,0,0.5);">
                 <div style="font-size: 3rem; margin-bottom: 20px;">🕹️</div>
                 <div style="font-family: 'Press Start 2P', monospace; font-size: 1.2rem; color: #ffcc00; margin-bottom: 10px; text-align: center;">EMULATOR DATA STREAM</div>
                 <div style="color: var(--theme-color); opacity: 0.8; font-family: monospace;">${cleanTitle}</div>
                 <div style="margin-top: 15px; font-size: 0.8rem; color: #aaa;">Timestamp: ${new Date().toLocaleString()}</div>
+                <div style="margin-top: 5px; font-size: 0.8rem; color: #0f0;">Size: ~${sizeKB} KB</div>
             </div>`;
     } else {
         let textContent = "";
@@ -3215,7 +3336,6 @@ function showExplorerPreview(key, value, type) {
             
             <div style="display:flex; justify-content:flex-end; gap:15px; margin-top:10px;">
                 ${type === 'image' ? `<button id="edit-paint-btn" style="background:rgba(0,255,65,0.2); color:var(--theme-color); border:1px solid var(--theme-color); padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">EDIT IN PAINT</button>` : ''}
-                ${type === 'nes_save' ? `<button id="restore-nes-btn" style="background:rgba(255, 204, 0, 0.2); color: #ffcc00; border:1px solid #ffcc00; padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">RESTORE TO EMULATOR</button>` : ''}
                 <button id="extract-btn" style="background:var(--theme-color); color:#000; border:none; padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">DOWNLOAD</button>
                 <button id="close-preview-btn" style="background:transparent; color:var(--theme-color); border:1px solid var(--theme-color); padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">CLOSE</button>
             </div>
@@ -3223,73 +3343,6 @@ function showExplorerPreview(key, value, type) {
     `;
     
     document.body.appendChild(previewOverlay);
-    
-    // SMS Restore Logic
-    if (type === 'sms_save') {
-        const smsBtn = document.createElement('button');
-        smsBtn.innerHTML = "RESTORE SMS";
-        smsBtn.style.cssText = "background:rgba(0,255,255,0.2); color:#0ff; border:1px solid #0ff; padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; margin-right:10px;";
-        smsBtn.onclick = () => {
-            showZionMessage("SMS DATA SENT TO CORE");
-            // Logic for sms-controller restore goes here
-            previewOverlay.remove();
-        };
-        previewOverlay.querySelector('div[style*="justify-content:flex-end"]').prepend(smsBtn);
-    }
-
-    // Genesis Restore Logic
-    if (type === 'genesis_save') {
-        const genBtn = document.createElement('button');
-        genBtn.innerHTML = "RESTORE GENESIS";
-        genBtn.style.cssText = "background:rgba(255,0,255,0.2); color:#f0f; border:1px solid #f0f; padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; margin-right:10px;";
-        genBtn.onclick = () => {
-            showZionMessage("GENESIS DATA SENT TO CORE");
-            previewOverlay.remove();
-        };
-        previewOverlay.querySelector('div[style*="justify-content:flex-end"]').prepend(genBtn);
-    }
-
-    // PSX Restore Logic
-    if (type === 'psx_save') {
-        const psxBtn = document.createElement('button');
-        psxBtn.innerHTML = "RESTORE PSX";
-        psxBtn.style.cssText = "background:rgba(0,255,65,0.2); color:#0f0; border:1px solid #0f0; padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; margin-right:10px;";
-        psxBtn.onclick = () => {
-            showZionMessage("PSX DATA SENT TO CORE");
-            previewOverlay.remove();
-        };
-        previewOverlay.querySelector('div[style*="justify-content:flex-end"]').prepend(psxBtn);
-    }
-
-    // GBA Restore Logic
-    if (type === 'gba_save') {
-        const gbaBtn = document.createElement('button');
-        gbaBtn.innerHTML = "RESTORE GBA";
-        gbaBtn.style.cssText = "background:rgba(138, 43, 226, 0.2); color:#8a2be2; border:1px solid #8a2be2; padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; margin-right:10px;";
-        gbaBtn.onclick = () => {
-            showZionMessage("GBA DATA SENT TO CORE");
-            previewOverlay.remove();
-        };
-        previewOverlay.querySelector('div[style*="justify-content:flex-end"]').prepend(gbaBtn);
-    }
-
-    // GBC Restore Logic
-    if (type === 'gbc_save') {
-        const gbcBtn = document.createElement('button');
-        gbcBtn.innerHTML = "RESTORE GBC";
-        gbcBtn.style.cssText = "background:rgba(150, 0, 255, 0.2); color:#d0f; border:1px solid #d0f; padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; margin-right:10px;";
-        gbcBtn.onclick = () => {
-            showZionMessage("GBC DATA SENT TO CORE");
-            if (window.activeGbcInstance && typeof window.activeGbcInstance.loadState === 'function') {
-                try {
-                     const state = JSON.parse(value);
-                     window.activeGbcInstance.loadState(state);
-                } catch(e) { console.error("Restore failed", e); }
-            }
-            previewOverlay.remove();
-        };
-        previewOverlay.querySelector('div[style*="justify-content:flex-end"]').prepend(gbcBtn);
-    }
     
     // Add hover effects for buttons
     const btns = previewOverlay.querySelectorAll('button');
@@ -3311,26 +3364,6 @@ function showExplorerPreview(key, value, type) {
                 window.PaintApp.loadImage(value, key);
             } else {
                 showZionMessage("ERROR: PAINT MODULE NOT LOADED");
-            }
-        };
-    }
-
-    // NES RESTORE LOGIC
-    const restoreNesBtn = document.getElementById('restore-nes-btn');
-    if (restoreNesBtn) {
-        restoreNesBtn.onclick = () => {
-            try {
-                if (window.activeNesInstance && window.activeNesInstance.nes) {
-                    const state = JSON.parse(value);
-                    window.activeNesInstance.nes.fromJSON(state);
-                    showZionMessage("GAME STATE RESTORED");
-                    previewOverlay.remove();
-                } else {
-                    showZionMessage("ERROR: EMULATOR NOT ACTIVE\nLAUNCH NES EMULATOR FIRST.");
-                }
-            } catch (e) {
-                console.error("NES Restore Error:", e);
-                showZionMessage("ERROR: CORRUPTED SAVE DATA");
             }
         };
     }
@@ -4478,7 +4511,7 @@ function openNasa(mode) {
     }
 }
 
-// --- NEW EXPLORER CONTROLS (UPLOAD & PURGE) ---
+// --- NEW EXPLORER CONTROLS (UPLOAD, NEW FOLDER & PURGE) ---
 window.isExplorerDeleteMode = false;
 
 function initExplorerControls() {
@@ -4505,7 +4538,19 @@ function initExplorerControls() {
         triggerVaultUpload(); 
     };
 
-    // 2. PURGE BUTTON
+    // 2. NEW FOLDER BUTTON
+    const folderBtn = document.createElement('button');
+    folderBtn.innerHTML = "📁 FOLDER";
+    folderBtn.style.cssText = btnStyle;
+    folderBtn.onmouseover = () => { folderBtn.style.opacity = '1'; folderBtn.style.boxShadow = "0 0 8px var(--theme-color)"; };
+    folderBtn.onmouseout = () => { folderBtn.style.opacity = '0.9'; folderBtn.style.boxShadow = "none"; };
+    
+    folderBtn.onclick = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        createNewFolder();
+    };
+
+    // 3. PURGE BUTTON
     const delBtn = document.createElement('button');
     delBtn.innerHTML = "🗑 PURGE";
     delBtn.style.cssText = btnStyle; 
@@ -4528,6 +4573,7 @@ function initExplorerControls() {
     };
 
     container.appendChild(upBtn);
+    container.appendChild(folderBtn);
     container.appendChild(delBtn);
 
     if (getComputedStyle(inputArea).position === 'static') {
@@ -5521,4 +5567,3 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-

@@ -2385,8 +2385,16 @@ div[class*="puter-alert"],
     flex-direction: column;
     justify-content: flex-start; /* Aligns grid to top */
     overflow-y: auto;
+    overflow-x: hidden;
     width: 100%;
+    box-sizing: border-box;
     padding-top: 10px;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+#explorer-grid-container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
 }
 
 /* 3. PATH BAR (BREADCRUMBS) 
@@ -2410,6 +2418,8 @@ div[class*="puter-alert"],
     grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
     gap: 15px;
     padding: 0 20px 20px 20px;
+    width: 100%;
+    box-sizing: border-box;
     align-content: start; /* PREVENTS VERTICAL CENTERING GAP */
 }
 
