@@ -21,7 +21,12 @@
 **Neo's New Tab** is a fully immersive **Construct** that replaces your mundane "New Tab" page with a high-functioning Matrix operating system. It features reactive digital rain, a CLI-driven terminal, a drag-and-drop Virtual file system, and integrated legacy simulation engines.
 
 ---
+<img width="3834" height="1914" alt="new tab" src="https://github.com/user-attachments/assets/027f7b9f-9457-45a4-ad87-2610b0f41c96" />
+<img width="7641" height="3791" alt="nav bars" src="https://github.com/user-attachments/assets/10aef200-38e7-481e-8f10-2d32b73253cc" />
+<img width="7617" height="3891" alt="emulators" src="https://github.com/user-attachments/assets/865c91b5-cf6a-4350-986b-c89193b3b916" />
+<img width="11418" height="5673" alt="apps" src="https://github.com/user-attachments/assets/6438235b-34dc-4fbc-8fb3-501501bc415c" />
 
+---
 ## 🕹️ [ARCADE_SUBLEVELS]: Legacy Simulations
 
 I have bypassed the simulation’s limitations to bring legacy hardware directly into the terminal. No external software is required,the browser is now the console.
@@ -98,5 +103,6 @@ Flash was a glitch in the Matrix they tried to patch out. I brought it back usin
 This is a non-commercial fan project created for aesthetic purposes. It is not affiliated with Warner Bros. or the creators of The Matrix franchise.
 
 "There is no spoon."
+
 
 **Operator:** *Link established. The simulation is under your control.*
