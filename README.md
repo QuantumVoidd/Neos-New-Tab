@@ -3,9 +3,7 @@
 # Neo's New Tab 🐇
 
 [![Download Extension](https://img.shields.io/badge/Download--Unpacked-brightgreen)](https://github.com/QuantumVoidd/Neos-New-Tab/releases/latest)
-
 ![Visitors](https://api.visitorbadge.io/api/VisitorHit?user=QuantumVoidd&repo=Neos-New-Tab&countColor=%2337B1E7A)
-
 ![GitHub stars](https://img.shields.io/github/stars/QuantumVoidd/Neos-New-Tab?style=social)
 
 </div>
@@ -30,15 +28,21 @@
 
 ---
 
-<img width="3834" height="1914" alt="new tab" src="https://github.com/user-attachments/assets/027f7b9f-9457-45a4-ad87-2610b0f41c96" />
-<img width="7641" height="3791" alt="nav bars" src="https://github.com/user-attachments/assets/10aef200-38e7-481e-8f10-2d32b73253cc" />
-<img width="7617" height="3891" alt="emulators" src="https://github.com/user-attachments/assets/865c91b5-cf6a-4350-986b-c89193b3b916" />
-<img width="11418" height="5673" alt="apps" src="https://github.com/user-attachments/assets/6438235b-34dc-4fbc-8fb3-501501bc415c" />
+## 📸 Interface Preview
+
+![New Tab Interface](https://github.com/user-attachments/assets/027f7b9f-9457-45a4-ad87-2610b0f41c96)
+
+![Navigation Bars](https://github.com/user-attachments/assets/10aef200-38e7-481e-8f10-2d32b73253cc)
+
+![Emulator Interface](https://github.com/user-attachments/assets/865c91b5-cf6a-4350-986b-c89193b3b916)
+
+![System Apps](https://github.com/user-attachments/assets/6438235b-34dc-4fbc-8fb3-501501bc415c)
 
 ---
+
 ## 🕹️ [ARCADE_SUBLEVELS]: Legacy Simulations
 
-I have bypassed the simulation’s limitations to bring legacy hardware directly into the terminal. No external software is required,the browser is now the console.
+I have bypassed the simulation’s limitations to bring legacy hardware directly into the terminal. No external software is required, the browser is now the console.
 
 ### 🎮 Emulator Integrations
 The terminal features a dedicated **Sub-Processor for Retro Hardware** supporting various signal types:
@@ -57,7 +61,6 @@ The terminal features a dedicated **Sub-Processor for Retro Hardware** supportin
 Flash was a glitch in the Matrix they tried to patch out. I brought it back using the **Ruffle WASM engine**.
 * **Native Emulation:** Run `.swf` files directly in the browser without plugins.
 * **The Archive:** Access curated Matrix-themed Flash games and arcade classics.
-
 
 ---
 
@@ -103,8 +106,4 @@ This is a non-commercial fan project created for aesthetic purposes. It is not a
 
 "There is no spoon."
 
-
 **Operator:** *Link established. The simulation is under your control.*
-
-
-
