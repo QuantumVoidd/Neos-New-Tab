@@ -1,15 +1,14 @@
-# 🟢 Neo's New Tab 🐇
+<div align="center">
 
-<p align="center">
-  <a href="https://github.com/QuantumVoidd/Neos-New-Tab/releases/latest">
-    <img src="https://img.shields.io/badge/Download-Unpacked_Extension-brightgreen" alt="Download Extension">
-  </a>
-  <br>
-  <img src="https://api.visitorbadge.io/api/VisitorHit?user=QuantumVoidd&repo=Neos-New-Tab&countColor=%237B1E7A" alt="Visitors">
-  <br>
-  <a href="https://github.com/QuantumVoidd/Neos-New-Tab/stargazers">  
-  </a>
-</p>
+# Neo's New Tab 🐇
+
+[![Download Extension](https://img.shields.io/badge/Download--Unpacked-brightgreen)](https://github.com/QuantumVoidd/Neos-New-Tab/releases/latest)
+
+![Visitors](https://api.visitorbadge.io/api/VisitorHit?user=QuantumVoidd&repo=Neos-New-Tab&countColor=%2337B1E7A)
+
+![GitHub stars](https://img.shields.io/github/stars/QuantumVoidd/Neos-New-Tab?style=social)
+
+</div>
 
 ---
 
@@ -105,4 +104,5 @@ This is a non-commercial fan project created for aesthetic purposes. It is not a
 
 
 **Operator:** *Link established. The simulation is under your control.*
+
 
