@@ -3,7 +3,9 @@
 # Neo's New Tab 🐇
 
 [![Download Extension](https://img.shields.io/badge/Download--Unpacked-brightgreen)](https://github.com/QuantumVoidd/Neos-New-Tab/releases/latest)
+
 ![Visitors](https://api.visitorbadge.io/api/VisitorHit?user=QuantumVoidd&repo=Neos-New-Tab&countColor=%2337B1E7A)
+
 ![GitHub stars](https://img.shields.io/github/stars/QuantumVoidd/Neos-New-Tab?style=social)
 
 </div>
@@ -105,5 +107,6 @@ Flash was a glitch in the Matrix they tried to patch out. I brought it back usin
 This is a non-commercial fan project created for aesthetic purposes. It is not affiliated with Warner Bros. or the creators of The Matrix franchise.
 
 "There is no spoon."
+
 
 **Operator:** *Link established. The simulation is under your control.*
