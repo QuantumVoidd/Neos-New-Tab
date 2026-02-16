@@ -94,7 +94,7 @@
             let steadyCount = 0;
             let targetName = null;
             
-            for (let i = 0; i < 200; i++) { // Up to 20 seconds buffer for slow devices
+            for (let i = 0; i < 300; i++) { // Increased to 30 seconds buffer for slow devices
                 await new Promise(r => setTimeout(r, 100));
                 try {
                     const files = FS.readdir(dir);
@@ -105,7 +105,7 @@
                         if (stat.size > 1000) { 
                             if (stat.size === lastSize) {
                                 steadyCount++;
-                                if (steadyCount >= 4) { // Needs to be totally stable for 400ms
+                                if (steadyCount >= 15) { // Needs to be totally stable for 1.5 seconds to outlast SRAM flushes
                                     return {
                                         name: targetName,
                                         data: FS.readFile(`${dir}/${targetName}`)
