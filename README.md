@@ -7,8 +7,7 @@
   <br>
   <img src="https://api.visitorbadge.io/api/VisitorHit?user=QuantumVoidd&repo=Neos-New-Tab&countColor=%237B1E7A" alt="Visitors">
   <br>
-  <a href="https://github.com/QuantumVoidd/Neos-New-Tab/stargazers">
-    <img src="https://github.com/user-attachments/assets/7200719c-8bc7-4b71-8360-47fa2e6d004e" alt="GitHub stars">
+  <a href="https://github.com/QuantumVoidd/Neos-New-Tab/stargazers">  
   </a>
 </p>
 
@@ -106,3 +105,4 @@ This is a non-commercial fan project created for aesthetic purposes. It is not a
 
 
 **Operator:** *Link established. The simulation is under your control.*
+
