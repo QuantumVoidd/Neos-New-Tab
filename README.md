@@ -19,6 +19,17 @@
 **Neo's New Tab** is a fully immersive **Construct** that replaces your mundane "New Tab" page with a high-functioning Matrix operating system. It features reactive digital rain, a CLI-driven terminal, a drag-and-drop Virtual file system, and integrated legacy simulation engines.
 
 ---
+
+## 🛠️ Installation (Developer Mode) 💊
+
+1. **Download/Clone** this repository to a local folder.
+2. Open **Google Chrome** (or Brave/Edge) and navigate to `chrome://extensions/`.
+3. Toggle **Developer mode** in the top right corner.
+4. Click **Load unpacked** and select the project folder.
+5. Open a new tab and **Enter the Matrix**.
+
+---
+
 <img width="3834" height="1914" alt="new tab" src="https://github.com/user-attachments/assets/027f7b9f-9457-45a4-ad87-2610b0f41c96" />
 <img width="7641" height="3791" alt="nav bars" src="https://github.com/user-attachments/assets/10aef200-38e7-481e-8f10-2d32b73253cc" />
 <img width="7617" height="3891" alt="emulators" src="https://github.com/user-attachments/assets/865c91b5-cf6a-4350-986b-c89193b3b916" />
@@ -87,16 +98,6 @@ Flash was a glitch in the Matrix they tried to patch out. I brought it back usin
 
 ---
 
-## 🛠️ Installation (Developer Mode) 💊
-
-1. **Download/Clone** this repository to a local folder.
-2. Open **Google Chrome** (or Brave/Edge) and navigate to `chrome://extensions/`.
-3. Toggle **Developer mode** in the top right corner.
-4. Click **Load unpacked** and select the project folder.
-5. Open a new tab and **Enter the Matrix**.
-
----
-
 ## ⚠️ Disclaimer
 This is a non-commercial fan project created for aesthetic purposes. It is not affiliated with Warner Bros. or the creators of The Matrix franchise.
 
@@ -104,5 +105,6 @@ This is a non-commercial fan project created for aesthetic purposes. It is not a
 
 
 **Operator:** *Link established. The simulation is under your control.*
+
 
 
