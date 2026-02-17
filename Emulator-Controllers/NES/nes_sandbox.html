@@ -80,6 +80,10 @@
             setTimeout(() => { el.style.display = 'none'; }, 2000);
         }
 
+        window.addEventListener("gamepadconnected", (e) => {
+            showNotification("GAMEPAD CONNECTED");
+        });
+
         // --- KEYBOARD INTERCEPT ---
         window.addEventListener('keydown', async (e) => {
             if (!emulatorInstance) return;
