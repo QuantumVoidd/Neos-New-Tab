@@ -854,6 +854,7 @@ const showZionMessage = (msg) => {
     // UPDATED: Changed z-index from 10000 to 20000 to sit ABOVE the apps (which are 10005)
     overlay.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:20000; font-family:'Orbitron', sans-serif; color:var(--theme-color); text-align:center; padding:20px; box-sizing: border-box;";
     
+    // Create inner container
     overlay.innerHTML = `
         <style>
             #zion-modal-inner::-webkit-scrollbar { width: 6px; }
@@ -862,9 +863,15 @@ const showZionMessage = (msg) => {
         </style>
         <div id="zion-modal-inner" style="position: relative; max-height: 90vh; width: 100%; max-width: 800px; padding: 20px; border: 2px solid var(--theme-color); box-shadow: 0 0 10px var(--theme-color); border-radius: 10px; background: rgba(0,0,0,0.85); overflow-y: auto; overflow-x: hidden;">
             <canvas id="zion-rain-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none;"></canvas>
-            <div style="position: relative; z-index: 1; font-size:1.2rem; margin-bottom:30px; white-space:pre-wrap; text-shadow: 0 0 10px var(--theme-color); line-height: 1.4;">${msg}</div>
+            <div style="position: relative; z-index: 1; font-size:1.2rem; margin-bottom:30px; white-space:pre-wrap; text-shadow: 0 0 10px var(--theme-color); line-height: 1.4;"></div>
             <button id="zion-close" style="position: relative; z-index: 1; background:transparent; color:var(--theme-color); border:1px solid var(--theme-color); padding:10px 30px; cursor:pointer; font-family:inherit; font-weight:bold; letter-spacing:2px; box-shadow: 0 0 10px var(--theme-color); margin-top: 10px;">DISMISS</button>
         </div>`;
+    
+    // Safely inject text content
+    const textContainer = overlay.querySelector('#zion-modal-inner > div:nth-child(2)');
+    if (textContainer) {
+        textContainer.textContent = msg;
+    }
     
     document.body.appendChild(overlay);
     initZionRain();
@@ -1766,7 +1773,13 @@ async function initOracleChat() {
 
             const um = document.createElement('div'); 
             um.className = "oracle-entry";
-            um.innerHTML = `<div class="user-query">${txt}</div>`; 
+            
+            // Secure construction for User Query
+            const uq = document.createElement('div');
+            uq.className = "user-query";
+            uq.textContent = txt;
+            um.appendChild(uq);
+
             history.appendChild(um);
             history.scrollTop = history.scrollHeight;
             
@@ -2989,10 +3002,17 @@ function renderExplorerGrid(filter = "") {
             }
         }
 
-        node.innerHTML = `
-            <div class="explorer-icon">${icon}</div>
-            <div class="explorer-label">${displayLabel}</div>
-        `;
+        // Use safe DOM construction instead of innerHTML
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'explorer-icon';
+        iconDiv.textContent = icon;
+        
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'explorer-label';
+        labelDiv.textContent = displayLabel;
+        
+        node.appendChild(iconDiv);
+        node.appendChild(labelDiv);
 
         // --- DRAG START (Files AND Folders can be dragged) ---
         node.ondragstart = (e) => {
@@ -4121,7 +4141,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (rawInput !== "") {
                         const userEntry = document.createElement('div');
                         userEntry.className = "oracle-entry";
-                        userEntry.innerHTML = `<div class="user-query">${rawInput}</div>`;
+                        
+                        const queryDiv = document.createElement('div');
+                        queryDiv.className = "user-query";
+                        queryDiv.textContent = rawInput;
+                        userEntry.appendChild(queryDiv);
+
                         output.appendChild(userEntry);
                         userEntry.scrollIntoView({ behavior: 'smooth', block: 'end' });
 
@@ -4145,7 +4170,17 @@ document.addEventListener('DOMContentLoaded', () => {
                                 
                                 const loadMsg = document.createElement('div');
                                 loadMsg.className = "oracle-entry";
-                                loadMsg.innerHTML = `<div class="oracle-response-container"><div class="oracle-response-text encrypted">Generating Visual...</div></div>`;
+                                
+                                const container = document.createElement('div');
+                                container.className = "oracle-response-container";
+                                
+                                const textDiv = document.createElement('div');
+                                textDiv.className = "oracle-response-text encrypted";
+                                textDiv.textContent = "Generating Visual...";
+                                
+                                container.appendChild(textDiv);
+                                loadMsg.appendChild(container);
+
                                 output.appendChild(loadMsg);
                                 loadMsg.scrollIntoView({ behavior: 'smooth', block: 'end' });
                                 
@@ -5516,13 +5551,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.openCitizensOfZionGame(); 
                 } else {
                     console.error("ERROR: citizensofzion-controller.js failed to initialize.");
-                }
-            }).catch(err => {
-                console.error("Failed to load Citizens of Zion controller script:", err);
-            });
-        });
-    }
-});
+                                       }
+                                }).catch(err => {
+                                    console.error("Failed to load Citizens of Zion controller script:", err);
+                                });
+                            });
+                        }
+                    });
 
 // ==========================================
 // MATRIX DOCK DEFENCE NATIVE BRIDGE
