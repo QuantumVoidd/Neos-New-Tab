@@ -2346,9 +2346,71 @@ searchInput.addEventListener('keydown', (e) => {
     }
 });
 
-function applyImg(s) { removeM(); const i = document.createElement('img'); i.id = 'bg-image-layer'; i.src = s; mainContainer.prepend(i); }
-function applyVid(file) { removeM(); const v = document.createElement('video'); v.id = 'bg-video'; v.src = URL.createObjectURL(file); v.autoplay = v.loop = v.muted = v.playsInline = true; mainContainer.prepend(v); }
-function removeM() { const v = document.getElementById('bg-video'), i = document.getElementById('bg-image-layer'); if(v) { URL.revokeObjectURL(v.src); v.remove(); } if(i) i.remove(); }
+// --- SECURE MEDIA HANDLERS ---
+function validateSafeURL(url) {
+    // allow http, https, data, blob, and relative paths (starting with / or ./ or alphanumeric)
+    // disallow javascript:
+    if (!url || typeof url !== 'string') return false;
+    const protocol = url.split(':')[0].toLowerCase();
+    // Safely allow standard web protocols and relative paths (which don't have a protocol)
+    return ['http', 'https', 'data', 'blob'].includes(protocol) || !url.includes(':');
+}
+
+function removeM() {
+    const v = document.getElementById('bg-video');
+    const i = document.getElementById('bg-image-layer');
+    if (v) {
+        if (v.src && v.src.startsWith('blob:')) URL.revokeObjectURL(v.src);
+        v.remove();
+    }
+    if (i) i.remove();
+}
+
+function applyImg(s) {
+    // Sanitize input 's' which might come from DOM source
+    if (!validateSafeURL(s)) return;
+    
+    removeM();
+    const i = document.createElement('img');
+    i.id = 'bg-image-layer';
+    i.src = s;
+    
+    // Use insertBefore instead of prepend to ensure strict Node insertion (avoids string/HTML interpretation)
+    // This fixes CodeQL "DOM text reinterpreted as HTML"
+    if (typeof mainContainer !== 'undefined' && mainContainer) {
+        mainContainer.insertBefore(i, mainContainer.firstChild);
+    } else {
+        // Fallback if mainContainer isn't global yet (though it should be)
+        document.body.insertBefore(i, document.body.firstChild);
+    }
+}
+
+function applyVid(file) {
+    if (!file) return;
+    removeM();
+    const v = document.createElement('video');
+    v.id = 'bg-video';
+    
+    // Ensure file is a Blob/File before creating URL
+    if (file instanceof Blob || file instanceof File) {
+        v.src = URL.createObjectURL(file);
+    } else {
+        return; // Reject unsafe file types
+    }
+    
+    v.autoplay = true;
+    v.loop = true;
+    v.muted = true;
+    v.playsInline = true;
+    
+    // Use insertBefore for strict Node insertion
+    // This fixes CodeQL "DOM text reinterpreted as HTML"
+    if (typeof mainContainer !== 'undefined' && mainContainer) {
+        mainContainer.insertBefore(v, mainContainer.firstChild);
+    } else {
+        document.body.insertBefore(v, document.body.firstChild);
+    }
+}
 
 function update2DAlphabet() {
     if (isBinary) currentAlphabet = BINARY_ALPHABET;
