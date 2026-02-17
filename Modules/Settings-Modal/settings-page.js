@@ -2,6 +2,26 @@
  * SETTINGS PAGE LOGIC 
  */
 
+// --- SECURITY HELPERS ---
+const SecUtils = {
+    // Escapes characters that could be interpreted as HTML/XML tags
+    escapeHTML: (str) => {
+        if (str === null || str === undefined) return '';
+        return String(str).replace(/[&<>"'`=\/]/g, s => `&#${s.charCodeAt(0)};`);
+    },
+    // Prevents malicious URI schemes (e.g., javascript: XSS)
+    sanitizeURL: (url) => {
+        const strUrl = String(url).trim();
+        if (/^(javascript|vbscript|data:text\/html):/i.test(strUrl)) return '';
+        return strUrl;
+    },
+    // Strips invalid characters from CSS property values
+    sanitizeCSS: (str) => {
+        if (str === null || str === undefined) return '';
+        return String(str).replace(/[^a-zA-Z0-9#%(),.\s-]/g, '');
+    }
+};
+
 // Helper to select elements safely
 const get = (id) => document.getElementById(id);
 
@@ -151,7 +171,7 @@ function initTabs() {
             });
 
             // 4. Show target section based on 'data-target' attribute
-            const targetId = newTab.getAttribute('data-target');
+            const targetId = SecUtils.escapeHTML(newTab.getAttribute('data-target'));
             const targetSection = document.getElementById(targetId);
             
             if (targetSection) {
@@ -178,15 +198,16 @@ document.addEventListener('DOMContentLoaded', initTabs);
 function syncThemeColor() {
     // NOTE: Variables are accessed directly (not window.var) to update script.js scope
     if (typeof isMatrixGreen !== 'undefined' && isMatrixGreen) {
-        document.documentElement.style.setProperty('--theme-color', typeof CLASSIC_GREEN !== 'undefined' ? CLASSIC_GREEN : '#00FF41');
-        if(typeof rainColor !== 'undefined') rainColor = typeof CLASSIC_GREEN !== 'undefined' ? CLASSIC_GREEN : '#00FF41';
-        if(typeof themeColor !== 'undefined') themeColor = typeof CLASSIC_GREEN !== 'undefined' ? CLASSIC_GREEN : '#00FF41';
+        const safeGreen = typeof CLASSIC_GREEN !== 'undefined' ? SecUtils.sanitizeCSS(CLASSIC_GREEN) : '#00FF41';
+        document.documentElement.style.setProperty('--theme-color', safeGreen);
+        if(typeof rainColor !== 'undefined') rainColor = safeGreen;
+        if(typeof themeColor !== 'undefined') themeColor = safeGreen;
         
         if(colorP) { colorP.value = rainColor; colorP.disabled = true; }
         if(themeColorP) { themeColorP.value = themeColor; themeColorP.disabled = true; }
     } else {
-        const customTheme = themeColorP ? themeColorP.value : '#00f2ff';
-        const customRain = colorP ? colorP.value : '#00f2ff';
+        const customTheme = themeColorP ? SecUtils.sanitizeCSS(themeColorP.value) : '#00f2ff';
+        const customRain = colorP ? SecUtils.sanitizeCSS(colorP.value) : '#00f2ff';
         
         document.documentElement.style.setProperty('--theme-color', customTheme);
         if(typeof rainColor !== 'undefined') rainColor = customRain;
@@ -208,12 +229,12 @@ function handleVideoBackgroundToggle(videoType, isChecked) {
         // Turn off all other toggles
         videoTypes.forEach(type => {
             if (type !== videoType) {
-                const toggle = document.getElementById(`${type}-toggle`);
+                const toggle = document.getElementById(`${SecUtils.escapeHTML(type)}-toggle`);
                 if (toggle) toggle.checked = false;
             }
         });
         
-        if(typeof startBackgroundVideo === 'function') startBackgroundVideo(videoType);
+        if(typeof startBackgroundVideo === 'function') startBackgroundVideo(SecUtils.escapeHTML(videoType));
     } else {
         if (typeof videoBackground !== 'undefined' && videoBackground === videoType) {
             if(typeof stopBackgroundVideo === 'function') stopBackgroundVideo();
@@ -224,8 +245,10 @@ function handleVideoBackgroundToggle(videoType, isChecked) {
 function getWireframeSvg() {
     // Generates the SVG fallback for the PFP
     const color = getComputedStyle(document.documentElement).getPropertyValue('--theme-color').trim() || '#00ff41';
+    const safeColor = SecUtils.escapeHTML(SecUtils.sanitizeCSS(color)); // Prevents injection inside the SVG
+    
     const svgString = `
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${safeColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
             <circle cx="12" cy="7" r="4"></circle>
         </svg>
@@ -237,8 +260,8 @@ function getWireframeSvg() {
 function updatePfpVisuals(isCustom, imgSrc) {
     if (!pfpPreview) return;
     
-    // Set source
-    pfpPreview.src = imgSrc;
+    // Set source safely
+    pfpPreview.src = SecUtils.sanitizeURL(imgSrc);
     
     // Ensure parent container is relative
     if (pfpPreview.parentElement) {
@@ -356,14 +379,14 @@ if(greenT) greenT.onchange = (e) => {
 
 if(colorP) colorP.oninput = (e) => { 
     if (typeof isMatrixGreen !== 'undefined' && !isMatrixGreen) {
-        if(typeof rainColor !== 'undefined') rainColor = e.target.value;
+        if(typeof rainColor !== 'undefined') rainColor = SecUtils.sanitizeCSS(e.target.value);
         if (typeof videoBackground !== 'undefined' && !videoBackground && typeof startRain === 'function') startRain();
     }
 };
 
 if(themeColorP) themeColorP.oninput = (e) => {
     if (typeof isMatrixGreen !== 'undefined' && !isMatrixGreen) {
-        if(typeof themeColor !== 'undefined') themeColor = e.target.value;
+        if(typeof themeColor !== 'undefined') themeColor = SecUtils.sanitizeCSS(e.target.value);
         document.documentElement.style.setProperty('--theme-color', themeColor);
     }
 };
@@ -382,16 +405,26 @@ if(rainbowT) rainbowT.onchange = (e) => { if(typeof isFlashing !== 'undefined') 
 
 // Sliders
 if(speedS) speedS.oninput = (e) => { 
-    if(typeof rainSpeed !== 'undefined') rainSpeed = parseInt(e.target.value); 
+    if(typeof rainSpeed !== 'undefined') rainSpeed = parseInt(e.target.value, 10); 
     if (typeof videoBackground !== 'undefined' && !videoBackground && typeof startRain === 'function') startRain(); 
 };
 if(sizeS) sizeS.oninput = (e) => { 
     const mc = document.querySelector('.main-container');
-    if(mc) mc.style.transform = `translate(-50%, -50%) scale(${e.target.value})`; 
+    const safeScale = parseFloat(e.target.value) || 1;
+    if(mc) mc.style.transform = `translate(-50%, -50%) scale(${safeScale})`; 
 };
-if(textScaleS) textScaleS.oninput = (e) => document.documentElement.style.setProperty('--text-scale', e.target.value);
-if(glitchS) glitchS.oninput = (e) => document.documentElement.style.setProperty('--glitch-intensity', e.target.value + 'px');
-if(scaleS) scaleS.onchange = (e) => document.documentElement.style.setProperty('--bg-scale', e.target.value);
+if(textScaleS) textScaleS.oninput = (e) => {
+    const safeScale = parseFloat(e.target.value) || 1;
+    document.documentElement.style.setProperty('--text-scale', safeScale);
+};
+if(glitchS) glitchS.oninput = (e) => {
+    const safeIntensity = parseFloat(e.target.value) || 0;
+    document.documentElement.style.setProperty('--glitch-intensity', safeIntensity + 'px');
+};
+if(scaleS) scaleS.onchange = (e) => {
+    const safeScaleMode = parseFloat(e.target.value) || 1;
+    document.documentElement.style.setProperty('--bg-scale', safeScaleMode);
+};
 
 // --- 2D RAIN ALPHABET (FIXED) ---
 function updateCharSet(mode) {
@@ -472,7 +505,7 @@ if(snowT) snowT.onchange = (e) => {
 
 // Quotes
 if(quoteI) quoteI.oninput = (e) => { 
-    const val = e.target.value; 
+    const val = SecUtils.escapeHTML(e.target.value); 
     const dq = get('display-quote');
     if (val.trim() !== "") { 
         if(typeof stopQuoteCycling === 'function') stopQuoteCycling(); 
@@ -526,8 +559,9 @@ if(phoneT) phoneT.onchange = (e) => {
     if(typeof setupPhoneInterval === 'function') setupPhoneInterval();
 };
 if(phoneFreqS) phoneFreqS.oninput = (e) => { 
-    if(typeof phoneFrequency !== 'undefined') phoneFrequency = parseInt(e.target.value); 
-    if(phoneFreqVal) phoneFreqVal.textContent = e.target.value; 
+    const safeFreq = parseInt(e.target.value, 10);
+    if(typeof phoneFrequency !== 'undefined') phoneFrequency = safeFreq; 
+    if(phoneFreqVal) phoneFreqVal.textContent = safeFreq; 
     if(typeof setupPhoneInterval === 'function') setupPhoneInterval(); 
 };
 
@@ -561,7 +595,8 @@ if(rssT) rssT.onchange = (e) => {
 };
 
 if(rssI) rssI.onchange = (e) => { 
-    rssI.value = e.target.value.replace(/,/g, '+').replace(/\s/g, ''); 
+    const safeVal = SecUtils.escapeHTML(e.target.value);
+    rssI.value = safeVal.replace(/,/g, '+').replace(/\s/g, ''); 
     if(typeof updateZionFeed === 'function') updateZionFeed(); 
 };
 if(statsT) statsT.onchange = (e) => {
@@ -574,7 +609,7 @@ if(rainAmbT) rainAmbT.onchange = (e) => { const a = get('ambience-rain'); if(a) 
 if(humT) humT.onchange = (e) => { const a = get('ambience-hum'); if(a) e.target.checked ? a.play().catch(() => {}) : a.pause(); };
 if(matrixSfxT) matrixSfxT.onchange = (e) => { const a = get('matrix-code-sfx'); if(a) e.target.checked ? a.play().catch(() => {}) : a.pause(); };
 if(envVolS) envVolS.oninput = (e) => { 
-    const v = parseFloat(e.target.value); 
+    const v = parseFloat(e.target.value) || 0.5; 
     ['ambience-rain', 'ambience-hum', 'matrix-code-sfx', 'custom-background-sfx'].forEach(id => {
         const el = get(id);
         if(el) el.volume = v;
@@ -740,13 +775,13 @@ if(clearSfxB) {
 // --- 5. SAVE & RESTORE ---
 
 if(saveB) saveB.onclick = () => {
-    // 2. Gather Settings from UI elements
+    // 2. Gather Settings from UI elements and Sanitize inputs
     const settings = { 
-        rainColor: colorP ? colorP.value : '#00F2FF', 
-        themeColor: themeColorP ? themeColorP.value : '#00F2FF', 
-        rainSpeed: typeof rainSpeed !== 'undefined' ? rainSpeed : 35, 
-        uiScale: sizeS ? sizeS.value : 1, 
-        textScale: textScaleS ? textScaleS.value : 1, 
+        rainColor: colorP ? SecUtils.sanitizeCSS(colorP.value) : '#00F2FF', 
+        themeColor: themeColorP ? SecUtils.sanitizeCSS(themeColorP.value) : '#00F2FF', 
+        rainSpeed: typeof rainSpeed !== 'undefined' ? parseInt(rainSpeed, 10) : 35, 
+        uiScale: sizeS ? parseFloat(sizeS.value) : 1, 
+        textScale: textScaleS ? parseFloat(textScaleS.value) : 1, 
         showMinutes: minT ? minT.checked : true,
         showSeconds: secT ? secT.checked : false,
         use24Hour: hour24T ? hour24T.checked : false,
@@ -761,30 +796,30 @@ if(saveB) saveB.onclick = () => {
         isFlashing: rainbowT ? rainbowT.checked : false,
         isGlow: glowT ? glowT.checked : true, 
         isGlitch: glitchT ? glitchT.checked : true, 
-        glitchIntensity: glitchS ? glitchS.value : 10, 
+        glitchIntensity: glitchS ? parseInt(glitchS.value, 10) : 10, 
         isScanline: scanlineT ? scanlineT.checked : true, 
         isBgFilter: bgFilterT ? bgFilterT.checked : true, 
         isTransparent: bgT ? bgT.checked : false, 
-        scaleMode: scaleS ? scaleS.value : 1, 
+        scaleMode: scaleS ? parseFloat(scaleS.value) : 1, 
         isCycling: cycleT ? cycleT.checked : false, 
-        customQuote: quoteI ? quoteI.value : "", 
+        customQuote: quoteI ? SecUtils.escapeHTML(quoteI.value) : "", 
         isPhoneEnabled: phoneT ? phoneT.checked : true,
-        phoneFrequency: phoneFreqS ? phoneFreqS.value : 3,
+        phoneFrequency: phoneFreqS ? parseInt(phoneFreqS.value, 10) : 3,
         isChatEnabled: chatT ? chatT.checked : true,
         isRssEnabled: rssT ? rssT.checked : false, 
-        rssSubs: rssI ? rssI.value : "", 
-        newsSources: newsI ? newsI.value : "", 
+        rssSubs: rssI ? SecUtils.escapeHTML(rssI.value) : "", 
+        newsSources: newsI ? SecUtils.escapeHTML(newsI.value) : "", 
         // Additional Feeds
-        securityFeed: securityI ? securityI.value : "",
-        spaceFeed: spaceI ? spaceI.value : "",
-        devFeed: devI ? devI.value : "",
-        financeFeed: financeI ? financeI.value : "",
+        securityFeed: securityI ? SecUtils.escapeHTML(securityI.value) : "",
+        spaceFeed: spaceI ? SecUtils.escapeHTML(spaceI.value) : "",
+        devFeed: devI ? SecUtils.escapeHTML(devI.value) : "",
+        financeFeed: financeI ? SecUtils.escapeHTML(financeI.value) : "",
         
         isStatsEnabled: statsT ? statsT.checked : true, 
         isRainAmbience: rainAmbT ? rainAmbT.checked : true, 
         isHumEnabled: humT ? humT.checked : true, 
         isMatrixSfxEnabled: matrixSfxT ? matrixSfxT.checked : true, 
-        envVolume: envVolS ? envVolS.value : 0.5,
+        envVolume: envVolS ? parseFloat(envVolS.value) : 0.5,
         isOracleEnabled: oracleT ? oracleT.checked : false,
         isSystemMonitorEnabled: sysMonT ? sysMonT.checked : true,
         
@@ -796,8 +831,8 @@ if(saveB) saveB.onclick = () => {
         isVerticalRainRainbow: verticalRainRainbowT ? verticalRainRainbowT.checked : false,
 
         // Operator ID
-        username: operatorNameI ? operatorNameI.value.trim() : "NEO",
-        accessKey: accessKeyI ? accessKeyI.value.trim() : "knock"
+        username: operatorNameI ? SecUtils.escapeHTML(operatorNameI.value.trim()) : "NEO",
+        accessKey: accessKeyI ? SecUtils.escapeHTML(accessKeyI.value.trim()) : "knock"
     };
     
     // LOGIC FIX: Do NOT add customPfp to 'settings' (which goes to sync).
@@ -870,8 +905,8 @@ window.initSettingsUI = function(data) {
     // Fetch directly from storage (local) as credentials and PFP might be there
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         chrome.storage.local.get(['username', 'accessKey', 'customPfp'], (localData) => {
-            if (operatorNameI) operatorNameI.value = localData.username || data.username || "NEO";
-            if (accessKeyI) accessKeyI.value = localData.accessKey || data.accessKey || "knock";
+            if (operatorNameI) operatorNameI.value = SecUtils.escapeHTML(localData.username || data.username || "NEO");
+            if (accessKeyI) accessKeyI.value = SecUtils.escapeHTML(localData.accessKey || data.accessKey || "knock");
             
             if (localData.customPfp) {
                 updatePfpVisuals(true, localData.customPfp);
@@ -881,8 +916,8 @@ window.initSettingsUI = function(data) {
         });
     } else {
          // Fallback
-         if (operatorNameI) operatorNameI.value = localStorage.getItem('username') || "NEO";
-         if (accessKeyI) accessKeyI.value = localStorage.getItem('accessKey') || "knock";
+         if (operatorNameI) operatorNameI.value = SecUtils.escapeHTML(localStorage.getItem('username') || "NEO");
+         if (accessKeyI) accessKeyI.value = SecUtils.escapeHTML(localStorage.getItem('accessKey') || "knock");
          
          const savedPfp = localStorage.getItem('customPfp');
          if (savedPfp) {
@@ -898,10 +933,10 @@ window.initSettingsUI = function(data) {
     if(secT) secT.checked = data.showSeconds; 
     if(hour24T) hour24T.checked = data.use24Hour;
     
-    if(speedS) speedS.value = data.rainSpeed; 
+    if(speedS) speedS.value = parseInt(data.rainSpeed, 10); 
     if(greenT) greenT.checked = data.isMatrixGreen; 
-    if(colorP) colorP.value = data.rainColor; 
-    if(themeColorP) themeColorP.value = data.themeColor || "#00f2ff";
+    if(colorP) colorP.value = SecUtils.sanitizeCSS(data.rainColor); 
+    if(themeColorP) themeColorP.value = SecUtils.sanitizeCSS(data.themeColor) || "#00f2ff";
     syncThemeColor(); 
     
     if(binaryT) binaryT.checked = data.isBinary;
@@ -910,7 +945,7 @@ window.initSettingsUI = function(data) {
     if(mathT) mathT.checked = data.isMathSymbols;
     
     if (data.videoBackground) {
-        const toggle = document.getElementById(`${data.videoBackground}-toggle`);
+        const toggle = document.getElementById(`${SecUtils.escapeHTML(data.videoBackground)}-toggle`);
         if (toggle) toggle.checked = true;
     }
 
@@ -918,8 +953,8 @@ window.initSettingsUI = function(data) {
     if(rainbowT) rainbowT.checked = data.isFlashing;
     
     if(phoneT) phoneT.checked = data.isPhoneEnabled; 
-    if(phoneFreqS) phoneFreqS.value = data.phoneFrequency; 
-    if(phoneFreqVal) phoneFreqVal.textContent = data.phoneFrequency;
+    if(phoneFreqS) phoneFreqS.value = parseInt(data.phoneFrequency, 10); 
+    if(phoneFreqVal) phoneFreqVal.textContent = parseInt(data.phoneFrequency, 10);
     
     if(chatT) chatT.checked = data.isChatEnabled; 
     
@@ -930,12 +965,12 @@ window.initSettingsUI = function(data) {
     if(bgT) bgT.checked = data.isTransparent;
     if(scanlineT) scanlineT.checked = data.isScanline;
     
-    if(textScaleS) textScaleS.value = data.textScale;
-    if(scaleS) scaleS.value = data.scaleMode;
-    if(sizeS) sizeS.value = data.uiScale;
-    if(glitchS) glitchS.value = parseInt(data.glitchIntensity) || 5;
+    if(textScaleS) textScaleS.value = parseFloat(data.textScale);
+    if(scaleS) scaleS.value = parseFloat(data.scaleMode);
+    if(sizeS) sizeS.value = parseFloat(data.uiScale);
+    if(glitchS) glitchS.value = parseInt(data.glitchIntensity, 10) || 5;
     
-    if (data.customQuote) { if(quoteI) quoteI.value = data.customQuote; } 
+    if (data.customQuote) { if(quoteI) quoteI.value = SecUtils.escapeHTML(data.customQuote); } 
     else if (data.isCycling) { if(cycleT) cycleT.checked = true; }
     
     // FIX: RSS Toggle Loading
@@ -949,12 +984,12 @@ window.initSettingsUI = function(data) {
         }
     }
     
-    if(rssI) rssI.value = data.rssSubs;
-    if(newsI) newsI.value = data.newsSources || "";
-    if(securityI) securityI.value = data.securityFeed || "";
-    if(spaceI) spaceI.value = data.spaceFeed || "";
-    if(devI) devI.value = data.devFeed || "";
-    if(financeI) financeI.value = data.financeFeed || "";
+    if(rssI) rssI.value = SecUtils.escapeHTML(data.rssSubs);
+    if(newsI) newsI.value = SecUtils.escapeHTML(data.newsSources) || "";
+    if(securityI) securityI.value = SecUtils.escapeHTML(data.securityFeed) || "";
+    if(spaceI) spaceI.value = SecUtils.escapeHTML(data.spaceFeed) || "";
+    if(devI) devI.value = SecUtils.escapeHTML(data.devFeed) || "";
+    if(financeI) financeI.value = SecUtils.escapeHTML(data.financeFeed) || "";
 
     if(oracleT) oracleT.checked = data.isOracleEnabled;
     const isSysMon = (data.isSystemMonitorEnabled !== undefined) ? data.isSystemMonitorEnabled : true;
@@ -963,7 +998,7 @@ window.initSettingsUI = function(data) {
     if(rainAmbT) rainAmbT.checked = data.isRainAmbience; 
     if(humT) humT.checked = data.isHumEnabled; 
     if(matrixSfxT) matrixSfxT.checked = data.isMatrixSfxEnabled;
-    if(envVolS) envVolS.value = data.envVolume; 
+    if(envVolS) envVolS.value = parseFloat(data.envVolume); 
     
     if(statsT) statsT.checked = data.isStatsEnabled;
 
