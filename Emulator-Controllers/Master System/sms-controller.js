@@ -55,7 +55,9 @@ window.openSmsEmulator = async function() {
 
     slotSelect.addEventListener('change', (e) => {
         currentSlot = e.target.value;
-        debugLog.innerHTML = `<span style="color:#00ff41;">SLOT CHANGED TO ${currentSlot}</span>`;
+        // Fix: Replace innerHTML with textContent and style assignment
+        debugLog.style.color = '#00ff41';
+        debugLog.textContent = `SLOT CHANGED TO ${currentSlot}`;
     });
 
     const bufferToBase64 = (buffer) => {
@@ -164,7 +166,9 @@ window.openSmsEmulator = async function() {
         if (e.data.command === 'export_state') {
             const base64Data = bufferToBase64(e.data.data);
             localStorage.setItem(`sms_state_${currentSlot}_${e.data.romName}`, base64Data);
-            debugLog.innerHTML = `<span style="color:#00ff41;">STATE SAVED TO DISK</span>`;
+            // Fix: Replace innerHTML with textContent and style assignment
+            debugLog.style.color = '#00ff41';
+            debugLog.textContent = `STATE SAVED TO DISK`;
         }
     };
     window.addEventListener('message', window._smsListener);
