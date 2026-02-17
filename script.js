@@ -1838,6 +1838,19 @@ function getLocalOracleResponse(i) {
     return r[Math.floor(Math.random() * r.length)];
 }
 
+// --- XSS SANITIZER ---
+// Safely escapes characters that could be interpreted as HTML markup
+const sanitizeHTML = (str) => {
+    if (typeof str !== 'string') return str;
+    return str.replace(/[&<>'"]/g, match => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+    }[match] || match));
+};
+
 function manageOracleAnimation(container, element, text, isImage = false) {
     if (typeof text !== 'string') {
         if (text && typeof text === 'object') text = text.content || text.text || text.message || JSON.stringify(text);
@@ -1854,7 +1867,7 @@ function manageOracleAnimation(container, element, text, isImage = false) {
     if (state.interval) clearInterval(state.interval);
 
     if (isImage) {
-        element.innerHTML = text; element.style.opacity = "1";
+        element.innerHTML = sanitizeHTML(text); element.style.opacity = "1";
         const p = element.closest('#oracle-chat-history') || element.closest('#terminal-output');
         // FIX: Use requestAnimationFrame for images too
         if (p) requestAnimationFrame(() => p.scrollTop = p.scrollHeight);
@@ -1919,7 +1932,7 @@ function manageOracleAnimation(container, element, text, isImage = false) {
             }
 
             if (state.phase === 'typing') {
-                const html = Array(state.typingIdx).fill(0).map(() => `<span style="display:inline-block; width:1ch; text-align:center;">${MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)]}</span>`).join("");
+                const html = Array(state.typingIdx).fill(0).map(() => `<span style="display:inline-block; width:1ch; text-align:center;">${sanitizeHTML(MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)])}</span>`).join("");
                 element.innerHTML = html;
                 element.classList.add('encrypted');
                 
@@ -1930,9 +1943,9 @@ function manageOracleAnimation(container, element, text, isImage = false) {
             } else {
                 const currentIter = Math.floor(state.revealIter);
                 const html = state.text.split("").map((letter, index) => {
-                    if (index < currentIter) return letter === '<' ? '&lt;' : letter;
+                    if (index < currentIter) return sanitizeHTML(letter);
                     const char = MATRIX_ALPHABET[Math.floor(Math.random() * MATRIX_ALPHABET.length)];
-                    return `<span style="display:inline-block; width:1ch; text-align:center;">${char}</span>`;
+                    return `<span style="display:inline-block; width:1ch; text-align:center;">${sanitizeHTML(char)}</span>`;
                 }).join("");
                 element.innerHTML = html;
                 if (currentIter >= len) element.classList.remove('encrypted');
@@ -1941,13 +1954,14 @@ function manageOracleAnimation(container, element, text, isImage = false) {
         }
     }, 30);
 }
+
 function addOracleResponse(text) {
     const history = document.getElementById('oracle-chat-history');
     
     const entry = document.createElement('div'); 
     entry.className = "oracle-entry";
     const id = 'oracle-res-' + Date.now();
-    entry.innerHTML = `<div class="oracle-response-container"><div class="oracle-response-text encrypted" id="${id}"></div></div>`;
+    entry.innerHTML = `<div class="oracle-response-container"><div class="oracle-response-text encrypted" id="${sanitizeHTML(id)}"></div></div>`;
     history.appendChild(entry); 
     
     if (!isOracleTerminalActive) {
@@ -1967,7 +1981,7 @@ function addOracleResponse(text) {
             const termEntry = entry.cloneNode(true);
             const termId = 'term-oracle-res-' + Date.now();
             const termTextEl = termEntry.querySelector('.oracle-response-text');
-            termTextEl.id = termId;
+            termTextEl.id = sanitizeHTML(termId);
             termTextEl.innerHTML = ""; 
             
             termTextEl.dataset.fullText = text;
@@ -1986,13 +2000,15 @@ function addOracleImageResponse(imgUrl, captionText) {
     const entry = document.createElement('div');
     entry.className = "oracle-entry";
     const id = 'oracle-res-' + Date.now();
+    const safeId = sanitizeHTML(id);
+    const safeImgUrl = sanitizeHTML(imgUrl);
 
     const innerHTML = `
         <div class="oracle-response-container" style="border-left:none; background: transparent; padding-left: 0;">
             <div class="oracle-scan-container">
-                <img src="${imgUrl}" />
+                <img src="${safeImgUrl}" />
             </div>
-            <div class="oracle-response-text encrypted" id="${id}" style="font-size: 0.75rem; border-left: 2px solid var(--theme-color); padding-left: 8px;"></div>
+            <div class="oracle-response-text encrypted" id="${safeId}" style="font-size: 0.75rem; border-left: 2px solid var(--theme-color); padding-left: 8px;"></div>
         </div>
     `;
     entry.innerHTML = innerHTML;
@@ -2016,8 +2032,9 @@ function addOracleImageResponse(imgUrl, captionText) {
             const termEntry = document.createElement('div');
             termEntry.className = "oracle-entry";
             const termId = 'term-oracle-res-' + Date.now();
+            const safeTermId = sanitizeHTML(termId);
             
-            termEntry.innerHTML = innerHTML.replace(`id="${id}"`, `id="${termId}"`);
+            termEntry.innerHTML = innerHTML.replace(`id="${safeId}"`, `id="${safeTermId}"`);
             
             termOutput.appendChild(termEntry);
             termEntry.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -2237,7 +2254,7 @@ async function runChatTerminal() {
         if (l.children.length > 50) l.removeChild(l.firstChild); 
         const d = document.createElement('div'); 
         d.className = 'chat-msg'; 
-        d.innerHTML = `<b class="${line.c}">${line.u}:</b> ${line.t}`; 
+        d.innerHTML = `<b class="${sanitizeHTML(line.c)}">${sanitizeHTML(line.u)}:</b> ${sanitizeHTML(line.t)}`; 
         l.appendChild(d); 
         scrollTerminal();
     }
@@ -2332,7 +2349,6 @@ searchInput.addEventListener('keydown', (e) => {
 function applyImg(s) { removeM(); const i = document.createElement('img'); i.id = 'bg-image-layer'; i.src = s; mainContainer.prepend(i); }
 function applyVid(file) { removeM(); const v = document.createElement('video'); v.id = 'bg-video'; v.src = URL.createObjectURL(file); v.autoplay = v.loop = v.muted = v.playsInline = true; mainContainer.prepend(v); }
 function removeM() { const v = document.getElementById('bg-video'), i = document.getElementById('bg-image-layer'); if(v) { URL.revokeObjectURL(v.src); v.remove(); } if(i) i.remove(); }
-
 
 function update2DAlphabet() {
     if (isBinary) currentAlphabet = BINARY_ALPHABET;
