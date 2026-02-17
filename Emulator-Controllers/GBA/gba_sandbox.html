@@ -274,6 +274,11 @@
              if(canvas) canvas.focus();
         });
 
+        window.addEventListener("gamepadconnected", (e) => {
+            showNotification("GAMEPAD CONNECTED");
+            window.parent.postMessage({ status: 'gamepad_connected', id: e.gamepad.id }, '*');
+        });
+
         document.getElementById('start-btn').addEventListener('click', launchEmulator);
     </script>
 </body>
