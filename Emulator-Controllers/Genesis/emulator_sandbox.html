@@ -13,10 +13,36 @@
         canvas { 
             display: block; width: 100%; height: 100%; image-rendering: pixelated; 
         }
+
+        #notification {
+            position: absolute;
+            top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8); border: 1px solid #00ff41; color: #00ff41;
+            padding: 10px 20px; font-family: 'Courier New', monospace; font-weight: bold;
+            font-size: 16px; border-radius: 5px; display: none; z-index: 1000; pointer-events: none;
+        }
+
+        #start-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: url('Emulators/genesis/cover.jpg') center/cover no-repeat;
+            display: flex; flex-direction: column; justify-content: flex-end; 
+            align-items: center; box-sizing: border-box; padding-bottom: 50px; 
+            z-index: 100; display: none; 
+        }
+        #start-btn {
+            background: rgba(0, 0, 0, 0.6); border: 2px solid #00ff41; color: #00ff41;
+            padding: 15px 40px; font-size: 1.5rem; cursor: pointer; font-family: inherit;
+            text-transform: uppercase; box-shadow: 0 0 15px #00ff41; transition: all 0.2s;
+            backdrop-filter: blur(4px); border-radius: 50px; 
+        }
+        #start-btn:hover { background: #00ff41; color: black; box-shadow: 0 0 30px #00ff41; }
     </style>
 </head>
 <body>
+    <div id="notification"></div>
     <div id="emulator-container"></div>
+
+    <div id="start-overlay"><button id="start-btn">BOOT SYSTEM</button></div>
 
     <script>
         // Audio Context Patch - Prevents auto-suspend
@@ -43,9 +69,23 @@
     <script>
         let emulatorInstance = null;
         let gamepadLoop = null;
+        let pendingConfig = null;
         
         // Processing Lock to prevent overlapping operations
         let isProcessing = false;
+
+        let notifyTimeout = null;
+        function showNotification(text, keepAlive = false) {
+            const el = document.getElementById('notification');
+            if(el) {
+                el.innerText = text;
+                el.style.display = 'block';
+                if (notifyTimeout) clearTimeout(notifyTimeout);
+                if (!keepAlive) {
+                    notifyTimeout = setTimeout(() => { el.style.display = 'none'; }, 2000);
+                }
+            }
+        }
 
         const blobToBase64 = blob => new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -110,43 +150,60 @@
             }
         }
 
+        async function launchEmulator() {
+            if (!pendingConfig) return;
+            const container = document.getElementById('emulator-container');
+            const overlay = document.getElementById('start-overlay');
+            const { romBlob, coreConfig } = pendingConfig;
+
+            try {
+                // Audio gesture unlock
+                if (window.emulatorAudioContext && window.emulatorAudioContext.state === 'suspended') {
+                    await window.emulatorAudioContext.resume();
+                } else if (window.AudioContext) {
+                    new window.AudioContext().resume();
+                }
+
+                overlay.style.display = 'none';
+                container.innerHTML = '';
+                const canvas = document.createElement('canvas');
+                canvas.id = 'game-canvas';
+                container.appendChild(canvas);
+
+                const inputConfig = {
+                    input_player1_up: "w", input_player1_down: "s",
+                    input_player1_left: "a", input_player1_right: "d",
+                    input_player1_start: "rshift", input_player1_select: "capslock",
+                    input_player1_y: "space", input_player1_b: "lshift",
+                    input_player1_a: "i", input_player1_l: "k",
+                    input_player1_x: "j", input_player1_r: "l",
+                    input_toggle_fast_forward: "p"
+                };
+
+                emulatorInstance = await Nostalgist.launch({
+                    element: canvas, 
+                    rom: romBlob,
+                    core: coreConfig,
+                    retroarchConfig: inputConfig,
+                    style: { width: '100%', height: '100%' }
+                });
+                
+                window.focus();
+                window.parent.postMessage({ status: 'running' }, '*');
+                if (!gamepadLoop) pollGamepads();
+
+            } catch (e) {
+                console.error("Sandbox Error:", e);
+                window.parent.postMessage({ status: 'error', message: e.toString() }, '*');
+            }
+        }
+
         window.addEventListener('message', async (event) => {
-            const { command, romBlob, coreConfig, stateData } = event.data;
+            const { command, stateData } = event.data;
 
             if (command === 'start') {
-                const container = document.getElementById('emulator-container');
-                try {
-                    container.innerHTML = '';
-                    const canvas = document.createElement('canvas');
-                    canvas.id = 'game-canvas';
-                    container.appendChild(canvas);
-
-                    const inputConfig = {
-                        input_player1_up: "w", input_player1_down: "s",
-                        input_player1_left: "a", input_player1_right: "d",
-                        input_player1_start: "rshift", input_player1_select: "capslock",
-                        input_player1_y: "space", input_player1_b: "lshift",
-                        input_player1_a: "i", input_player1_l: "k",
-                        input_player1_x: "j", input_player1_r: "l",
-                        input_toggle_fast_forward: "p"
-                    };
-
-                    emulatorInstance = await Nostalgist.launch({
-                        element: canvas, 
-                        rom: romBlob,
-                        core: coreConfig,
-                        retroarchConfig: inputConfig,
-                        style: { width: '100%', height: '100%' }
-                    });
-                    
-                    window.focus();
-                    window.parent.postMessage({ status: 'running' }, '*');
-                    if (!gamepadLoop) pollGamepads();
-
-                } catch (e) {
-                    console.error("Sandbox Error:", e);
-                    window.parent.postMessage({ status: 'error', message: e.toString() }, '*');
-                }
+                pendingConfig = event.data;
+                document.getElementById('start-overlay').style.display = 'flex';
             }
             else if (command === 'mute') {
                 const ctx = window.emulatorAudioContext;
@@ -193,8 +250,11 @@
         });
 
         window.addEventListener("gamepadconnected", (e) => {
+            showNotification("GAMEPAD CONNECTED");
             window.parent.postMessage({ status: 'gamepad_connected', id: e.gamepad.id }, '*');
         });
+
+        document.getElementById('start-btn').addEventListener('click', launchEmulator);
     </script>
 </body>
 </html>
