@@ -700,9 +700,6 @@ class VideoEditor {
     }
 
     renderAssets() {
-        // Clear media pool but keep the import button container logic if we had one separate
-        // But since we put the import button inside the grid, we need to rebuild carefully.
-        // Actually, let's just clear and re-append.
         this.assetList.innerHTML = `
             <div style="grid-column:1/-1; display:flex; justify-content:center; padding-bottom:10px;">
                 <button class="ve-btn-icon" id="ve-reimport" title="Import Media" style="border:1px solid #333; border-radius:4px; width:100%;">📂 Import Media</button>
@@ -718,17 +715,34 @@ class VideoEditor {
             const el = document.createElement('div');
             el.className = 've-asset-thumb';
             
+            // XSS Security Fix: Use document.createElement & textContent for untrusted variables
             if (asset.thumbnail) {
-                el.innerHTML = `
-                    <img src="${asset.thumbnail}" draggable="false" />
-                    <div class="ve-asset-name">${asset.name}</div>
-                `;
+                const img = document.createElement('img');
+                img.src = asset.thumbnail;
+                img.draggable = false;
+                
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 've-asset-name';
+                nameDiv.textContent = asset.name; // Safely handles malicious filenames
+                
+                el.appendChild(img);
+                el.appendChild(nameDiv);
             } else {
-                const icon = asset.type === 'video' ? '🎬' : '🖼️';
-                el.innerHTML = `
-                    <div style="flex:1; display:flex; align-items:center; justify-content:center; color:#555; font-size:24px;">${icon}</div>
-                    <div class="ve-asset-name">${asset.name}</div>
-                `;
+                const iconWrap = document.createElement('div');
+                iconWrap.style.flex = '1';
+                iconWrap.style.display = 'flex';
+                iconWrap.style.alignItems = 'center';
+                iconWrap.style.justifyContent = 'center';
+                iconWrap.style.color = '#555';
+                iconWrap.style.fontSize = '24px';
+                iconWrap.textContent = asset.type === 'video' ? '🎬' : '🖼️';
+                
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 've-asset-name';
+                nameDiv.textContent = asset.name; // Safely handles malicious filenames
+                
+                el.appendChild(iconWrap);
+                el.appendChild(nameDiv);
             }
             
             el.onclick = () => this.addClip(asset, 0, this.currentTime);
