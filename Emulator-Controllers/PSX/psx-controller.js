@@ -54,7 +54,9 @@ window.openPSXEmulator = async function() {
 
     slotSelect.addEventListener('change', (e) => {
         currentSlot = e.target.value;
-        debugLog.innerHTML = `<span style="color:#00ff41;">SLOT CHANGED TO MEM CARD ${currentSlot}</span>`;
+        // Fix: Use textContent and style instead of innerHTML
+        debugLog.style.color = '#00ff41';
+        debugLog.textContent = `SLOT CHANGED TO MEM CARD ${currentSlot}`;
     });
 
     const bufferToBase64 = (buffer) => {
@@ -147,7 +149,9 @@ window.openPSXEmulator = async function() {
             const saveBlob = savedBase64 ? base64ToBlob(savedBase64) : null;
 
             if (saveBlob) {
-                debugLog.innerHTML = `<span style="color:#00ff41;">MEM CARD ${currentSlot} LOADED</span>`;
+                // Fix: Use textContent and style instead of innerHTML
+                debugLog.style.color = '#00ff41';
+                debugLog.textContent = `MEM CARD ${currentSlot} LOADED`;
             }
 
             const iframe = document.createElement('iframe');
@@ -166,7 +170,12 @@ window.openPSXEmulator = async function() {
                 }, '*');
                 iframe.contentWindow.focus();
             };
-        } catch (e) { document.getElementById('debug-log').innerHTML = `[ERROR] ${e.message}`; }
+        } catch (e) { 
+            // Fix: Catch block sanitization
+            const dl = document.getElementById('debug-log');
+            dl.style.color = 'red';
+            dl.textContent = `[ERROR] ${e.message}`; 
+        }
     };
 
     fullBtn.addEventListener('click', (e) => {
@@ -183,6 +192,7 @@ window.openPSXEmulator = async function() {
             iframe.contentWindow.postMessage({ command: 'mute' }, '*');
             const isMuted = muteBtn.getAttribute('data-muted') === 'true';
             muteBtn.setAttribute('data-muted', !isMuted);
+            // Safe innerHTML mapping, using standard predefined entities
             muteBtn.innerHTML = isMuted ? '&#128266;' : '&#128263;';
             muteBtn.style.color = isMuted ? '#00ff41' : 'red';
         }
