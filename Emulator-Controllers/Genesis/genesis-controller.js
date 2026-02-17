@@ -79,8 +79,10 @@ window.openGenesisEmulator = async function() {
         const romName = dropdown.value;
         const storageKey = romName ? `gen_save_slot_${currentSlot}_${romName}` : `gen_save_slot_${currentSlot}`;
         const exists = localStorage.getItem(storageKey) ? "DATA FOUND" : "EMPTY";
-        debugLog.innerHTML = `<span style="color:#0f0;">SLOT ${currentSlot} SELECTED [${exists}]</span>`;
-        setTimeout(() => debugLog.innerHTML = "", 2000);
+        // Fix: Use textContent and style instead of innerHTML
+        debugLog.style.color = '#0f0';
+        debugLog.textContent = `SLOT ${currentSlot} SELECTED [${exists}]`;
+        setTimeout(() => debugLog.textContent = "", 2000);
     });
 
     fullBtn.addEventListener('click', (e) => {
@@ -115,8 +117,10 @@ window.openGenesisEmulator = async function() {
     });
 
     window.addEventListener("gamepadconnected", (e) => {
-        debugLog.innerHTML = `<span style="color:#0f0;">GAMEPAD DETECTED: ${e.gamepad.id.substring(0, 20).toUpperCase()}...</span>`;
-        setTimeout(() => debugLog.innerHTML = "", 3000);
+        // Fix: Use textContent and style instead of innerHTML
+        debugLog.style.color = '#0f0';
+        debugLog.textContent = `GAMEPAD DETECTED: ${e.gamepad.id.substring(0, 20).toUpperCase()}...`;
+        setTimeout(() => debugLog.textContent = "", 3000);
     });
 
     // --- FULL ROM LIST PRESERVED ---
@@ -163,7 +167,9 @@ window.openGenesisEmulator = async function() {
         dropdown.blur();
         if (termInput) termInput.blur(); 
 
-        debugLog.innerHTML = `<span style="color:yellow">Initializing System...</span>`;
+        // Fix: Use textContent and style instead of innerHTML
+        debugLog.style.color = 'yellow';
+        debugLog.textContent = `Initializing System...`;
         
         const oldIframe = displayWrapper.querySelector('iframe');
         if(oldIframe) oldIframe.remove();
@@ -208,32 +214,45 @@ window.openGenesisEmulator = async function() {
                 const currentRomName = dropdown.value;
                 if (e.data.status === 'save_success') {
                     localStorage.setItem(`gen_save_slot_${currentSlot}_${currentRomName}`, e.data.data);
-                    debugLog.innerHTML = `<span style="color:#0f0;">STATE SAVED [SLOT ${currentSlot}]</span>`;
-                    setTimeout(() => debugLog.innerHTML = "", 2000);
+                    // Fix: Use textContent and style instead of innerHTML
+                    debugLog.style.color = '#0f0';
+                    debugLog.textContent = `STATE SAVED [SLOT ${currentSlot}]`;
+                    setTimeout(() => debugLog.textContent = "", 2000);
                 }
                 else if (e.data.status === 'request_load') {
                     const savedData = localStorage.getItem(`gen_save_slot_${currentSlot}_${currentRomName}`);
                     if (savedData) {
                         iframe.contentWindow.postMessage({ command: 'load_state', stateData: savedData }, '*');
-                        debugLog.innerHTML = `<span style="color:yellow;">LOADING SLOT ${currentSlot}...</span>`;
+                        // Fix: Use textContent and style instead of innerHTML
+                        debugLog.style.color = 'yellow';
+                        debugLog.textContent = `LOADING SLOT ${currentSlot}...`;
                     } else {
-                        debugLog.innerHTML = `<span style="color:red;">SLOT ${currentSlot} EMPTY</span>`;
-                        setTimeout(() => debugLog.innerHTML = "", 2000);
+                        // Fix: Use textContent and style instead of innerHTML
+                        debugLog.style.color = 'red';
+                        debugLog.textContent = `SLOT ${currentSlot} EMPTY`;
+                        setTimeout(() => debugLog.textContent = "", 2000);
                     }
                 }
                 else if (e.data.status === 'load_complete') {
-                    debugLog.innerHTML = `<span style="color:#0f0;">LOAD COMPLETE</span>`;
-                    setTimeout(() => debugLog.innerHTML = "", 2000);
+                    // Fix: Use textContent and style instead of innerHTML
+                    debugLog.style.color = '#0f0';
+                    debugLog.textContent = `LOAD COMPLETE`;
+                    setTimeout(() => debugLog.textContent = "", 2000);
                 }
                 else if (e.data.status === 'running') {
-                    debugLog.innerHTML = "";
+                    // Fix: Use textContent instead of innerHTML
+                    debugLog.textContent = "";
                 } 
                 else if (e.data.status === 'error') {
-                    debugLog.innerHTML = `[ERROR] ${e.data.message}`;
+                    // Fix: Vulnerable payload sanitization
+                    debugLog.style.color = 'red';
+                    debugLog.textContent = `[ERROR] ${e.data.message}`;
                 } 
                 else if (e.data.status === 'gamepad_connected') {
-                    debugLog.innerHTML = `<span style="color:#0f0;">GAMEPAD READY: ${e.data.id.substring(0, 15)}...</span>`;
-                    setTimeout(() => debugLog.innerHTML = "", 3000);
+                    // Fix: Vulnerable payload sanitization
+                    debugLog.style.color = '#0f0';
+                    debugLog.textContent = `GAMEPAD READY: ${e.data.id.substring(0, 15)}...`;
+                    setTimeout(() => debugLog.textContent = "", 3000);
                 }
             };
 
@@ -241,7 +260,9 @@ window.openGenesisEmulator = async function() {
 
         } catch (e) {
             console.error(e);
-            debugLog.innerHTML = `[SYSTEM ERROR] ${e.message}`;
+            // Fix: Catch block sanitization
+            debugLog.style.color = 'red';
+            debugLog.textContent = `[SYSTEM ERROR] ${e.message}`;
         }
     };
 };
