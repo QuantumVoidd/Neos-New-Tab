@@ -164,7 +164,13 @@ window.OracleEngine = {
                 const clean = q.replace(/(who|what|where|when|is|was|are|did|tell me about)/gi, "").trim();
                 const res = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(clean)}&format=json&origin=*`);
                 const data = await res.json();
-                if (data.query?.search[0]) search = `Wiki: ${data.query.search[0].snippet.replace(/<[^>]*>?/gm, '')}`;
+                
+                if (data.query?.search[0]) {
+                    // FIX: Complete multi-character sanitization using native DOMParser instead of Regex
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(data.query.search[0].snippet, 'text/html');
+                    search = `Wiki: ${doc.body.textContent || ""}`;
+                }
             } catch(e) {}
         }
         return { time: new Date().toLocaleTimeString(), search, weather };
