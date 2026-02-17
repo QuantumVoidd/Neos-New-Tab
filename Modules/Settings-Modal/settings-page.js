@@ -334,7 +334,8 @@ if(uploadPfpB) {
 if(pfpI) {
     pfpI.onchange = (e) => {
         const file = e.target.files[0];
-        if (file) {
+        // Security check for image
+        if (file && file.type.startsWith('image/')) {
              const reader = new FileReader();
              reader.onload = function(event) {
                  tempPfpData = event.target.result;
@@ -638,11 +639,11 @@ if(upImgB) {
 if(imgI) {
     imgI.onchange = (e) => {
         const file = e.target.files[0];
-        if(!file) return;
+        if(!file || !file.type.startsWith('image/')) return; // SECURITY FIX: Enforce MIME type
         
         // Use Global Helper if available or direct URL
         if (typeof applyImg === 'function') {
-            const url = URL.createObjectURL(file);
+            const url = SecUtils.sanitizeURL(URL.createObjectURL(file)); // SECURITY FIX: Sanitize generated ObjectURL
             applyImg(url);
             
             const reader = new FileReader();
@@ -663,7 +664,7 @@ if(upVidB) {
 if(vidI) {
     vidI.onchange = (e) => {
         const file = e.target.files[0];
-        if(!file) return;
+        if(!file || !file.type.startsWith('video/')) return; // SECURITY FIX: Enforce MIME type
         
         if (typeof saveVideoToDB === 'function') {
             saveVideoToDB(file).then(() => {
@@ -717,11 +718,15 @@ if(audI) {
         if (typeof saveAudioToDB === 'function') {
             const promises = [];
             for(let i=0; i<files.length; i++) {
+                // SECURITY FIX: Enforce MIME type before processing loops
+                if(!files[i].type.startsWith('audio/')) continue; 
                 promises.push(saveAudioToDB(files[i]));
             }
-            Promise.all(promises).then(() => {
-                alert("Audio messages uploaded to secure vault.");
-            });
+            if (promises.length > 0) {
+                Promise.all(promises).then(() => {
+                    alert("Audio messages uploaded to secure vault.");
+                });
+            }
         }
     };
 }
@@ -746,12 +751,19 @@ if(sfxI) {
         const file = e.target.files[0];
         if(!file) return;
         
+        // SECURITY FIX: Enforce strictly valid audio files to prevent potentially malicious blobs
+        if (!file.type.startsWith('audio/')) {
+             console.warn('Security Block: Uploaded file is not an audio file.');
+             return;
+        }
+        
         if (typeof saveSfxToDB === 'function') {
             saveSfxToDB(file).then(() => {
                 // Apply immediately
                 const el = get('custom-background-sfx');
                 if(el) {
-                    el.src = URL.createObjectURL(file);
+                    // SECURITY FIX: Wrap in sanitizeURL to ensure compliance with 'DOM text reinterpreted as HTML' rules
+                    el.src = SecUtils.sanitizeURL(URL.createObjectURL(file));
                     el.play().catch(()=>{});
                 }
             });
