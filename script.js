@@ -3339,35 +3339,81 @@ function showExplorerPreview(key, value, type) {
     const cleanTitle = (key.startsWith('vault_') || key.startsWith('folder_')) 
         ? key.split('_').slice(2).join('_') : key;
 
-    let contentHtml = '';
-    
+    let contentNode = document.createElement('div');
+    contentNode.style.width = '100%';
+    contentNode.style.height = '100%';
+    contentNode.style.display = 'flex';
+    contentNode.style.justifyContent = 'center';
+    contentNode.style.alignItems = 'center';
+    contentNode.style.overflow = 'hidden';
+
     if (type === 'image') {
-        contentHtml = `
-            <div style="display:flex; justify-content:center; align-items:center; width:100%; height:100%; min-height:300px; overflow:hidden;">
-                <img src="${value}" style="max-width:100%; max-height:60vh; object-fit:contain; border: 1px solid var(--theme-color); box-shadow: 0 0 15px rgba(0,242,255,0.2);">
-            </div>`;
+        const imgContainer = document.createElement('div');
+        imgContainer.style.cssText = "display:flex; justify-content:center; align-items:center; width:100%; height:100%; min-height:300px; overflow:hidden;";
+        
+        const img = document.createElement('img');
+        img.src = value;
+        img.style.cssText = "max-width:100%; max-height:60vh; object-fit:contain; border: 1px solid var(--theme-color); box-shadow: 0 0 15px rgba(0,242,255,0.2);";
+        
+        imgContainer.appendChild(img);
+        contentNode.appendChild(imgContainer);
     } 
     else if (type === 'video') {
-        contentHtml = `
-            <div style="display:flex; justify-content:center; align-items:center; width:100%; height:100%; min-height:300px;">
-                <video src="${value}" controls autoplay style="max-width:100%; max-height:60vh; border: 1px solid var(--theme-color); box-shadow: 0 0 15px rgba(0,242,255,0.2);"></video>
-            </div>`;
+        const vidContainer = document.createElement('div');
+        vidContainer.style.cssText = "display:flex; justify-content:center; align-items:center; width:100%; height:100%; min-height:300px;";
+        
+        const video = document.createElement('video');
+        video.src = value;
+        video.controls = true;
+        video.autoplay = true;
+        video.style.cssText = "max-width:100%; max-height:60vh; border: 1px solid var(--theme-color); box-shadow: 0 0 15px rgba(0,242,255,0.2);";
+        
+        vidContainer.appendChild(video);
+        contentNode.appendChild(vidContainer);
     } else if (type === 'audio') {
-        contentHtml = `
-            <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; width:100%; padding: 40px; border: 1px solid rgba(0,242,255,0.1); background:rgba(0,0,0,0.8); box-sizing: border-box;">
-                <div style="font-size: 3rem; margin-bottom: 20px;">🎵</div>
-                <audio src="${value}" controls style="width:100%; max-width:500px;"></audio>
-            </div>`;
+        const audioContainer = document.createElement('div');
+        audioContainer.style.cssText = "display:flex; flex-direction:column; justify-content:center; align-items:center; width:100%; padding: 40px; border: 1px solid rgba(0,242,255,0.1); background:rgba(0,0,0,0.8); box-sizing: border-box;";
+        
+        const iconDiv = document.createElement('div');
+        iconDiv.style.fontSize = "3rem";
+        iconDiv.style.marginBottom = "20px";
+        iconDiv.textContent = "🎵";
+        
+        const audio = document.createElement('audio');
+        audio.src = value;
+        audio.controls = true;
+        audio.style.width = "100%";
+        audio.style.maxWidth = "500px";
+        
+        audioContainer.appendChild(iconDiv);
+        audioContainer.appendChild(audio);
+        contentNode.appendChild(audioContainer);
     } else if (type === 'nes_save' || type === 'sms_save' || type === 'genesis_save' || type === 'psx_save' || type === 'gba_save' || type === 'gbc_save' || type === 'snes_save') {
         const sizeKB = Math.round((value.length * 0.75) / 1024);
-        contentHtml = `
-            <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; width:100%; padding: 40px; border: 1px solid rgba(0,242,255,0.1); background:rgba(0,0,0,0.8); box-sizing: border-box;">
-                <div style="font-size: 3rem; margin-bottom: 20px;">🕹️</div>
-                <div style="font-family: 'Press Start 2P', monospace; font-size: 1.2rem; color: #ffcc00; margin-bottom: 10px; text-align: center;">EMULATOR DATA STREAM</div>
-                <div style="color: var(--theme-color); opacity: 0.8; font-family: monospace;">${cleanTitle}</div>
-                <div style="margin-top: 15px; font-size: 0.8rem; color: #aaa;">Timestamp: ${new Date().toLocaleString()}</div>
-                <div style="margin-top: 5px; font-size: 0.8rem; color: #0f0;">Size: ~${sizeKB} KB</div>
-            </div>`;
+        const emuContainer = document.createElement('div');
+        emuContainer.style.cssText = "display:flex; flex-direction:column; justify-content:center; align-items:center; width:100%; padding: 40px; border: 1px solid rgba(0,242,255,0.1); background:rgba(0,0,0,0.8); box-sizing: border-box;";
+        
+        emuContainer.innerHTML = `
+            <div style="font-size: 3rem; margin-bottom: 20px;">🕹️</div>
+            <div style="font-family: 'Press Start 2P', monospace; font-size: 1.2rem; color: #ffcc00; margin-bottom: 10px; text-align: center;">EMULATOR DATA STREAM</div>
+        `; // Static HTML safe here
+
+        const labelDiv = document.createElement('div');
+        labelDiv.style.cssText = "color: var(--theme-color); opacity: 0.8; font-family: monospace;";
+        labelDiv.textContent = cleanTitle;
+        emuContainer.appendChild(labelDiv);
+
+        const timeDiv = document.createElement('div');
+        timeDiv.style.cssText = "margin-top: 15px; font-size: 0.8rem; color: #aaa;";
+        timeDiv.textContent = `Timestamp: ${new Date().toLocaleString()}`;
+        emuContainer.appendChild(timeDiv);
+
+        const sizeDiv = document.createElement('div');
+        sizeDiv.style.cssText = "margin-top: 5px; font-size: 0.8rem; color: #0f0;";
+        sizeDiv.textContent = `Size: ~${sizeKB} KB`;
+        emuContainer.appendChild(sizeDiv);
+        
+        contentNode.appendChild(emuContainer);
     } else {
         let textContent = "";
         if (typeof value === 'string' && value.startsWith('data:')) {
@@ -3380,20 +3426,41 @@ function showExplorerPreview(key, value, type) {
         } else {
             textContent = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
         }
-        const sanitizedText = textContent.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-        contentHtml = `
-            <div style="color:var(--theme-color); font-family:monospace; white-space:pre-wrap; max-height:50vh; overflow:auto; padding:15px; background:rgba(0,0,0,0.8); border: 1px solid rgba(0,242,255,0.1); width: 100%; box-sizing: border-box;">
-                ${sanitizedText}
-            </div>`;
+        // Use textContent directly, no need to sanitize manually as textContent handles it
+        const textDiv = document.createElement('div');
+        textDiv.style.cssText = "color:var(--theme-color); font-family:monospace; white-space:pre-wrap; max-height:50vh; overflow:auto; padding:15px; background:rgba(0,0,0,0.8); border: 1px solid rgba(0,242,255,0.1); width: 100%; box-sizing: border-box;";
+        textDiv.textContent = textContent;
+        contentNode.appendChild(textDiv);
     }
 
-    let extraButtons = '';
+    const footerButtons = document.createElement('div');
+    footerButtons.style.cssText = "display:flex; justify-content:flex-end; gap:15px; margin-top:10px;";
+
     if(type === 'image') {
-        extraButtons += `<button id="edit-paint-btn" style="background:rgba(0,255,65,0.2); color:var(--theme-color); border:1px solid var(--theme-color); padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">EDIT IN PAINT</button>`;
+        const paintBtn = document.createElement('button');
+        paintBtn.id = 'edit-paint-btn';
+        paintBtn.style.cssText = "background:rgba(0,255,65,0.2); color:var(--theme-color); border:1px solid var(--theme-color); padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;";
+        paintBtn.textContent = "EDIT IN PAINT";
+        footerButtons.appendChild(paintBtn);
     } else if(type === 'code' || type === 'text') {
-        extraButtons += `<button id="edit-wordpad-btn" style="background:rgba(0,255,65,0.2); color:var(--theme-color); border:1px solid var(--theme-color); padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">EDIT IN WORDPAD</button>`;
+        const wpBtn = document.createElement('button');
+        wpBtn.id = 'edit-wordpad-btn';
+        wpBtn.style.cssText = "background:rgba(0,255,65,0.2); color:var(--theme-color); border:1px solid var(--theme-color); padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;";
+        wpBtn.textContent = "EDIT IN WORDPAD";
+        footerButtons.appendChild(wpBtn);
     }
+
+    const downloadBtn = document.createElement('button');
+    downloadBtn.id = 'extract-btn';
+    downloadBtn.style.cssText = "background:var(--theme-color); color:#000; border:none; padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;";
+    downloadBtn.textContent = "DOWNLOAD";
+    footerButtons.appendChild(downloadBtn);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.id = 'close-preview-btn';
+    closeBtn.style.cssText = "background:transparent; color:var(--theme-color); border:1px solid var(--theme-color); padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;";
+    closeBtn.textContent = "CLOSE";
+    footerButtons.appendChild(closeBtn);
 
     const innerModal = document.createElement('div');
     innerModal.style.cssText = "background:#000; padding:20px; border: 1px solid var(--theme-color); width: 85vw; max-width: 900px; display: flex; flex-direction: column; gap: 15px; border-radius: 4px; box-shadow: 0 0 15px var(--theme-color); position: relative; z-index: 10; box-sizing: border-box; overflow: hidden;";
@@ -3402,18 +3469,24 @@ function showExplorerPreview(key, value, type) {
 
     const modalUI = document.createElement('div');
     modalUI.style.cssText = "position:relative; z-index:2; display:flex; flex-direction:column; gap:15px;";
-    modalUI.innerHTML = `
-            <div style="font-family:'Orbitron'; color:var(--theme-color); border-bottom: 1px solid rgba(0,242,255,0.3); padding-bottom: 10px; font-size: 1rem; display:flex; justify-content:space-between; align-items:center;">
-                <span>FILE: ${cleanTitle.toUpperCase()}</span>
-                <span style="font-size:0.7em; opacity:0.7; border:1px solid var(--theme-color); padding:2px 6px; border-radius:2px;">${type ? type.toUpperCase() : 'UNKNOWN'}</span>
-            </div>
-            ${contentHtml}
-            <div style="display:flex; justify-content:flex-end; gap:15px; margin-top:10px;">
-                ${extraButtons}
-                <button id="extract-btn" style="background:var(--theme-color); color:#000; border:none; padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">DOWNLOAD</button>
-                <button id="close-preview-btn" style="background:transparent; color:var(--theme-color); border:1px solid var(--theme-color); padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">CLOSE</button>
-            </div>
-    `;
+    
+    // Construct Header
+    const header = document.createElement('div');
+    header.style.cssText = "font-family:'Orbitron'; color:var(--theme-color); border-bottom: 1px solid rgba(0,242,255,0.3); padding-bottom: 10px; font-size: 1rem; display:flex; justify-content:space-between; align-items:center;";
+    
+    const titleSpan = document.createElement('span');
+    titleSpan.textContent = `FILE: ${cleanTitle.toUpperCase()}`;
+    
+    const typeSpan = document.createElement('span');
+    typeSpan.style.cssText = "font-size:0.7em; opacity:0.7; border:1px solid var(--theme-color); padding:2px 6px; border-radius:2px;";
+    typeSpan.textContent = type ? type.toUpperCase() : 'UNKNOWN';
+    
+    header.appendChild(titleSpan);
+    header.appendChild(typeSpan);
+    
+    modalUI.appendChild(header);
+    modalUI.appendChild(contentNode);
+    modalUI.appendChild(footerButtons);
 
     innerModal.appendChild(modalUI);
     previewOverlay.appendChild(innerModal);
@@ -3452,7 +3525,7 @@ function showExplorerPreview(key, value, type) {
     const rainInterval = setInterval(drawPreviewRain, typeof rainSpeed !== 'undefined' ? rainSpeed : 33);
     
     // Hover effects
-    const btns = previewOverlay.querySelectorAll('button');
+    const btns = footerButtons.querySelectorAll('button');
     btns.forEach(btn => {
         btn.onmouseover = () => { btn.style.boxShadow = "0 0 10px var(--theme-color)"; btn.style.opacity = "1"; };
         btn.onmouseout = () => { btn.style.boxShadow = "none"; btn.style.opacity = "0.9"; };
@@ -5074,14 +5147,14 @@ if (isContentShort) {
 }
 
 // 5. Stream the Final Content (Scraped or RSS)
-const tempDiv = document.createElement('div');
-tempDiv.innerHTML = contentToDisplay;
+const parser = new DOMParser();
+const doc = parser.parseFromString(contentToDisplay, 'text/html');
 
 // Remove scripts/styles just in case
-const scripts = tempDiv.querySelectorAll('script, style');
+const scripts = doc.querySelectorAll('script, style');
 scripts.forEach(s => s.remove());
 
-let cleanText = tempDiv.innerText || tempDiv.textContent || "";
+let cleanText = doc.body.textContent || "";
 
 // Clean up whitespace
 cleanText = cleanText.replace(/\n\s*\n/g, '\n\n').trim();
@@ -5358,6 +5431,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mspacmanBtn = document.getElementById('btn-mspacman');
     
     if (mspacmanBtn) {
+        // Clone and replace to strip any old/stale event listeners
         const newBtn = mspacmanBtn.cloneNode(true);
         mspacmanBtn.parentNode.replaceChild(newBtn, mspacmanBtn);
 
@@ -5365,13 +5439,14 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Initialize: MsPacman Native");
                         
             loadScript("Arcade/mspacman/mspacman-controller.js").then(() => {
+                // Check if your controller uses a different casing (like openMspacman)
                 if (typeof window.openMsPacman === 'function') {
                     window.openMsPacman(); 
                 } else {
                     console.error("ERROR: mspacman-controller.js logic failed to initialize.");
                 }
             }).catch(err => {
-                console.error("Failed to load controller script:", err);
+                console.error("Failed to load MsPacman controller script:", err);
             });
         });
     }
@@ -5551,13 +5626,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.openCitizensOfZionGame(); 
                 } else {
                     console.error("ERROR: citizensofzion-controller.js failed to initialize.");
-                                       }
-                                }).catch(err => {
-                                    console.error("Failed to load Citizens of Zion controller script:", err);
-                                });
-                            });
-                        }
-                    });
+                }
+            }).catch(err => {
+                console.error("Failed to load Citizens of Zion controller script:", err);
+            });
+        });
+    }
+});
 
 // ==========================================
 // MATRIX DOCK DEFENCE NATIVE BRIDGE
