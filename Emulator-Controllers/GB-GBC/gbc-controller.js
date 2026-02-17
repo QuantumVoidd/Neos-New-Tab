@@ -86,7 +86,9 @@ window.openGBCEmulator = async function() {
     // --- SLOT CHANGE HANDLER ---
     slotSelect.addEventListener('change', (e) => {
         currentSlot = e.target.value;
-        debugLog.innerHTML = `<span style="color:#00ff41;">SLOT CHANGED TO ${currentSlot}</span>`;
+        // Fix: Replace innerHTML with textContent and style assignment
+        debugLog.style.color = '#00ff41';
+        debugLog.textContent = `SLOT CHANGED TO ${currentSlot}`;
         
         const romName = dropdown.value;
         if (!romName) return; 
@@ -196,17 +198,23 @@ window.openGBCEmulator = async function() {
                 iframe.contentWindow.focus();
             };
         } catch (e) { 
-            debugLog.innerHTML = `[ERROR] ${e.message}`; 
+            // Fix: Exception text sanitization
+            debugLog.style.color = 'red';
+            debugLog.textContent = `[ERROR] ${e.message}`; 
             console.error(e);
         }
     };
 
     window._gbaListener = async function(e) {
         if (e.data.status === 'running') {
-            debugLog.innerHTML = `<span style="color:#00ff41;">SYSTEM ONLINE</span>`;
+            // Fix: Replace innerHTML with textContent
+            debugLog.style.color = '#00ff41';
+            debugLog.textContent = `SYSTEM ONLINE`;
         }
         if (e.data.status === 'error') {
-            debugLog.innerHTML = `<span style="color:red;">[ERROR] ${e.data.message}</span>`;
+            // Fix: Replace innerHTML with textContent
+            debugLog.style.color = 'red';
+            debugLog.textContent = `[ERROR] ${e.data.message}`;
         }
         
         if (e.data.command === 'export_state') {
@@ -218,8 +226,14 @@ window.openGBCEmulator = async function() {
             // Using 'gbc_state_' prefix
             localStorage.setItem(`gbc_state_${targetSlot}_${targetRom}`, base64Data);
             
-            debugLog.innerHTML = `<span style="color:#00ff41;">STATE SAVED TO SLOT ${targetSlot}</span>`;
-            setTimeout(() => { debugLog.innerHTML = `<span style="color:#00ff41;">SYSTEM ONLINE</span>`; }, 2000);
+            // Fix: Dynamic variable sanitization
+            debugLog.style.color = '#00ff41';
+            debugLog.textContent = `STATE SAVED TO SLOT ${targetSlot}`;
+            setTimeout(() => { 
+                // Fix: Replace innerHTML with textContent
+                debugLog.style.color = '#00ff41';
+                debugLog.textContent = `SYSTEM ONLINE`; 
+            }, 2000);
         }
     };
     window.addEventListener('message', window._gbaListener);
