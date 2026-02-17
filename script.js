@@ -3264,23 +3264,69 @@ function moveFileToFolder(fileKey, folderKey) {
     });
 }
 
+function startPreviewRain(canvas) {
+    if (!canvas) return null;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    
+    // Set dimensions to viewport since overlay is fixed
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    
+    ctx.scale(dpr, dpr);
+    
+    const fontSize = 16; 
+    const columns = Math.floor(canvas.width / dpr / (fontSize * 0.6));
+    const drops = Array(columns).fill(0).map(() => Math.floor(Math.random() * (canvas.height / dpr / fontSize)));
+    
+    const draw = () => {
+        if(!canvas.parentNode) return; 
+
+        ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+        ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+        
+        ctx.fillStyle = rainColor; 
+        ctx.font = fontSize + "px 'Courier New', monospace";
+        const columnSpacing = fontSize * 0.6;
+        
+        for (let i = 0; i < drops.length; i++) {
+            const text = MATRIX_ALPHABET.charAt(Math.floor(Math.random() * MATRIX_ALPHABET.length));
+            ctx.globalAlpha = 0.3 + (Math.random() * 0.7);
+            ctx.fillText(text, i * columnSpacing, drops[i] * fontSize);
+            
+            if (drops[i] * fontSize > canvas.height / dpr && Math.random() > 0.975) {
+                drops[i] = 0;
+            }
+            drops[i]++;
+        }
+        ctx.globalAlpha = 1.0;
+    };
+    
+    return setInterval(draw, rainSpeed); 
+}
+
 function showExplorerPreview(key, value, type) {
     const previewOverlay = document.createElement('div');
-    previewOverlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:11000; display:flex; align-items:center; justify-content:center; backdrop-filter: blur(5px);";
+    // Overlay is transparent
+    previewOverlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:transparent; z-index:11000; display:flex; align-items:center; justify-content:center; backdrop-filter: none;";
     
+    // Create Rain Canvas
+    const rainCanvas = document.createElement('canvas');
+    rainCanvas.style.cssText = "position:absolute; top:0; left:0; width:100%; height:100%; z-index:0; opacity:0.8; pointer-events:none; border-radius: 4px;";
+
     const cleanTitle = (key.startsWith('vault_') || key.startsWith('folder_')) 
         ? key.split('_').slice(2).join('_') : key;
 
     let contentHtml = '';
     
-    // --- UPDATED IMAGE PREVIEW WITH EDIT BUTTON LOGIC ---
     if (type === 'image') {
         contentHtml = `
             <div style="display:flex; justify-content:center; align-items:center; width:100%; height:100%; min-height:300px; overflow:hidden;">
                 <img src="${value}" style="max-width:100%; max-height:60vh; object-fit:contain; border: 1px solid var(--theme-color); box-shadow: 0 0 15px rgba(0,242,255,0.2);">
             </div>`;
     } 
-    // ---------------------------------------------------
     else if (type === 'video') {
         contentHtml = `
             <div style="display:flex; justify-content:center; align-items:center; width:100%; height:100%; min-height:300px;">
@@ -3288,17 +3334,14 @@ function showExplorerPreview(key, value, type) {
             </div>`;
     } else if (type === 'audio') {
         contentHtml = `
-            <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; width:100%; padding: 40px; border: 1px solid rgba(0,242,255,0.1); background:rgba(0,0,0,0.5);">
+            <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; width:100%; padding: 40px; border: 1px solid rgba(0,242,255,0.1); background:rgba(0,0,0,0.8); box-sizing: border-box;">
                 <div style="font-size: 3rem; margin-bottom: 20px;">🎵</div>
                 <audio src="${value}" controls style="width:100%; max-width:500px;"></audio>
             </div>`;
     } else if (type === 'nes_save' || type === 'sms_save' || type === 'genesis_save' || type === 'psx_save' || type === 'gba_save' || type === 'gbc_save' || type === 'snes_save') {
-        
-        // Calculate Approx File Size
         const sizeKB = Math.round((value.length * 0.75) / 1024);
-
         contentHtml = `
-            <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; width:100%; padding: 40px; border: 1px solid rgba(0,242,255,0.1); background:rgba(0,0,0,0.5);">
+            <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; width:100%; padding: 40px; border: 1px solid rgba(0,242,255,0.1); background:rgba(0,0,0,0.8); box-sizing: border-box;">
                 <div style="font-size: 3rem; margin-bottom: 20px;">🕹️</div>
                 <div style="font-family: 'Press Start 2P', monospace; font-size: 1.2rem; color: #ffcc00; margin-bottom: 10px; text-align: center;">EMULATOR DATA STREAM</div>
                 <div style="color: var(--theme-color); opacity: 0.8; font-family: monospace;">${cleanTitle}</div>
@@ -3320,31 +3363,75 @@ function showExplorerPreview(key, value, type) {
         const sanitizedText = textContent.replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
         contentHtml = `
-            <div style="color:var(--theme-color); font-family:monospace; white-space:pre-wrap; max-height:50vh; overflow:auto; padding:15px; background:rgba(0,0,0,0.5); border: 1px solid rgba(0,242,255,0.1); width: 100%;">
+            <div style="color:var(--theme-color); font-family:monospace; white-space:pre-wrap; max-height:50vh; overflow:auto; padding:15px; background:rgba(0,0,0,0.8); border: 1px solid rgba(0,242,255,0.1); width: 100%; box-sizing: border-box;">
                 ${sanitizedText}
             </div>`;
     }
 
-    previewOverlay.innerHTML = `
-        <div style="background:#000; padding:20px; border: 1px solid var(--theme-color); width: 85vw; max-width: 900px; display: flex; flex-direction: column; gap: 15px; border-radius: 4px; box-shadow: 0 0 30px rgba(0,242,255,0.15);">
+    let extraButtons = '';
+    if(type === 'image') {
+        extraButtons += `<button id="edit-paint-btn" style="background:rgba(0,255,65,0.2); color:var(--theme-color); border:1px solid var(--theme-color); padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">EDIT IN PAINT</button>`;
+    } else if(type === 'code' || type === 'text') {
+        extraButtons += `<button id="edit-wordpad-btn" style="background:rgba(0,255,65,0.2); color:var(--theme-color); border:1px solid var(--theme-color); padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">EDIT IN WORDPAD</button>`;
+    }
+
+    const innerModal = document.createElement('div');
+    innerModal.style.cssText = "background:#000; padding:20px; border: 1px solid var(--theme-color); width: 85vw; max-width: 900px; display: flex; flex-direction: column; gap: 15px; border-radius: 4px; box-shadow: 0 0 15px var(--theme-color); position: relative; z-index: 10; box-sizing: border-box; overflow: hidden;";
+    
+    innerModal.appendChild(rainCanvas);
+
+    const modalUI = document.createElement('div');
+    modalUI.style.cssText = "position:relative; z-index:2; display:flex; flex-direction:column; gap:15px;";
+    modalUI.innerHTML = `
             <div style="font-family:'Orbitron'; color:var(--theme-color); border-bottom: 1px solid rgba(0,242,255,0.3); padding-bottom: 10px; font-size: 1rem; display:flex; justify-content:space-between; align-items:center;">
                 <span>FILE: ${cleanTitle.toUpperCase()}</span>
                 <span style="font-size:0.7em; opacity:0.7; border:1px solid var(--theme-color); padding:2px 6px; border-radius:2px;">${type ? type.toUpperCase() : 'UNKNOWN'}</span>
             </div>
-            
             ${contentHtml}
-            
             <div style="display:flex; justify-content:flex-end; gap:15px; margin-top:10px;">
-                ${type === 'image' ? `<button id="edit-paint-btn" style="background:rgba(0,255,65,0.2); color:var(--theme-color); border:1px solid var(--theme-color); padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">EDIT IN PAINT</button>` : ''}
+                ${extraButtons}
                 <button id="extract-btn" style="background:var(--theme-color); color:#000; border:none; padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">DOWNLOAD</button>
                 <button id="close-preview-btn" style="background:transparent; color:var(--theme-color); border:1px solid var(--theme-color); padding:8px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-family:'Courier New'; letter-spacing:1px; transition: all 0.2s;">CLOSE</button>
             </div>
-        </div>
     `;
-    
+
+    innerModal.appendChild(modalUI);
+    previewOverlay.appendChild(innerModal);
     document.body.appendChild(previewOverlay);
+
+    // --- SYNCED HIGH-RES TERMINAL RAIN LOGIC ---
+    const termCtx = rainCanvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    rainCanvas.width = innerModal.offsetWidth * dpr;
+    rainCanvas.height = innerModal.offsetHeight * dpr;
+    termCtx.scale(dpr, dpr);
+
+    const colSpacing = fontSize * 0.6;
+    const columns = Math.floor(innerModal.offsetWidth / colSpacing);
+    let previewDrops = Array(columns).fill(0).map(() => Math.floor(Math.random() * (innerModal.offsetHeight / fontSize)));
+
+    function drawPreviewRain() {
+        termCtx.fillStyle = "rgba(0, 0, 0, 0.15)";
+        termCtx.fillRect(0, 0, innerModal.offsetWidth, innerModal.offsetHeight);
+        termCtx.fillStyle = typeof rainColor !== 'undefined' ? rainColor : getComputedStyle(document.documentElement).getPropertyValue('--theme-color').trim();
+        termCtx.font = fontSize + "px 'Courier New', monospace";
+
+        for (let i = 0; i < previewDrops.length; i++) {
+            const text = MATRIX_ALPHABET.charAt(Math.floor(Math.random() * MATRIX_ALPHABET.length));
+            termCtx.globalAlpha = 0.3 + (Math.random() * 0.7);
+            termCtx.fillText(text, i * colSpacing, previewDrops[i] * fontSize);
+            
+            if (previewDrops[i] * fontSize > innerModal.offsetHeight && Math.random() > 0.975) {
+                previewDrops[i] = 0;
+            }
+            previewDrops[i]++;
+        }
+        termCtx.globalAlpha = 1.0;
+    }
+
+    const rainInterval = setInterval(drawPreviewRain, typeof rainSpeed !== 'undefined' ? rainSpeed : 33);
     
-    // Add hover effects for buttons
+    // Hover effects
     const btns = previewOverlay.querySelectorAll('button');
     btns.forEach(btn => {
         btn.onmouseover = () => { btn.style.boxShadow = "0 0 10px var(--theme-color)"; btn.style.opacity = "1"; };
@@ -3352,22 +3439,53 @@ function showExplorerPreview(key, value, type) {
     });
 
     document.getElementById('extract-btn').onclick = () => extractVaultData(cleanTitle, value);
-    document.getElementById('close-preview-btn').onclick = () => previewOverlay.remove();
+    document.getElementById('close-preview-btn').onclick = () => {
+        clearInterval(rainInterval);
+        previewOverlay.remove();
+    };
 
-    // LINK TO STANDALONE PAINT.JS APP
+    // --- HARD EXIT LOGIC ---
+    const fullExitExplorer = () => {
+        clearInterval(rainInterval);
+        // Delete the preview completely
+        previewOverlay.remove();
+        
+        // Close the underlying terminal/explorer modal
+        closeTerminalModal();
+    };
+
+    // EDIT IN PAINT
     const editBtn = document.getElementById('edit-paint-btn');
     if(editBtn) {
         editBtn.onclick = () => {
-            previewOverlay.remove();
-            // This calls the function in your new paint.js file
+            fullExitExplorer();
             if(window.PaintApp && window.PaintApp.loadImage) {
                 window.PaintApp.loadImage(value, key);
-            } else {
-                showZionMessage("ERROR: PAINT MODULE NOT LOADED");
+            }
+        };
+    }
+    
+    // EDIT IN WORDPAD
+    const editWpBtn = document.getElementById('edit-wordpad-btn');
+    if(editWpBtn) {
+        editWpBtn.onclick = () => {
+            fullExitExplorer();
+            const wpModal = document.getElementById('wordpad-modal');
+            const wpEditor = document.getElementById('wordpad-editor');
+            if(wpModal && wpEditor) {
+                wpModal.classList.remove('hidden');
+                wpModal.style.display = 'flex';
+                wpModal.style.zIndex = '20000'; // Force to front
+                let content = value;
+                if (typeof value === 'string' && value.startsWith('data:')) {
+                    try { content = atob(value.split(',')[1]); } catch(e) {}
+                }
+                wpEditor.value = content;
             }
         };
     }
 }
+
 async function openTerminalModal(permalink) {
     const modal = document.getElementById('matrix-modal');
     const output = document.getElementById('terminal-output');
@@ -3412,17 +3530,15 @@ async function openTerminalModal(permalink) {
             const scanContainer = document.createElement('div');
             scanContainer.className = 'oracle-scan-container';
             
-            // --- ADD THESE OVERRIDES ---
-            scanContainer.style.display = 'block'; // Change from inline-block to block
-            scanContainer.style.width = '100%';    // Force full width of the terminal frame
-            scanContainer.style.maxWidth = '100%'; // Ensure it doesn't overflow
-            scanContainer.style.padding = '0';     // Optional: remove padding if it looks too bulky
-            // ---------------------------
+            scanContainer.style.display = 'block'; 
+            scanContainer.style.width = '100%';    
+            scanContainer.style.maxWidth = '100%'; 
+            scanContainer.style.padding = '0';     
 
             const img = document.createElement('img');
             img.src = post.url;
             img.className = 'terminal-media';
-            img.style.width = '100%'; // Ensure the image fills the container
+            img.style.width = '100%'; 
 
             const controls = document.createElement('div');
             controls.className = 'media-controls';
@@ -3455,14 +3571,12 @@ async function openTerminalModal(permalink) {
             const controls = document.createElement('div');
             controls.className = 'media-controls';
 
-            // 1. REPLAY BUTTON
             const btnReplay = createButton('⟳', () => {
                 vid.currentTime = 0;
                 vid.play();
             });
             btnReplay.title = "Replay Transmission";
 
-            // 2. DOWNLOAD BUTTON (Using the working Blob method)
             const btnDownload = createButton('⤓', async () => {
                 const videoUrl = post.media.reddit_video.fallback_url;
                 try {
@@ -3487,20 +3601,17 @@ async function openTerminalModal(permalink) {
             });
             btnDownload.title = "Extract Data to Local Storage";
 
-            // 3. EXACT AUDIO LOGIC (From script.js lines 1018-1025)
             const btnVol = createButton('🔇', () => {
                 vid.muted = !vid.muted;
-                if (!vid.muted) vid.play().catch(() => {}); // Exact logic from line 1022
-                btnVol.innerHTML = vid.muted ? '🔇' : '🔊'; // Exact logic from line 1023
-                btnVol.style.boxShadow = vid.muted ? 'none' : '0 0 10px var(--theme-color)'; // Exact logic from line 1024
+                if (!vid.muted) vid.play().catch(() => {}); 
+                btnVol.innerHTML = vid.muted ? '🔇' : '🔊'; 
+                btnVol.style.boxShadow = vid.muted ? 'none' : '0 0 10px var(--theme-color)'; 
             });
             btnVol.title = "Toggle Audio Stream";
 
-            // 4. FULLSCREEN BUTTON
             const btnFull = createButton('⛶', () => toggleFullscreen(vid));
             btnFull.title = "Maximize Visual";
 
-            // Order: Replay, Download, Mute, Fullscreen
             controls.appendChild(btnReplay);
             controls.appendChild(btnDownload);
             controls.appendChild(btnVol);
@@ -3512,10 +3623,6 @@ async function openTerminalModal(permalink) {
             mediaContainer.appendChild(frame);
             
             await streamText(output, "\n> VIDEO STREAM BUFFERED.\n");
-        
-        
-        
-        
         }
         await streamText(output, `\n> END OF FILE.\n> TYPE 'com' TO LOAD COMMENTS OR 'exit' TO DISCONNECT.\n`);
     } catch (e) {
@@ -5216,7 +5323,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const mspacmanBtn = document.getElementById('btn-mspacman');
     
     if (mspacmanBtn) {
-        // Clone and replace to strip any old/stale event listeners
         const newBtn = mspacmanBtn.cloneNode(true);
         mspacmanBtn.parentNode.replaceChild(newBtn, mspacmanBtn);
 
@@ -5243,7 +5349,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const froggerBtn = document.getElementById('btn-frogger');
     
     if (froggerBtn) {
-        // Clone and replace to strip any old/stale event listeners
         const newBtn = froggerBtn.cloneNode(true);
         froggerBtn.parentNode.replaceChild(newBtn, froggerBtn);
 
@@ -5268,9 +5373,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const asteroidsBtn = document.getElementById('btn-asteroids');
-    
+
     if (asteroidsBtn) {
-        // Clone and replace to strip any old/stale event listeners
         const newBtn = asteroidsBtn.cloneNode(true);
         asteroidsBtn.parentNode.replaceChild(newBtn, asteroidsBtn);
 
@@ -5295,9 +5399,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const donkeyBtn = document.getElementById('btn-donkey');
-    
+
     if (donkeyBtn) {
-        // Clone and replace to strip any old/stale event listeners
         const newBtn = donkeyBtn.cloneNode(true);
         donkeyBtn.parentNode.replaceChild(newBtn, donkeyBtn);
 
@@ -5322,9 +5425,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const snakeBtn = document.getElementById('btn-snake');
-    
+
     if (snakeBtn) {
-        // Strip old listeners
         const newBtn = snakeBtn.cloneNode(true);
         snakeBtn.parentNode.replaceChild(newBtn, snakeBtn);
 
@@ -5349,9 +5451,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const rampage2Btn = document.getElementById('btn-rampage2');
-    
+
     if (rampage2Btn) {
-        // Strip old listeners to prevent double-firing
         const newBtn = rampage2Btn.cloneNode(true);
         rampage2Btn.parentNode.replaceChild(newBtn, rampage2Btn);
 
@@ -5359,7 +5460,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Initialize: Matrix Rampage 2 Native");
                         
             loadScript("Games/matrixrampage2/matrixrampage2-controller.js").then(() => {
-                // Assuming the global function follows a similar naming convention
                 if (typeof window.openMatrixRampage2Game === 'function') {
                     window.openMatrixRampage2Game(); 
                 } else {
@@ -5377,9 +5477,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const pandemoniumBtn = document.getElementById('btn-pong');
-    
+
     if (pandemoniumBtn) {
-        // Strip old listeners to prevent double-firing
         const newBtn = pandemoniumBtn.cloneNode(true);
         pandemoniumBtn.parentNode.replaceChild(newBtn, pandemoniumBtn);
 
@@ -5387,7 +5486,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Initialize: Matrix Pandemonium Native");
                         
             loadScript("Games/matrixpandemonium/pandemonium-controller.js").then(() => {
-                // Initializing the specific Pandemonium global function
                 if (typeof window.openMatrixPandemoniumGame === 'function') {
                     window.openMatrixPandemoniumGame(); 
                 } else {
@@ -5405,9 +5503,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const zionBtn = document.getElementById('btn-tetris');
-    
+
     if (zionBtn) {
-        // Strip old listeners to prevent double-firing
         const newBtn = zionBtn.cloneNode(true);
         zionBtn.parentNode.replaceChild(newBtn, zionBtn);
 
@@ -5415,7 +5512,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Initialize: Citizens of Zion Native");
                         
             loadScript("Games/citizensofzion/citizensofzion-controller.js").then(() => {
-                // Initializing the specific Citizens of Zion global function
                 if (typeof window.openCitizensOfZionGame === 'function') {
                     window.openCitizensOfZionGame(); 
                 } else {
@@ -5433,9 +5529,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const dockDefenceBtn = document.getElementById('btn-2048');
-    
+
     if (dockDefenceBtn) {
-        // Strip old listeners to prevent double-firing
         const newBtn = dockDefenceBtn.cloneNode(true);
         dockDefenceBtn.parentNode.replaceChild(newBtn, dockDefenceBtn);
 
@@ -5443,7 +5538,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Initialize: Matrix Dock Defence Native");
                         
             loadScript("Games/matrixdockdefence/matrixdockdefence-controller.js").then(() => {
-                // Initializing the specific Matrix Dock Defence global function
                 if (typeof window.openMatrixDockDefenceGame === 'function') {
                     window.openMatrixDockDefenceGame(); 
                 } else {
@@ -5461,9 +5555,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const overloadedBtn = document.getElementById('btn-overloaded');
-    
+
     if (overloadedBtn) {
-        // Strip old listeners to prevent double-firing
         const newBtn = overloadedBtn.cloneNode(true);
         overloadedBtn.parentNode.replaceChild(newBtn, overloadedBtn);
 
@@ -5471,7 +5564,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Initialize: Matrix Overloaded Native");
                         
             loadScript("Games/matrixoverloaded/matrixoverloaded-controller.js").then(() => {
-                // Initializing the specific Matrix Overloaded global function
                 if (typeof window.openMatrixOverloadedGame === 'function') {
                     window.openMatrixOverloadedGame(); 
                 } else {
@@ -5489,9 +5581,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const tunnelBtn = document.getElementById('btn-tunnel');
-    
+
     if (tunnelBtn) {
-        // Strip old listeners to prevent double-firing
         const newBtn = tunnelBtn.cloneNode(true);
         tunnelBtn.parentNode.replaceChild(newBtn, tunnelBtn);
 
@@ -5499,7 +5590,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Initialize: Matrix Tunnel Recon Native");
                         
             loadScript("Games/matrixtunnelrecon/matrixtunnelrecon-controller.js").then(() => {
-                // Initializing the specific Matrix Tunnel Recon global function
                 if (typeof window.openMatrixTunnelReconGame === 'function') {
                     window.openMatrixTunnelReconGame(); 
                 } else {
@@ -5517,9 +5607,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const bulletTimeBtn = document.getElementById('btn-bullettime');
-    
+
     if (bulletTimeBtn) {
-        // Strip old listeners to prevent double-firing
         const newBtn = bulletTimeBtn.cloneNode(true);
         bulletTimeBtn.parentNode.replaceChild(newBtn, bulletTimeBtn);
 
@@ -5527,7 +5616,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Initialize: Matrix Bullet Time Native");
                         
             loadScript("Games/matrixbullettime/bullettime-controller.js").then(() => {
-                // Initializing the specific Matrix Bullet Time global function
                 if (typeof window.openMatrixBulletTimeGame === 'function') {
                     window.openMatrixBulletTimeGame(); 
                 } else {
@@ -5545,9 +5633,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const fighterBtn = document.getElementById('btn-matrixfighter');
-    
+
     if (fighterBtn) {
-        // Strip old listeners to prevent double-firing
         const newBtn = fighterBtn.cloneNode(true);
         fighterBtn.parentNode.replaceChild(newBtn, fighterBtn);
 
@@ -5555,7 +5642,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Initialize: Matrix Fighter Native");
                         
             loadScript("Games/matrixfighter/matrixfighter-controller.js").then(() => {
-                // Initializing the specific Matrix Fighter global function
                 if (typeof window.openMatrixFighterGame === 'function') {
                     window.openMatrixFighterGame(); 
                 } else {
