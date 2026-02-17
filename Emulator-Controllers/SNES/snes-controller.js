@@ -17,6 +17,7 @@ window.openSnesEmulator = async function() {
     let currentSlot = "1";
 
     // 1. Setup Interface
+    // Note: innerHTML here is safe as it uses static strings and trusted extension URLs.
     output.innerHTML = `
         <style>
             #snes-display-wrapper:fullscreen {
@@ -110,7 +111,9 @@ window.openSnesEmulator = async function() {
     // --- SLOT CHANGE HANDLER ---
     slotSelect.addEventListener('change', (e) => {
         currentSlot = e.target.value;
-        debugLog.innerHTML = `<span style="color:#0f0;">SLOT CHANGED TO ${currentSlot}</span>`;
+        // Fix: Use textContent and style instead of innerHTML
+        debugLog.style.color = '#0f0';
+        debugLog.textContent = `SLOT CHANGED TO ${currentSlot}`;
         
         const romName = dropdown.value;
         if (!romName) return; 
@@ -157,11 +160,11 @@ window.openSnesEmulator = async function() {
             const isCurrentlyMuted = muteBtn.getAttribute('data-muted') === 'true';
             if (isCurrentlyMuted) {
                 muteBtn.setAttribute('data-muted', 'false');
-                muteBtn.innerHTML = '&#128266;'; 
+                muteBtn.innerHTML = '&#128266;'; // Safe: Static symbol entity
                 muteBtn.style.color = '#0f0';
             } else {
                 muteBtn.setAttribute('data-muted', 'true');
-                muteBtn.innerHTML = '&#128263;'; 
+                muteBtn.innerHTML = '&#128263;'; // Safe: Static symbol entity
                 muteBtn.style.color = 'red';
             }
         }
@@ -199,7 +202,9 @@ window.openSnesEmulator = async function() {
         const romName = dropdown.value;
         dropdown.blur();
         
-        debugLog.innerHTML = `<span style="color:yellow">Initializing SNES Construct...</span>`;
+        // Fix: Use textContent and style instead of innerHTML
+        debugLog.style.color = 'yellow';
+        debugLog.textContent = `Initializing SNES Construct...`;
         
         const oldIframe = displayWrapper.querySelector('iframe');
         if(oldIframe) oldIframe.remove();
@@ -266,15 +271,20 @@ window.openSnesEmulator = async function() {
 
             messageListener = function(e) {
                  if (e.data.status === 'running') {
-                    debugLog.innerHTML = "";
+                    // Fix: Ensure we are using textContent
+                    debugLog.textContent = "";
                 } 
                 else if (e.data.status === 'error') {
                     if (e.data.message && e.data.message.includes("GamepadEvent")) return;
-                    debugLog.innerHTML = `[ERROR] ${e.data.message}`;
+                    // Fix: Vulnerable postMessage payload sanitization
+                    debugLog.style.color = 'red';
+                    debugLog.textContent = `[ERROR] ${e.data.message}`;
                 } 
                 else if (e.data.status === 'gamepad_connected') {
-                    debugLog.innerHTML = `<span style="color:#0f0;">GAMEPAD READY: ${e.data.id.substring(0, 15)}...</span>`;
-                    setTimeout(() => debugLog.innerHTML = "", 3000);
+                    // Fix: Vulnerable postMessage payload sanitization
+                    debugLog.style.color = '#0f0';
+                    debugLog.textContent = `GAMEPAD READY: ${e.data.id.substring(0, 15)}...`;
+                    setTimeout(() => debugLog.textContent = "", 3000);
                 }
                 
                 if (e.data.command === 'export_state') {
@@ -286,8 +296,10 @@ window.openSnesEmulator = async function() {
 
                     localStorage.setItem(`snes_state_${targetSlot}_${targetRom}`, base64Data);
                     
-                    debugLog.innerHTML = `<span style="color:#0f0;">STATE SAVED TO SLOT ${targetSlot}</span>`;
-                    setTimeout(() => { debugLog.innerHTML = ""; }, 2000);
+                    // Fix: Vulnerable payload sanitization
+                    debugLog.style.color = '#0f0';
+                    debugLog.textContent = `STATE SAVED TO SLOT ${targetSlot}`;
+                    setTimeout(() => { debugLog.textContent = ""; }, 2000);
                 }
             };
 
@@ -295,7 +307,9 @@ window.openSnesEmulator = async function() {
 
         } catch (e) {
             console.error(e);
-            debugLog.innerHTML = `[SYSTEM ERROR] ${e.message}`;
+            // Fix: Catch block sanitization
+            debugLog.style.color = 'red';
+            debugLog.textContent = `[SYSTEM ERROR] ${e.message}`;
         }
     };
 };
