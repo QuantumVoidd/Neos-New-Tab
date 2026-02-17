@@ -70,6 +70,10 @@
             setTimeout(() => { el.style.display = 'none'; }, 2000);
         }
 
+        window.addEventListener("gamepadconnected", (e) => {
+            showNotification("GAMEPAD CONNECTED");
+        });
+
         window.addEventListener('keydown', async (e) => {
             if (!emulatorInstance) return;
             if (e.key === '1' || e.code === 'Digit1') {
