@@ -19,6 +19,7 @@ window.openNesEmulator = async function() {
 
     let currentSlot = "1";
 
+    // 1. Setup Interface
     output.innerHTML = `
         <div class="nes-terminal-wrapper">
             <p style="color:var(--theme-color); font-family:'Orbitron'; margin-bottom:15px; letter-spacing: 2px;">[ NES_MAINFRAME ]</p>
@@ -54,7 +55,9 @@ window.openNesEmulator = async function() {
 
     slotSelect.addEventListener('change', (e) => {
         currentSlot = e.target.value;
-        debugLog.innerHTML = `<span style="color:#00ff41;">SLOT CHANGED TO ${currentSlot}</span>`;
+        // Fix: Use textContent and style instead of innerHTML
+        debugLog.style.color = '#00ff41';
+        debugLog.textContent = `SLOT CHANGED TO ${currentSlot}`;
     });
 
     const bufferToBase64 = (buffer) => {
@@ -138,8 +141,17 @@ window.openNesEmulator = async function() {
             const savedStateBase64 = localStorage.getItem(`nes_state_${currentSlot}_${romName}`);
             const stateBlob = savedStateBase64 ? base64ToBlob(savedStateBase64) : null;
 
-            if (saveBlob) debugLog.innerHTML += `<span style="color:#00ff41;"> [SRAM LOADED]</span>`;
-            if (stateBlob) debugLog.innerHTML += `<span style="color:#00ff41;"> [STATE LOADED]</span>`;
+            // Fix: Construct string cleanly and use textContent
+            let loadMessages = [];
+            if (saveBlob) loadMessages.push("[SRAM LOADED]");
+            if (stateBlob) loadMessages.push("[STATE LOADED]");
+            
+            if (loadMessages.length > 0) {
+                debugLog.style.color = '#00ff41';
+                debugLog.textContent = loadMessages.join(' ');
+            } else {
+                debugLog.textContent = '';
+            }
 
             const iframe = document.createElement('iframe');
             iframe.src = chrome.runtime.getURL("nes_sandbox.html");
@@ -161,7 +173,9 @@ window.openNesEmulator = async function() {
                 setTimeout(() => iframe.contentWindow.focus(), 200);
             };
         } catch (e) { 
-            debugLog.innerHTML = `<span style="color:red;">[ERROR] ${e.message}</span>`;
+            // Fix: Catch block sanitization
+            debugLog.style.color = 'red';
+            debugLog.textContent = `[ERROR] ${e.message}`;
             console.error(e);
         }
     };
@@ -180,6 +194,7 @@ window.openNesEmulator = async function() {
             iframe.contentWindow.postMessage({ command: 'mute' }, '*');
             const isMuted = muteBtn.getAttribute('data-muted') === 'true';
             muteBtn.setAttribute('data-muted', !isMuted);
+            // Safe innerHTML mapping, using standard predefined entities
             muteBtn.innerHTML = isMuted ? '&#128266;' : '&#128263;';
         }
         muteBtn.blur();
@@ -198,7 +213,9 @@ window.openNesEmulator = async function() {
             if (romName && e.data.data) {
                 const base64Data = bufferToBase64(e.data.data);
                 localStorage.setItem(`nes_state_${currentSlot}_${romName}`, base64Data);
-                debugLog.innerHTML = `<span style="color:#00ff41;">STATE SAVED TO DISK</span>`;
+                // Fix: State saving sanitization
+                debugLog.style.color = '#00ff41';
+                debugLog.textContent = `STATE SAVED TO DISK`;
             }
         }
     };
