@@ -74,12 +74,16 @@
         let currentSaveBlob = null; 
         let currentSlot = 1; 
 
-        function showNotification(text) {
+        let notifyTimeout = null;
+        function showNotification(text, keepAlive = false) {
             const el = document.getElementById('notification');
             if(el) {
                 el.innerText = text;
                 el.style.display = 'block';
-                setTimeout(() => { el.style.display = 'none'; }, 2000);
+                if (notifyTimeout) clearTimeout(notifyTimeout);
+                if (!keepAlive) {
+                    notifyTimeout = setTimeout(() => { el.style.display = 'none'; }, 2000);
+                }
             }
         }
 
@@ -176,7 +180,7 @@
                         
                         // ON-DEMAND SYNCHRONIZATION
                         if (!window._snesActualSaveName) {
-                            showNotification("SYNCING CORE... PLEASE WAIT");
+                            showNotification("SYNCING CORE... PLEASE WAIT", true);
                             
                             // Clear directory
                             try { FS.readdir(statesDir).forEach(f => { if (f.endsWith('.state')) FS.unlink(`${statesDir}/${f}`); }); } catch(e){}
@@ -312,6 +316,7 @@
         });
 
         window.addEventListener("gamepadconnected", (e) => {
+            showNotification("GAMEPAD CONNECTED");
             window.parent.postMessage({ status: 'gamepad_connected', id: e.gamepad.id }, '*');
         });
 
