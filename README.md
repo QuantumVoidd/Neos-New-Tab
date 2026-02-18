@@ -67,6 +67,12 @@ The terminal features a dedicated **Sub-Processor for Retro Hardware** supportin
 | **Sega Genesis** | `[SIGNAL: G_PLUS]` | Blast Processing enabled for 16-bit Sega titles. |
 | **PlayStation 1** | `[SIGNAL: PSX REARMED]` | 32-bit disc-based simulation support. |
 
+IMPORTANT NOTE:
+
+For obvious legal reasons, all retro emulator game footage shown in the above video is for showcasing only. All emulators come preloaded with a legal homebrew demo rom. Operators must add their own roms.
+
+---
+
 ### ⚡ SWF Support (Powered by Ruffle)
 Flash was a glitch in the Matrix they tried to patch out. I brought it back using the **Ruffle WASM engine**.
 * **Native Emulation:** Run `.swf` files directly in the browser without plugins.
@@ -115,5 +121,6 @@ Flash was a glitch in the Matrix they tried to patch out. I brought it back usin
 This is a non-commercial fan project created for aesthetic purposes. It is not affiliated with Warner Bros. or the creators of The Matrix franchise.
 
 "There is no spoon."
+
 
 **Operator:** *Link established. The simulation is under your control.*
