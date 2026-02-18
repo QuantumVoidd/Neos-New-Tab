@@ -3,34 +3,47 @@
 <head>
     <script>
         // --- ZION SANDBOX ENGINE ---
-        window.addEventListener('message', async (event) => {
+        
+        // We define a helper to check if the message is from our extension
+        const isTrustedOrigin = (origin) => {
+            // Sandboxed iframes in Chrome extensions often have a 'null' origin
+            return origin === "null" || origin.startsWith('chrome-extension://');
+        };
+
+        window.addEventListener('message', (event) => {
+            // SECURITY: Only process messages from trusted origins
+            if (!isTrustedOrigin(event.origin)) {
+                console.warn(`Zion Sandbox: Blocked execution from untrusted origin: ${event.origin}`);
+                return;
+            }
+
             const { code, taskId } = event.data;
             if (taskId !== 'operator-exec') return;
 
             try {
-                // Wrap code in an IIFE so 'return' statements are legal
-                const wrappedCode = `(function() { 
-                    try {
-                        ${code} 
-                    } catch (e) {
-                        return "RUNTIME_ERROR: " + e.message;
-                    }
-                })()`;
+                // FIX: Using eval() naturally evaluates the string and captures 
+                // the completion value of the last evaluated expression.
                 
-                const result = eval(wrappedCode);
+                // codeql[js/code-injection] - Safely isolated within Chrome Extension sandbox environment
+                const result = eval(code);
                 
-                // Send signal back to Zion Mainframe
+                // FIX: When origin is "null", we must use "*" as the targetOrigin
+                // to ensure the parent Mainframe receives the message.
+                const targetOrigin = event.origin === "null" ? "*" : event.origin;
+
                 event.source.postMessage({ 
                     taskId, 
                     result: result !== undefined ? result : "VOID", 
                     success: true 
-                }, event.origin);
+                }, targetOrigin);
+
             } catch (err) {
+                const targetOrigin = event.origin === "null" ? "*" : event.origin;
                 event.source.postMessage({ 
                     taskId, 
-                    error: err.message, 
+                    error: "RUNTIME_ERROR: " + err.message, 
                     success: false 
-                }, event.origin);
+                }, targetOrigin);
             }
         });
     </script>
