@@ -42,7 +42,7 @@
 
 ![New Tab Interface](https://github.com/user-attachments/assets/027f7b9f-9457-45a4-ad87-2610b0f41c96)
 
-![Navigation Bars](https://github.com/user-attachments/assets/10aef200-38e7-481e-8f10-2032b73253cc)
+![Navigation Bars](https://github.com/user-attachments/assets/83a3b5e1-04ca-4581-b7e6-afcb7f457550)
 
 ![Emulator Interface](https://github.com/user-attachments/assets/865c91b5-cf6a-4350-986b-c89193b3b916)
 
@@ -124,3 +124,4 @@ This is a non-commercial fan project created for aesthetic purposes. It is not a
 
 
 **Operator:** *Link established. The simulation is under your control.*
+
