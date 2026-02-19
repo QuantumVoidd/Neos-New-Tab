@@ -61,9 +61,9 @@ The terminal features a dedicated **Sub-Processor for Retro Hardware** supportin
 | :--- | :--- | :--- |
 | **Nintendo (NES)** | `[SIGNAL: FCEUMM]` | 8-bit cycle-accurate emulation. |
 | **Super Nintendo** | `[SIGNAL: SNES9X]` | 16-bit legacy support with DSP handling. |
-| **Game Boy (GBA)** | `[SIGNAL: VBA NEXT]` | Handheld uplink for GBA ROMs. |
+| **Game Boy Advance (GBA)** | `[SIGNAL: VBA NEXT]` | Handheld uplink for GBA ROMs. |
 | **Game Boy (GB/GBC)** | `[SIGNAL: Gambatte]` | Handheld uplink for GB and GBC. |
-| **Sega Genesis** | `[GearSystem]` | For 8-bit Sega titles. |
+| **Sega Master System** | `[SIGNAL: GearSystem]` | For 8-bit Sega titles. |
 | **Sega Genesis** | `[SIGNAL: G_PLUS]` | Blast Processing enabled for 16-bit Sega titles. |
 | **PlayStation 1** | `[SIGNAL: PSX REARMED]` | 32-bit disc-based simulation support. |
 
@@ -124,4 +124,5 @@ This is a non-commercial fan project created for aesthetic purposes. It is not a
 
 
 **Operator:** *Link established. The simulation is under your control.*
+
 
