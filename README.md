@@ -71,6 +71,11 @@ IMPORTANT NOTE:
 
 For obvious legal reasons, All emulators come preloaded with a legal homebrew demo rom. Operators must add their own roms.
 
+You can do very easily in two steps.
+1. Dump your roms into an emulator's "roms" folder.
+2. Add the names of those roms to the roms array inside the emulators controller.js file. 
+   
+Reload the extension and you're roms will appear in the emulator's cartridge selector.
 ---
 
 ### ⚡ SWF Support (Powered by Ruffle)
@@ -124,6 +129,7 @@ This is a non-commercial fan project created for aesthetic purposes. It is not a
 
 
 **Operator:** *Link established. The simulation is under your control.*
+
 
 
 
