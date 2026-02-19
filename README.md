@@ -69,7 +69,7 @@ The terminal features a dedicated **Sub-Processor for Retro Hardware** supportin
 
 IMPORTANT NOTE:
 
-For obvious legal reasons, all retro emulator game footage shown in the above video is for showcasing only. All emulators come preloaded with a legal homebrew demo rom. Operators must add their own roms.
+For obvious legal reasons, All emulators come preloaded with a legal homebrew demo rom. Operators must add their own roms.
 
 ---
 
@@ -124,5 +124,6 @@ This is a non-commercial fan project created for aesthetic purposes. It is not a
 
 
 **Operator:** *Link established. The simulation is under your control.*
+
 
 
