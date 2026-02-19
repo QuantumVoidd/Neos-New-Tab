@@ -76,6 +76,7 @@ You can do very easily in two steps.
 2. Add the names of those roms to the roms array inside the emulators controller.js file. 
    
 Reload the extension and you're roms will appear in the emulator's cartridge selector.
+
 ---
 
 ### ⚡ SWF Support (Powered by Ruffle)
@@ -129,6 +130,7 @@ This is a non-commercial fan project created for aesthetic purposes. It is not a
 
 
 **Operator:** *Link established. The simulation is under your control.*
+
 
 
 
