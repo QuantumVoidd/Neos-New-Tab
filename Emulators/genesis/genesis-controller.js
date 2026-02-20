@@ -123,10 +123,7 @@ window.openGenesisEmulator = async function() {
         setTimeout(() => debugLog.textContent = "", 3000);
     });
 
-    // --- FULL ROM LIST PRESERVED ---
-    const ROMS = [
-        "RE MD DEMO 2.bin",    
-    ];
+    const ROMS = window.GEN_ROMS;
 
     ROMS.forEach(rom => {
         const opt = document.createElement('option');
