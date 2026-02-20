@@ -149,9 +149,7 @@ window.openGBAEmulator = async function() {
         muteBtn.blur();
     });
 
-    const ROMS = [
-        "anguna - demo.gba",   
-    ];
+    const ROMS = window.GBA_ROMS;
 
     ROMS.forEach(rom => {
         const opt = document.createElement('option');
