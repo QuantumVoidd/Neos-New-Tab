@@ -72,10 +72,14 @@ IMPORTANT NOTE:
 For obvious legal reasons, All emulators come preloaded with a legal homebrew demo rom. Operators must add their own roms.
 
 You can do very easily in two steps.
-1. Dump your roms into an emulator's "roms" folder.
-2. Add the names of those roms to the roms array inside the emulators controller.js file. 
-   
-Reload the extension and you're roms will appear in the emulator's cartridge selector.
+1. Dump your roms into each emulator's "roms" sub folder.
+1. Add your rom names to the "games-db.js" database file, located inside the root of the extension folder.
+Once you do this and reload the extension your roms will appear in the cartridge selector drop down menu for each emulator in the construct.
+
+How to add custom cover art for the 3D Cover flow:
+1. Dump your cover images in ".jpg" format into each emulator's "covers" sub folder.
+2. Ensure each cover image is named exactly the same as the rom.
+Once you do this and reload the extension your game cover art will appear in the 3D coverflow app.
 
 ---
 
@@ -130,6 +134,7 @@ This is a non-commercial fan project created for aesthetic purposes. It is not a
 
 
 **Operator:** *Link established. The simulation is under your control.*
+
 
 
 
