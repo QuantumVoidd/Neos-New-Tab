@@ -180,7 +180,7 @@ class MatrixCoverflow {
         `;
         
         const indicator = document.createElement('div');
-        indicator.innerHTML = '&#9654;';
+        indicator.textContent = '▶'; // Replaced innerHTML unicode with direct character for textContent
         indicator.style.cssText = `color: ${themeCol}; text-shadow: 0 0 5px ${themeCol}; opacity: 0.5; transition: 0.3s; font-size: 1.5rem;`;
         trigger.appendChild(indicator);
 
@@ -204,7 +204,7 @@ class MatrixCoverflow {
             const btn = document.createElement('div');
             btn.className = 'cf-tab-btn';
             btn.setAttribute('data-target', id);
-            btn.innerText = text;
+            btn.textContent = text;
             btn.style.cssText = `
                 padding: 15px 10px; cursor: pointer; text-transform: uppercase; font-size: 0.85rem;
                 font-weight: bold; transition: 0.2s; background: ${active ? 'rgba(255,255,255,0.1)' : 'transparent'};
@@ -232,11 +232,11 @@ class MatrixCoverflow {
         `;
 
         const saveBtn = document.createElement('button');
-        saveBtn.innerText = 'Save';
+        saveBtn.textContent = 'Save';
         saveBtn.style.cssText = baseBtnStyle;
         
         const exitBtn = document.createElement('button');
-        exitBtn.innerText = 'Exit';
+        exitBtn.textContent = 'Exit';
         exitBtn.style.cssText = baseBtnStyle;
 
         // Hover effects
@@ -258,73 +258,164 @@ class MatrixCoverflow {
             flex: 1; display: flex; flex-direction: column; padding: 25px; position: relative; overflow-y: auto;
         `;
         
-        // --- HTML CONTENT FOR PANELS ---
-        contentCol.innerHTML = `
-            <!-- 1. STYLE TAB -->
-            <div id="cf-tab-coverflow" class="cf-tab-panel" style="display: flex; flex-direction: column; height: 100%;">
-                <h2 style="font-size: 1.1rem; margin-top: 0; border-bottom: 1px solid ${themeCol}; padding-bottom: 10px; text-transform: uppercase; text-shadow: 0 0 5px ${themeCol}; letter-spacing: 2px;">Coverflow Style</h2>
-                <div style="margin-top: 25px;">
-                    <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer; font-size: 0.85rem;">
-                        <input type="radio" name="cf-style" value="aurora" style="accent-color: ${themeCol}; margin-right: 12px; transform: scale(1.2);"> Aurora (Curved)
-                    </label>
-                    <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer; font-size: 0.85rem;">
-                        <input type="radio" name="cf-style" value="linear" style="accent-color: ${themeCol}; margin-right: 12px; transform: scale(1.2);"> Linear (Flat)
-                    </label>
-                    <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer; font-size: 0.85rem;">
-                        <input type="radio" name="cf-style" value="carousel" style="accent-color: ${themeCol}; margin-right: 12px; transform: scale(1.2);"> Carousel (Circular)
-                    </label>
-                    <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer; font-size: 0.85rem;">
-                        <input type="radio" name="cf-style" value="flock" style="accent-color: ${themeCol}; margin-right: 12px; transform: scale(1.2);"> Flock (Organic)
-                    </label>
-                    <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer; font-size: 0.85rem;">
-                        <input type="radio" name="cf-style" value="spiral" style="accent-color: ${themeCol}; margin-right: 12px; transform: scale(1.2);"> Spiral (Helix)
-                    </label>
-                </div>
-            </div>
+        // --- DOM CONSTRUCTION FOR PANELS (REPLACES INNERHTML) ---
+        
+        // Helper: Create Header
+        const createPanelHeader = (text) => {
+            const h2 = document.createElement('h2');
+            h2.textContent = text;
+            h2.style.cssText = `font-size: 1.1rem; margin-top: 0; border-bottom: 1px solid ${themeCol}; padding-bottom: 10px; text-transform: uppercase; text-shadow: 0 0 5px ${themeCol}; letter-spacing: 2px;`;
+            return h2;
+        };
 
-            <!-- 2. BACKGROUNDS TAB -->
-            <div id="cf-tab-backgrounds" class="cf-tab-panel" style="display: none; flex-direction: column; height: 100%;">
-                <h2 style="font-size: 1.1rem; margin-top: 0; border-bottom: 1px solid ${themeCol}; padding-bottom: 10px; text-transform: uppercase; text-shadow: 0 0 5px ${themeCol}; letter-spacing: 2px;">Environment</h2>
-                <div style="margin-top: 25px;">
-                    <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer; font-size: 0.85rem;">
-                        <input type="radio" name="cf-bg" value="default" style="accent-color: ${themeCol}; margin-right: 12px; transform: scale(1.2);"> Default (Theme Gradient)
-                    </label>
-                    
-                    <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                        <label style="display: flex; align-items: center; cursor: pointer; font-size: 0.85rem; margin-right: 10px;">
-                            <input type="radio" name="cf-bg" value="rain" style="accent-color: ${themeCol}; margin-right: 12px; transform: scale(1.2);"> Zion Matrix Rain
-                        </label>
-                        <!-- INDEPENDENT RAIN COLOR PICKER -->
-                        <input type="color" id="cf-rain-color-picker" value="${this.customRainColor}" 
-                            style="background: transparent; border: 1px solid ${themeCol}; height: 25px; width: 40px; cursor: pointer; padding: 0;">
-                    </div>
+        // Helper: Create Radio Option
+        const createRadioOption = (name, value, labelText, checked) => {
+            const label = document.createElement('label');
+            label.style.cssText = "display: flex; align-items: center; margin-bottom: 15px; cursor: pointer; font-size: 0.85rem;";
+            
+            const input = document.createElement('input');
+            input.type = "radio";
+            input.name = name;
+            input.value = value;
+            if(checked) input.checked = true;
+            input.style.cssText = `accent-color: ${themeCol}; margin-right: 12px; transform: scale(1.2);`;
+            
+            label.appendChild(input);
+            label.appendChild(document.createTextNode(labelText));
+            return label;
+        };
 
-                    <!-- RAIN SPEED SLIDER -->
-                    <div id="cf-rain-speed-container" style="margin-left: 28px; margin-bottom: 20px; opacity: 0.5; transition: opacity 0.3s;">
-                        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 5px;">
-                            <span>SPEED</span>
-                            <span id="cf-rain-speed-val">${this.rainSpeed}ms</span>
-                        </div>
-                        <input type="range" id="cf-rain-speed-slider" min="10" max="200" step="5" value="${this.rainSpeed}" 
-                        style="width: 100%; accent-color: ${themeCol}; cursor: pointer;">
-                    </div>
-                </div>
-            </div>
+        // 1. STYLE TAB
+        const panelStyle = document.createElement('div');
+        panelStyle.id = "cf-tab-coverflow";
+        panelStyle.className = "cf-tab-panel";
+        panelStyle.style.cssText = "display: flex; flex-direction: column; height: 100%;";
+        panelStyle.appendChild(createPanelHeader("Coverflow Style"));
 
-            <!-- 3. COVERS TAB (ROUNDING ENGINE) -->
-            <div id="cf-tab-covers" class="cf-tab-panel" style="display: none; flex-direction: column; height: 100%;">
-                <h2 style="font-size: 1.1rem; margin-top: 0; border-bottom: 1px solid ${themeCol}; padding-bottom: 10px; text-transform: uppercase; text-shadow: 0 0 5px ${themeCol}; letter-spacing: 2px;">Cover Geometry</h2>
-                <div style="margin-top: 25px;">
-                    <label style="display: flex; align-items: center; margin-bottom: 20px; cursor: pointer; font-size: 0.85rem;">
-                        <input type="checkbox" id="cf-rounding-toggle" ${this.enableRounding ? 'checked' : ''} style="accent-color: ${themeCol}; margin-right: 12px; transform: scale(1.2);"> Enable Rounded Corners
-                    </label>
-                    
-                    <label style="font-size: 0.8rem; text-transform: uppercase; margin-bottom: 8px; display: block;">Corner Radius</label>
-                    <input type="range" id="cf-radius-slider" min="0" max="0.5" step="0.05" value="${this.coverRadius}" 
-                        style="width: 100%; accent-color: ${themeCol}; margin-bottom: 10px;">
-                </div>
-            </div>
-        `;
+        const styleContainer = document.createElement('div');
+        styleContainer.style.marginTop = "25px";
+        const styles = [
+            {v: 'aurora', l: 'Aurora (Curved)'},
+            {v: 'linear', l: 'Linear (Flat)'},
+            {v: 'carousel', l: 'Carousel (Circular)'},
+            {v: 'flock', l: 'Flock (Organic)'},
+            {v: 'spiral', l: 'Spiral (Helix)'}
+        ];
+        styles.forEach(s => {
+            styleContainer.appendChild(createRadioOption('cf-style', s.v, s.l, this.currentStyle === s.v));
+        });
+        panelStyle.appendChild(styleContainer);
+        contentCol.appendChild(panelStyle);
+
+        // 2. BACKGROUNDS TAB
+        const panelBg = document.createElement('div');
+        panelBg.id = "cf-tab-backgrounds";
+        panelBg.className = "cf-tab-panel";
+        panelBg.style.cssText = "display: none; flex-direction: column; height: 100%;";
+        panelBg.appendChild(createPanelHeader("Environment"));
+
+        const bgContainer = document.createElement('div');
+        bgContainer.style.marginTop = "25px";
+
+        // Default Background Radio
+        bgContainer.appendChild(createRadioOption('cf-bg', 'default', 'Default (Theme Gradient)', this.currentBg === 'default'));
+        
+        // Rain Background Radio Row (with color picker)
+        const rainRow = document.createElement('div');
+        rainRow.style.cssText = "display: flex; align-items: center; margin-bottom: 5px;";
+        
+        const rainLabel = document.createElement('label');
+        rainLabel.style.cssText = "display: flex; align-items: center; cursor: pointer; font-size: 0.85rem; margin-right: 10px;";
+        const rainInput = document.createElement('input');
+        rainInput.type = "radio";
+        rainInput.name = "cf-bg";
+        rainInput.value = "rain";
+        if(this.currentBg === 'rain') rainInput.checked = true;
+        rainInput.style.cssText = `accent-color: ${themeCol}; margin-right: 12px; transform: scale(1.2);`;
+        rainLabel.appendChild(rainInput);
+        rainLabel.appendChild(document.createTextNode("Zion Matrix Rain"));
+        rainRow.appendChild(rainLabel);
+
+        // Rain Color Picker
+        const colorPicker = document.createElement('input');
+        colorPicker.type = "color";
+        colorPicker.id = "cf-rain-color-picker";
+        colorPicker.value = this.customRainColor;
+        colorPicker.style.cssText = `background: transparent; border: 1px solid ${themeCol}; height: 25px; width: 40px; cursor: pointer; padding: 0;`;
+        rainRow.appendChild(colorPicker);
+        bgContainer.appendChild(rainRow);
+
+        // Rain Speed Slider
+        const speedContainer = document.createElement('div');
+        speedContainer.id = "cf-rain-speed-container";
+        speedContainer.style.cssText = "margin-left: 28px; margin-bottom: 20px; opacity: 0.5; transition: opacity 0.3s;";
+
+        const speedLabelRow = document.createElement('div');
+        speedLabelRow.style.cssText = "display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 5px;";
+        const spLabel = document.createElement('span');
+        spLabel.textContent = "SPEED";
+        const spVal = document.createElement('span');
+        spVal.id = "cf-rain-speed-val";
+        spVal.textContent = this.rainSpeed + "ms";
+        speedLabelRow.appendChild(spLabel);
+        speedLabelRow.appendChild(spVal);
+
+        const speedSlider = document.createElement('input');
+        speedSlider.type = "range";
+        speedSlider.id = "cf-rain-speed-slider";
+        speedSlider.min = "10";
+        speedSlider.max = "200";
+        speedSlider.step = "5";
+        speedSlider.value = this.rainSpeed;
+        speedSlider.style.cssText = `width: 100%; accent-color: ${themeCol}; cursor: pointer;`;
+
+        speedContainer.appendChild(speedLabelRow);
+        speedContainer.appendChild(speedSlider);
+        bgContainer.appendChild(speedContainer);
+        
+        panelBg.appendChild(bgContainer);
+        contentCol.appendChild(panelBg);
+
+        // 3. COVERS TAB (Rounding)
+        const panelCovers = document.createElement('div');
+        panelCovers.id = "cf-tab-covers";
+        panelCovers.className = "cf-tab-panel";
+        panelCovers.style.cssText = "display: none; flex-direction: column; height: 100%;";
+        panelCovers.appendChild(createPanelHeader("Cover Geometry"));
+
+        const coverContainer = document.createElement('div');
+        coverContainer.style.marginTop = "25px";
+
+        // Rounding Toggle
+        const roundLabel = document.createElement('label');
+        roundLabel.style.cssText = "display: flex; align-items: center; margin-bottom: 20px; cursor: pointer; font-size: 0.85rem;";
+        const roundInput = document.createElement('input');
+        roundInput.type = "checkbox";
+        roundInput.id = "cf-rounding-toggle";
+        if(this.enableRounding) roundInput.checked = true;
+        roundInput.style.cssText = `accent-color: ${themeCol}; margin-right: 12px; transform: scale(1.2);`;
+        roundLabel.appendChild(roundInput);
+        roundLabel.appendChild(document.createTextNode("Enable Rounded Corners"));
+        coverContainer.appendChild(roundLabel);
+
+        // Radius Slider
+        const radiusLabel = document.createElement('label');
+        radiusLabel.style.cssText = "font-size: 0.8rem; text-transform: uppercase; margin-bottom: 8px; display: block;";
+        radiusLabel.textContent = "Corner Radius";
+        coverContainer.appendChild(radiusLabel);
+
+        const radiusSlider = document.createElement('input');
+        radiusSlider.type = "range";
+        radiusSlider.id = "cf-radius-slider";
+        radiusSlider.min = "0";
+        radiusSlider.max = "0.5";
+        radiusSlider.step = "0.05";
+        radiusSlider.value = this.coverRadius;
+        radiusSlider.style.cssText = `width: 100%; accent-color: ${themeCol}; margin-bottom: 10px;`;
+        coverContainer.appendChild(radiusSlider);
+
+        panelCovers.appendChild(coverContainer);
+        contentCol.appendChild(panelCovers);
 
         this.sidebar.appendChild(navCol);
         this.sidebar.appendChild(contentCol);
@@ -393,21 +484,22 @@ class MatrixCoverflow {
         const rainSpeedVal = document.getElementById('cf-rain-speed-val');
         rainSpeedSlider.addEventListener('input', (e) => {
             this.rainSpeed = parseInt(e.target.value);
-            rainSpeedVal.innerText = this.rainSpeed + 'ms';
+            rainSpeedVal.textContent = this.rainSpeed + 'ms';
         });
 
         // Rounding Engine (Live Update)
         const roundToggle = document.getElementById('cf-rounding-toggle');
-        const radiusSlider = document.getElementById('cf-radius-slider');
+        // const radiusSlider already defined above, but we get by ID to be safe if moved
+        const radiusSliderEl = document.getElementById('cf-radius-slider');
         
         const updateGeometry = () => {
             this.enableRounding = roundToggle.checked;
-            this.coverRadius = parseFloat(radiusSlider.value);
+            this.coverRadius = parseFloat(radiusSliderEl.value);
             this.buildGallery(); // Re-generate meshes on the fly
         };
 
         roundToggle.addEventListener('change', updateGeometry);
-        radiusSlider.addEventListener('input', updateGeometry);
+        radiusSliderEl.addEventListener('input', updateGeometry);
 
         // --- BUTTON ACTIONS ---
         saveBtn.addEventListener('click', () => {
@@ -419,9 +511,9 @@ class MatrixCoverflow {
             localStorage.setItem('matrix-coverflow-radius', this.coverRadius);
             
             // Visual feedback
-            const originalText = saveBtn.innerText;
-            saveBtn.innerText = 'SAVED';
-            setTimeout(() => saveBtn.innerText = originalText, 1000);
+            const originalText = saveBtn.textContent;
+            saveBtn.textContent = 'SAVED';
+            setTimeout(() => saveBtn.textContent = originalText, 1000);
         });
 
         exitBtn.addEventListener('click', () => {
