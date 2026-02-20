@@ -122,9 +122,7 @@ window.openPSXEmulator = async function() {
         input_load_state_btn: '4'     
     };
 
-    const ROMS = [
-        "DEMO-DOOMINTRO.CHD",      
-    ];
+    const ROMS = window.PSX_ROMS;
 
     ROMS.forEach(rom => {
         const opt = document.createElement('option');
