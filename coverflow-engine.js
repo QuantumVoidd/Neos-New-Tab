@@ -14,6 +14,9 @@ class MatrixCoverflow {
         this.enableRounding = localStorage.getItem('matrix-coverflow-rounding') === 'true';
         this.coverRadius = parseFloat(localStorage.getItem('matrix-coverflow-radius')) || 0.3;
 
+        // Reflection Settings (Default to true)
+        this.enableReflections = localStorage.getItem('matrix-coverflow-reflections') !== 'false';
+
         this.uiColor = new THREE.Color();
         this.bgGradient = 'none';
 
@@ -30,7 +33,12 @@ class MatrixCoverflow {
         
         this.meshes = [];
         this.currentIndex = 0;
+        
+        // Camera Targets
         this.targetCameraX = 0;
+        this.targetCameraY = 1;
+        this.targetCameraZ = 14;
+
         this.isActive = false;
 
         // Rain animation timing
@@ -297,7 +305,11 @@ class MatrixCoverflow {
         const styles = [
             {v: 'aurora', l: 'Aurora (Curved)'},
             {v: 'linear', l: 'Linear (Flat)'},
+            {v: 'grid', l: 'Grid View (6 Columns)'},
             {v: 'carousel', l: 'Carousel (Circular)'},
+            {v: 'wheel', l: 'Ferris Wheel'},
+            {v: 'rolodex', l: 'Rolodex'},
+            {v: 'pyramid', l: 'Pyramid'},
             {v: 'flock', l: 'Flock (Organic)'},
             {v: 'spiral', l: 'Spiral (Helix)'}
         ];
@@ -376,7 +388,7 @@ class MatrixCoverflow {
         panelBg.appendChild(bgContainer);
         contentCol.appendChild(panelBg);
 
-        // 3. COVERS TAB (Rounding)
+        // 3. COVERS TAB (Rounding & Reflections)
         const panelCovers = document.createElement('div');
         panelCovers.id = "cf-tab-covers";
         panelCovers.className = "cf-tab-panel";
@@ -397,6 +409,18 @@ class MatrixCoverflow {
         roundLabel.appendChild(roundInput);
         roundLabel.appendChild(document.createTextNode("Enable Rounded Corners"));
         coverContainer.appendChild(roundLabel);
+
+        // Reflection Toggle
+        const reflectLabel = document.createElement('label');
+        reflectLabel.style.cssText = "display: flex; align-items: center; margin-bottom: 20px; cursor: pointer; font-size: 0.85rem;";
+        const reflectInput = document.createElement('input');
+        reflectInput.type = "checkbox";
+        reflectInput.id = "cf-reflection-toggle";
+        if(this.enableReflections) reflectInput.checked = true;
+        reflectInput.style.cssText = `accent-color: ${themeCol}; margin-right: 12px; transform: scale(1.2);`;
+        reflectLabel.appendChild(reflectInput);
+        reflectLabel.appendChild(document.createTextNode("Reflections"));
+        coverContainer.appendChild(reflectLabel);
 
         // Radius Slider
         const radiusLabel = document.createElement('label');
@@ -487,18 +511,21 @@ class MatrixCoverflow {
             rainSpeedVal.textContent = this.rainSpeed + 'ms';
         });
 
-        // Rounding Engine (Live Update)
+        // Rounding & Reflection (Live Update)
         const roundToggle = document.getElementById('cf-rounding-toggle');
+        const reflectToggle = document.getElementById('cf-reflection-toggle');
         // const radiusSlider already defined above, but we get by ID to be safe if moved
         const radiusSliderEl = document.getElementById('cf-radius-slider');
         
         const updateGeometry = () => {
             this.enableRounding = roundToggle.checked;
+            this.enableReflections = reflectToggle.checked;
             this.coverRadius = parseFloat(radiusSliderEl.value);
             this.buildGallery(); // Re-generate meshes on the fly
         };
 
         roundToggle.addEventListener('change', updateGeometry);
+        reflectToggle.addEventListener('change', updateGeometry);
         radiusSliderEl.addEventListener('input', updateGeometry);
 
         // --- BUTTON ACTIONS ---
@@ -509,6 +536,7 @@ class MatrixCoverflow {
             localStorage.setItem('matrix-coverflow-rain-speed', this.rainSpeed);
             localStorage.setItem('matrix-coverflow-rounding', this.enableRounding);
             localStorage.setItem('matrix-coverflow-radius', this.coverRadius);
+            localStorage.setItem('matrix-coverflow-reflections', this.enableReflections);
             
             // Visual feedback
             const originalText = saveBtn.textContent;
@@ -703,14 +731,16 @@ class MatrixCoverflow {
         mesh.add(glowMesh);
 
         // --- AURORA REFLECTION FLOOR ---
-        const reflectionMat = new THREE.MeshStandardMaterial({ 
-            map: texture, opacity: 0.15, transparent: true, side: THREE.DoubleSide 
-        });
-        const reflection = new THREE.Mesh(geometry, reflectionMat);
-        reflection.position.set(0, -5.1, 0); 
-        reflection.rotation.x = Math.PI;
-        // Invert scale Y for reflection if it's a shape, though rotation handles it mostly.
-        mesh.add(reflection);
+        if (this.enableReflections) {
+            const reflectionMat = new THREE.MeshStandardMaterial({ 
+                map: texture, opacity: 0.15, transparent: true, side: THREE.DoubleSide 
+            });
+            const reflection = new THREE.Mesh(geometry, reflectionMat);
+            reflection.position.set(0, -5.1, 0); 
+            reflection.rotation.x = Math.PI;
+            // Invert scale Y for reflection if it's a shape, though rotation handles it mostly.
+            mesh.add(reflection);
+        }
 
         this.scene.add(mesh);
         this.meshes.push(mesh);
@@ -744,9 +774,6 @@ class MatrixCoverflow {
                         dropdown.dispatchEvent(new Event('change', { bubbles: true }));
                     }
                     
-                    if (typeof showZionMessage === 'function') {
-                        showZionMessage(`MOUNTING VIRTUAL DRIVE: ${data.romValue}...`);
-                    }
                     clearInterval(checkExist);
                 } else if (attempts > 20) {
                     clearInterval(checkExist); 
@@ -772,10 +799,24 @@ class MatrixCoverflow {
                 if (clickedMesh.userData.isGlow || clickedMesh.userData.isBorder) clickedMesh = clickedMesh.parent;
                 if (!clickedMesh.userData.baseX && clickedMesh.parent) clickedMesh = clickedMesh.parent;
 
-                if (Math.abs(clickedMesh.userData.baseX - this.camera.position.x) < 1) {
-                    this.launchGame(clickedMesh.userData);
+                // In GRID mode, verify Y distance too to prevent accidental clicks on other rows
+                const isGrid = this.currentStyle === 'grid';
+                let validClick = false;
+                
+                if (isGrid) {
+                    // For grid, we just rely on raycaster logic as objects are physically moved
+                    validClick = true; 
                 } else {
-                    this.currentIndex = this.meshes.indexOf(clickedMesh);
+                     if (Math.abs(clickedMesh.userData.baseX - this.camera.position.x) < 1) validClick = true;
+                }
+
+                if (validClick) {
+                     // Check if it's the current selected one to launch
+                    if (this.meshes.indexOf(clickedMesh) === this.currentIndex) {
+                         this.launchGame(clickedMesh.userData);
+                    } else {
+                         this.currentIndex = this.meshes.indexOf(clickedMesh);
+                    }
                 }
             }
         });
@@ -784,6 +825,13 @@ class MatrixCoverflow {
             if (!this.isActive) return;
             if (e.key === "ArrowRight") this.navigate(1);
             if (e.key === "ArrowLeft") this.navigate(-1);
+            
+            // Grid Navigation Support
+            if (this.currentStyle === 'grid') {
+                if (e.key === "ArrowUp") this.navigate(-6);
+                if (e.key === "ArrowDown") this.navigate(6);
+            }
+
             if (e.key === "Enter" && this.meshes.length > 0) {
                 this.launchGame(this.meshes[this.currentIndex].userData);
             }
@@ -822,16 +870,27 @@ class MatrixCoverflow {
         const gp = navigator.getGamepads()[this.gamepadIndex];
         if (!gp) return;
 
-        // --- ANALOG STICK (Axis 0) ---
         const now = Date.now();
         // Throttle movement to prevent super-fast scrolling
         if (now - this.gpStickMoved > 150) { 
+            // Axis 0: Horizontal (Standard)
             if (gp.axes[0] > 0.5) {
                 this.navigate(1);
                 this.gpStickMoved = now;
             } else if (gp.axes[0] < -0.5) {
                 this.navigate(-1);
                 this.gpStickMoved = now;
+            }
+            
+            // Axis 1: Vertical (Grid Mode Only)
+            if (this.currentStyle === 'grid') {
+                 if (gp.axes[1] > 0.5) {
+                    this.navigate(6);
+                    this.gpStickMoved = now;
+                 } else if (gp.axes[1] < -0.5) {
+                    this.navigate(-6);
+                    this.gpStickMoved = now;
+                 }
             }
         }
 
@@ -894,18 +953,41 @@ class MatrixCoverflow {
         }
 
         if (this.meshes.length > 0) {
-            this.targetCameraX = this.meshes[this.currentIndex].userData.baseX;
-            this.camera.position.x += (this.targetCameraX - this.camera.position.x) * 0.1;
+            
+            // --- CAMERA LOGIC ---
+            if (this.currentStyle === 'grid') {
+                // Grid View: Camera X fixed at 0. Camera Y moves down rows. Camera Z pulled back.
+                const row = Math.floor(this.currentIndex / 6);
+                const spacingY = 5.5; 
+                this.targetCameraX = 0;
+                this.targetCameraY = -(row * spacingY); 
+                this.targetCameraZ = 32; // Pull back to see grid width
+            } else {
+                // Standard Views: Camera follows mesh X. Y/Z fixed standard.
+                this.targetCameraX = this.meshes[this.currentIndex].userData.baseX;
+                this.targetCameraY = 1;
+                this.targetCameraZ = 14;
+            }
 
+            // Smooth Camera Movement (Lerping all axes)
+            this.camera.position.x += (this.targetCameraX - this.camera.position.x) * 0.1;
+            this.camera.position.y += (this.targetCameraY - this.camera.position.y) * 0.1;
+            this.camera.position.z += (this.targetCameraZ - this.camera.position.z) * 0.1;
+
+            // --- MESH LOGIC ---
             this.meshes.forEach((mesh, i) => {
-                const dist = mesh.userData.baseX - this.camera.position.x;
+                const dist = mesh.userData.baseX - (this.currentStyle === 'grid' ? 0 : this.camera.position.x);
                 
                 // RESET defaults
+                mesh.visible = true; // IMPORTANT: Reset visibility every frame to prevent stuck invisible items
                 let targetY = 0;
                 let targetZ = 0;
                 let targetRotX = 0;
                 let targetRotY = 0;
                 let targetRotZ = 0;
+
+                // Base separation factor used for normalizations
+                const spacing = 5.5; 
 
                 if (this.currentStyle === 'aurora') {
                     mesh.position.x = mesh.userData.baseX;
@@ -916,11 +998,74 @@ class MatrixCoverflow {
                     mesh.position.x = mesh.userData.baseX;
                     targetZ = (i === this.currentIndex) ? 0.5 : 0;
                 } 
+                else if (this.currentStyle === 'grid') {
+                    // 6 Column Grid Logic
+                    const col = i % 6;
+                    const row = Math.floor(i / 6);
+                    
+                    const spacingX = 4.2;
+                    const spacingY = 5.5;
+
+                    // Calculate X: Center 6 columns around 0
+                    // Columns 0-5. Center is between 2 and 3. (col - 2.5)
+                    mesh.position.x = (col - 2.5) * spacingX;
+                    
+                    // Calculate Y: Rows stack downwards
+                    targetY = -(row * spacingY);
+                    
+                    // Flat Z, no rotation
+                    targetZ = 0;
+                    targetRotX = 0;
+                    targetRotY = 0;
+                    targetRotZ = 0;
+                }
                 else if (this.currentStyle === 'carousel') {
-                    const angle = -dist * 0.15; 
+                    // Fixed Carousel: Uses strictly index-based spacing to prevent clumping.
+                    const normalized = dist / spacing; 
+                    const angle = normalized * 0.5; // Spread factor
+                    
                     mesh.position.x = this.camera.position.x + Math.sin(angle) * 12;
                     targetZ = Math.cos(angle) * 12 - 12; 
                     targetRotY = angle;
+                }
+                else if (this.currentStyle === 'wheel') {
+                    // Vertical Ferris Wheel (Fixed Ghosting)
+                    const normalized = dist / spacing;
+                    const angle = normalized * 0.4;
+                    const radius = 13;
+
+                    mesh.position.x = this.camera.position.x; // Lock X to center
+                    targetY = -Math.sin(angle) * radius;
+                    
+                    // Main circle geometry
+                    targetZ = Math.cos(angle) * radius - radius;
+                    
+                    // FIX: Strong Z-decay based on distance from center (Spiral effect)
+                    // This physically pushes non-active/wrapped items deep into the background
+                    targetZ -= Math.abs(normalized) * 1.5; 
+
+                    targetRotX = angle;
+
+                    // FIX: Visibility Culling
+                    // If items wrap around the back (approx > 270 deg), hide them completely
+                    // to prevent them from rendering through the active front items.
+                    if (Math.abs(normalized) > 9) {
+                        mesh.visible = false;
+                    }
+                }
+                else if (this.currentStyle === 'rolodex') {
+                    // Deep Rolodex / Star Wars Scroll Style
+                    const normalized = dist / spacing;
+                    mesh.position.x = this.camera.position.x + (normalized * 2.5); // Tighter X
+                    targetY = -Math.abs(normalized) * 1.5; // Arch downwards
+                    targetZ = -Math.abs(normalized) * 3; // Recede deep
+                    targetRotY = 0;
+                }
+                else if (this.currentStyle === 'pyramid') {
+                     const normalized = dist / spacing;
+                     mesh.position.x = mesh.userData.baseX;
+                     targetY = -Math.abs(normalized) * 2; // Stack upwards/downwards
+                     targetZ = -Math.abs(normalized) * 2; // Recede
                 }
                 else if (this.currentStyle === 'flock') {
                     // Organic "bird flock" wave pattern
@@ -941,29 +1086,33 @@ class MatrixCoverflow {
                     targetRotX = spiralAngle; 
                 }
 
-                // Apply calculated transforms with smoothing
-                mesh.position.y += (targetY - mesh.position.y) * 0.1;
-                mesh.position.z += (targetZ - mesh.position.z) * 0.1;
-                
-                // Smooth Rotations
-                mesh.rotation.x += (targetRotX - mesh.rotation.x) * 0.1;
-                mesh.rotation.y += (targetRotY - mesh.rotation.y) * 0.1;
-                mesh.rotation.z += (targetRotZ - mesh.rotation.z) * 0.1;
-                
-                const targetScale = (i === this.currentIndex) ? 1.05 : 1.0;
-                mesh.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
+                if (mesh.visible) {
+                    // Apply calculated transforms with smoothing
+                    mesh.position.y += (targetY - mesh.position.y) * 0.1;
+                    mesh.position.z += (targetZ - mesh.position.z) * 0.1;
+                    
+                    // Smooth Rotations
+                    mesh.rotation.x += (targetRotX - mesh.rotation.x) * 0.1;
+                    mesh.rotation.y += (targetRotY - mesh.rotation.y) * 0.1;
+                    mesh.rotation.z += (targetRotZ - mesh.rotation.z) * 0.1;
+                    
+                    const targetScale = (i === this.currentIndex) ? 1.05 : 1.0;
+                    mesh.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
 
-                // Smoothly fade the Canvas-Generated Glow and Line Border
-                mesh.children.forEach(child => {
-                    if (child.userData.isGlow) {
-                        const targetOpacity = (i === this.currentIndex) ? 0.7 : 0.0;
-                        child.material.opacity += (targetOpacity - child.material.opacity) * 0.15;
-                    }
-                    if (child.userData.isBorder) {
-                        const targetOpacity = (i === this.currentIndex) ? 1.0 : 0.0;
-                        child.material.opacity += (targetOpacity - child.material.opacity) * 0.15;
-                    }
-                });
+                    // Smoothly fade the Canvas-Generated Glow and Line Border
+                    mesh.children.forEach(child => {
+                        if (child.userData.isGlow) {
+                            // In GRID mode, glow is always off or subtle, otherwise it looks messy
+                            const isGrid = this.currentStyle === 'grid';
+                            const targetOpacity = (i === this.currentIndex) ? (isGrid ? 0.4 : 0.7) : 0.0;
+                            child.material.opacity += (targetOpacity - child.material.opacity) * 0.15;
+                        }
+                        if (child.userData.isBorder) {
+                            const targetOpacity = (i === this.currentIndex) ? 1.0 : 0.0;
+                            child.material.opacity += (targetOpacity - child.material.opacity) * 0.15;
+                        }
+                    });
+                }
             });
         }
 
