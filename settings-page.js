@@ -320,6 +320,22 @@ if(get('dock-settings')) {
                  updatePfpVisuals(false, getWireframeSvg());
             }
 
+            // --- THE FIX: Refresh Operator ID fields from storage EVERY time settings is opened ---
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                chrome.storage.local.get(['username', 'accessKey'], (localData) => {
+                    const opNameInput = document.getElementById('operator-name-input');
+                    const accKeyInput = document.getElementById('access-key-input');
+                    
+                    // Overwrite the background loaded defaults with your actual saved credentials
+                    if (opNameInput && localData.username) {
+                        opNameInput.value = SecUtils.escapeHTML(localData.username);
+                    }
+                    if (accKeyInput && localData.accessKey) {
+                        accKeyInput.value = SecUtils.escapeHTML(localData.accessKey);
+                    }
+                });
+            }
+
         } else {
             if (typeof settingsRainInterval !== 'undefined') clearInterval(settingsRainInterval);
         }
@@ -923,16 +939,20 @@ if(resetB) resetB.onclick = () => {
     } 
 };
 
-// --- 5. INITIALIZATION (Called by script.js) ---
+// Ensure this is replacing your old window.initSettingsUI function
 window.initSettingsUI = function(data) {
-    if(!data) return;
+    if(!data) data = {};
 
-    // --- OPERATOR ID INIT ---
+    // --- OPERATOR ID INIT (FIXED LOGIC) ---
     // Fetch directly from storage (local) as credentials and PFP might be there
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         chrome.storage.local.get(['username', 'accessKey', 'customPfp'], (localData) => {
-            if (operatorNameI) operatorNameI.value = SecUtils.escapeHTML(localData.username || data.username || "NEO");
-            if (accessKeyI) accessKeyI.value = SecUtils.escapeHTML(localData.accessKey || data.accessKey || "knock");
+            // Force prioritize localData (set by logon.js) over synced data or defaults
+            const savedUser = localData.username || data.username || "NEO";
+            const savedKey = localData.accessKey || data.accessKey || "knock";
+
+            if (operatorNameI) operatorNameI.value = SecUtils.escapeHTML(savedUser);
+            if (accessKeyI) accessKeyI.value = SecUtils.escapeHTML(savedKey);
             
             if (localData.customPfp) {
                 updatePfpVisuals(true, localData.customPfp);
@@ -940,19 +960,10 @@ window.initSettingsUI = function(data) {
                 updatePfpVisuals(false, getWireframeSvg());
             }
         });
-    } else {
-         // Fallback
-         if (operatorNameI) operatorNameI.value = SecUtils.escapeHTML(localStorage.getItem('username') || "NEO");
-         if (accessKeyI) accessKeyI.value = SecUtils.escapeHTML(localStorage.getItem('accessKey') || "knock");
-         
-         const savedPfp = localStorage.getItem('customPfp');
-         if (savedPfp) {
-             updatePfpVisuals(true, savedPfp);
-         } else {
-             updatePfpVisuals(false, getWireframeSvg());
-         }
     }
 
+    // Keep the rest of your original window.initSettingsUI code below here...
+    // (e.g., slider setups, toggles mapping to data properties, etc.)
 
     // Apply Logic
     if(minT) minT.checked = data.showMinutes; 

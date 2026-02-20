@@ -319,6 +319,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Using helper storage.set (which uses chrome.storage.local)
         storage.set(storageData, () => {
+            
+            // NEW FIX: Also attempt to save credentials to sync storage so settings-page grabs them reliably
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
+                chrome.storage.sync.set({
+                    username: storageData.username,
+                    accessKey: storageData.accessKey
+                });
+            }
+
             // Verify and Auto-Login
             setTimeout(() => {
                 storage.get(['username', 'accessKey', 'customPfp', 'themeColor', 'matrixGreen'], (newData) => {

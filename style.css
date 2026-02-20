@@ -2512,7 +2512,7 @@ button:focus {
     bottom: -80px; /* Changed from -65px to -80px to fully hide the frame */
     left: 50%;
     transform: translateX(-50%);
-    width: 450px; 
+    width: 550px;  /* EXTENDED: Increased from 450px to 550px */
     height: 70px;
     z-index: 9500;
     transition: bottom 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -2692,7 +2692,6 @@ button:focus {
 #wordpad-modal {
     z-index: 10005; 
 }
-
 /* --- MEDIA PLAYER STYLES --- */
 .mp-frame {
     width: 85vw;
