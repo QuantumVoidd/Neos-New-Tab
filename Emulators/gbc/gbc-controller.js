@@ -148,10 +148,8 @@ window.openGBCEmulator = async function() {
         muteBtn.blur();
     });
 
-    // --- ROM LIST (EXTRACTED GB/GBC ONLY) ---
-    const ROMS = [
-        "tobudx.gb",     
-    ];
+    const ROMS = window.GBC_ROMS;
+            
 
     ROMS.forEach(rom => {
         const opt = document.createElement('option');
