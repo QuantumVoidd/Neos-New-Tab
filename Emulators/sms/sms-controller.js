@@ -101,9 +101,8 @@ window.openSmsEmulator = async function() {
         'input_enable_hotkey': 'nul'
     };
 
-    const ROMS = [
-        "Razing Core (Alpha Demo V0.1.3.4).sms",    
-    ]; 
+    const ROMS = window.SMS_ROMS;
+
 
     ROMS.forEach(rom => {
         const opt = document.createElement('option');
