@@ -114,9 +114,7 @@ window.openNesEmulator = async function() {
         'input_menu_toggle_btn': '99'
     };
 
-    const ROMS = [
-        "AlwasAwakening_demo.nes", 
-    ];
+    const ROMS = window.NES_ROMS;
 
     ROMS.forEach(rom => {
         const opt = document.createElement('option');
