@@ -73,6 +73,7 @@
         let pendingConfig = null; 
         let currentSaveBlob = null; 
         let currentSlot = 1; 
+        let isBooting = false;
 
         let notifyTimeout = null;
         function showNotification(text, keepAlive = false) {
@@ -89,7 +90,19 @@
 
         function pollGamepads() {
             gamepadLoop = requestAnimationFrame(pollGamepads);
-            navigator.getGamepads();
+            const gamepads = navigator.getGamepads();
+            
+            // Check for Gamepad A button to boot system
+            if (!emulatorInstance && !isBooting) {
+                for (const gp of gamepads) {
+                    if (gp && gp.buttons[0] && gp.buttons[0].pressed) {
+                        const overlay = document.getElementById('start-overlay');
+                        if (overlay && overlay.style.display === 'flex') {
+                            launchEmulator();
+                        }
+                    }
+                }
+            }
         }
 
         // The ultimate arbiter of file completion. Waits dynamically until the file completely stops writing.
@@ -236,7 +249,8 @@
         }, true);
 
         async function launchEmulator() {
-            if (!pendingConfig) return;
+            if (!pendingConfig || isBooting) return;
+            isBooting = true;
             const container = document.getElementById('emulator-container');
             const overlay = document.getElementById('start-overlay');
 
@@ -280,6 +294,7 @@
 
             } catch (e) {
                 console.error("Sandbox Error:", e);
+                isBooting = false;
                 window.parent.postMessage({ status: 'error', message: e.toString() }, '*');
             }
         }
@@ -290,6 +305,8 @@
             if (command === 'start') {
                 pendingConfig = event.data;
                 document.getElementById('start-overlay').style.display = 'flex';
+                // Start polling as soon as start command is received to catch controller input
+                if (!gamepadLoop) pollGamepads();
             }
             else if (command === 'import_slot' || command === 'import_state') {
                 if (event.data.slot !== undefined) currentSlot = event.data.slot;
@@ -318,6 +335,7 @@
         window.addEventListener("gamepadconnected", (e) => {
             showNotification("GAMEPAD CONNECTED");
             window.parent.postMessage({ status: 'gamepad_connected', id: e.gamepad.id }, '*');
+            if (!gamepadLoop) pollGamepads();
         });
 
         document.getElementById('start-btn').addEventListener('click', launchEmulator);

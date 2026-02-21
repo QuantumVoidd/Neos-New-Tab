@@ -73,6 +73,7 @@
     <script>
         let emulatorInstance = null;
         let pendingConfig = null;
+        let isBooting = false;
         
         // --- MULTI-SLOT MEMORY ---
         let currentSaveBlob = null; 
@@ -87,6 +88,23 @@
                 el.style.display = 'block';
                 setTimeout(() => { el.style.display = 'none'; }, 2000);
             }
+        }
+
+        // --- GAMEPAD POLLING FOR BOOT ---
+        function pollGamepad() {
+            if (emulatorInstance || isBooting) return;
+
+            const gamepads = navigator.getGamepads();
+            for (const gp of gamepads) {
+                if (gp && gp.buttons[0] && gp.buttons[0].pressed) {
+                    const overlay = document.getElementById('start-overlay');
+                    if (overlay && overlay.style.display === 'flex') {
+                        launchEmulator();
+                        return;
+                    }
+                }
+            }
+            requestAnimationFrame(pollGamepad);
         }
 
         window.addEventListener('keydown', async (e) => {
@@ -155,7 +173,8 @@
         }, true); 
 
         async function launchEmulator() {
-            if (!pendingConfig || !pendingConfig.romBlob) return;
+            if (!pendingConfig || !pendingConfig.romBlob || isBooting) return;
+            isBooting = true;
 
             const container = document.getElementById('emulator-container');
             const overlay = document.getElementById('start-overlay');
@@ -222,6 +241,7 @@
 
             } catch (e) { 
                 console.error("Launch Error:", e);
+                isBooting = false;
                 window.parent.postMessage({ status: 'error', message: e.toString() }, '*'); 
             }
         }
@@ -232,6 +252,7 @@
             if (command === 'start') {
                 pendingConfig = event.data;
                 document.getElementById('start-overlay').style.display = 'flex';
+                pollGamepad();
             }
             
             // --- SYNC WITH DROPDOWN ---
@@ -277,6 +298,7 @@
         window.addEventListener("gamepadconnected", (e) => {
             showNotification("GAMEPAD CONNECTED");
             window.parent.postMessage({ status: 'gamepad_connected', id: e.gamepad.id }, '*');
+            pollGamepad();
         });
 
         document.getElementById('start-btn').addEventListener('click', launchEmulator);

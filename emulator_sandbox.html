@@ -111,6 +111,18 @@
             const gp = gamepads[0];
             if (!gp) return;
 
+            // Check if Start Overlay is visible
+            const overlay = document.getElementById('start-overlay');
+            const isOverlayVisible = overlay && overlay.style.display === 'flex';
+
+            if (isOverlayVisible) {
+                // If A button (0) is pressed while overlay is up, boot the system
+                if (gp.buttons[0]?.pressed && !isProcessing) {
+                    launchEmulator();
+                }
+                return; // Don't process hotkeys while overlay is active
+            }
+
             // R1 + A = SAVE
             if (gp.buttons[5]?.pressed && gp.buttons[0]?.pressed) {
                 if (!isProcessing) saveState();
@@ -151,7 +163,9 @@
         }
 
         async function launchEmulator() {
-            if (!pendingConfig) return;
+            if (!pendingConfig || isProcessing) return;
+            isProcessing = true; // Lock to prevent double-firing from button click + gamepad
+
             const container = document.getElementById('emulator-container');
             const overlay = document.getElementById('start-overlay');
             const { romBlob, coreConfig } = pendingConfig;
@@ -195,6 +209,8 @@
             } catch (e) {
                 console.error("Sandbox Error:", e);
                 window.parent.postMessage({ status: 'error', message: e.toString() }, '*');
+            } finally {
+                isProcessing = false;
             }
         }
 
@@ -204,6 +220,8 @@
             if (command === 'start') {
                 pendingConfig = event.data;
                 document.getElementById('start-overlay').style.display = 'flex';
+                // Start polling as soon as config arrives so gamepad can hit 'Boot'
+                if (!gamepadLoop) pollGamepads();
             }
             else if (command === 'mute') {
                 const ctx = window.emulatorAudioContext;

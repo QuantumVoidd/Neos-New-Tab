@@ -72,6 +72,7 @@
         let pendingConfig = null;
         let autoSaveInterval = null;
         let quickSaveBlob = null; 
+        let isBooting = false;
 
         function showNotification(text) {
             const el = document.getElementById('notification');
@@ -82,7 +83,28 @@
 
         window.addEventListener("gamepadconnected", (e) => {
             showNotification("GAMEPAD CONNECTED");
+            pollGamepad();
         });
+
+        // --- GAMEPAD POLLING FOR BOOT ---
+        function pollGamepad() {
+            if (emulatorInstance || isBooting) return; // Stop polling once game starts
+
+            const gamepads = navigator.getGamepads();
+            for (const gp of gamepads) {
+                if (!gp) continue;
+
+                // Button 0 is usually 'A' on most controllers (Xbox/PlayStation/Nintendo layouts)
+                if (gp.buttons[0].pressed) {
+                    const overlay = document.getElementById('start-overlay');
+                    if (overlay.style.display === 'flex') {
+                        launchEmulator();
+                        return; 
+                    }
+                }
+            }
+            requestAnimationFrame(pollGamepad);
+        }
 
         // --- KEYBOARD INTERCEPT ---
         window.addEventListener('keydown', async (e) => {
@@ -147,7 +169,9 @@
         });
 
         async function launchEmulator() {
-            if (!pendingConfig) return;
+            if (!pendingConfig || isBooting) return;
+            isBooting = true;
+
             const container = document.getElementById('emulator-container');
             const overlay = document.getElementById('start-overlay');
             
@@ -213,6 +237,7 @@
 
             } catch (e) { 
                 console.error("Launch Error:", e);
+                isBooting = false;
                 window.parent.postMessage({ status: 'error', message: e.toString() }, '*'); 
             }
         }
@@ -222,6 +247,8 @@
             if (command === 'start') {
                 pendingConfig = event.data;
                 document.getElementById('start-overlay').style.display = 'flex';
+                // Start checking for gamepad input as soon as the start command is received
+                pollGamepad();
             } 
             else if (command === 'mute') {
                 const ctx = window.emulatorAudioContext;
