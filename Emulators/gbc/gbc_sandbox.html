@@ -73,6 +73,7 @@
     <script>
         let emulatorInstance = null;
         let pendingConfig = null;
+        let isLaunching = false;
         
         let currentSaveBlob = null; 
         let currentSlot = 1; 
@@ -131,7 +132,8 @@
         }, true); 
 
         async function launchEmulator() {
-            if (!pendingConfig || !pendingConfig.romBlob) return;
+            if (isLaunching || !pendingConfig || !pendingConfig.romBlob) return;
+            isLaunching = true;
 
             const container = document.getElementById('emulator-container');
             const overlay = document.getElementById('start-overlay');
@@ -192,6 +194,7 @@
             } catch (e) { 
                 console.error("Launch Error:", e);
                 window.parent.postMessage({ status: 'error', message: e.toString() }, '*'); 
+                isLaunching = false;
             }
         }
 
@@ -200,6 +203,8 @@
             if (command === 'start') {
                 pendingConfig = event.data;
                 document.getElementById('start-overlay').style.display = 'flex';
+                // Start polling immediately so gamepad can trigger the boot button
+                startGamepadPolling();
             }
             else if (command === 'import_slot' || command === 'import_state') {
                 if (event.data.slot !== undefined) currentSlot = event.data.slot;
@@ -273,9 +278,21 @@
 
         function pollGamepads() {
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+            const overlay = document.getElementById('start-overlay');
+            const isOverlayVisible = overlay && overlay.style.display === 'flex';
+
             for (let i = 0; i < gamepads.length; i++) {
                 const gp = gamepads[i];
                 if (!gp) continue;
+
+                // BOOT TRIGGER: If overlay is active and A button (0) is pressed
+                if (isOverlayVisible) {
+                    if (gp.buttons[0] && gp.buttons[0].pressed) {
+                        launchEmulator();
+                        return; // Exit processing for this tick
+                    }
+                    continue; // Skip normal button mapping while overlay is visible
+                }
 
                 for (let btnIdx in BUTTON_MAP) {
                     const key = BUTTON_MAP[btnIdx];
