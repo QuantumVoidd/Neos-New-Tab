@@ -44,6 +44,8 @@
 
 ![Navigation Bars](https://github.com/user-attachments/assets/83a3b5e1-04ca-4581-b7e6-afcb7f457550)
 
+![Cover Flow](https://github.com/user-attachments/assets/32edd320-706e-4068-a489-fb0cdd28e203)
+
 ![Emulator Interface](https://github.com/user-attachments/assets/865c91b5-cf6a-4350-986b-c89193b3b916)
 
 ![System Apps](https://github.com/user-attachments/assets/6438235b-34dc-4fbc-8fb3-501501bc415c)
@@ -134,6 +136,7 @@ This is a non-commercial fan project created for aesthetic purposes. It is not a
 
 
 **Operator:** *Link established. The simulation is under your control.*
+
 
 
 
