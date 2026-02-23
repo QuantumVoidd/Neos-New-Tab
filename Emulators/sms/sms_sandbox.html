@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: black; overflow: hidden; display: flex; flex-direction: column; }
+        #emulator-container { width: 100% !important; height: 100% !important; flex-grow: 1; display: flex; justify-content: center; align-items: center; }
+        canvas { display: block; width: 100% !important; height: 100% !important; image-rendering: pixelated; outline: none; }
+        
+        #notification {
+            position: absolute;
+            top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8); border: 1px solid #00ff41; color: #00ff41;
+            padding: 10px 20px; font-family: 'Courier New', monospace; font-weight: bold;
+            font-size: 16px; border-radius: 5px; display: none; z-index: 1000; pointer-events: none;
+        }
+
+        #start-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: url('cover.jpg');
+            background-size: cover; background-position: center;
+            display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+            box-sizing: border-box; padding-bottom: 50px; z-index: 100; display: none;
+        }
+        #start-btn {
+            background: rgba(0, 0, 0, 0.6); border: 2px solid #00ff41; color: #00ff41;
+            padding: 15px 40px; font-size: 1.5rem; cursor: pointer; font-family: inherit;
+            text-transform: uppercase; box-shadow: 0 0 15px #00ff41; transition: all 0.2s;
+            backdrop-filter: blur(4px); border-radius: 50px;
+        }
+        #start-btn:hover { background: #00ff41; color: black; box-shadow: 0 0 30px #00ff41; }
+    </style>
+</head>
+<body>
+    <div id="notification"></div>
+    <div id="emulator-container"></div>
+    <div id="start-overlay"><button id="start-btn">BOOT SYSTEM</button></div>
+
+    <script>
+        // Hotkey & Gamepad State
+        let isProcessing = false;
+        let gamepadLoop = null;
+
+        // --- Gamepad Polling Logic ---
+        function pollGamepads() {
+            gamepadLoop = requestAnimationFrame(pollGamepads);
+            const gamepads = navigator.getGamepads();
+            const gp = gamepads[0]; // Primary controller
+            if (!gp) return;
+
+            // Check if Start Overlay is currently visible
+            const overlay = document.getElementById('start-overlay');
+            const isOverlayVisible = overlay && overlay.style.display === 'flex';
+
+            if (isOverlayVisible) {
+                // Button 0 is usually 'A' on Xbox or 'Cross' on PlayStation
+                if (gp.buttons[0]?.pressed && !isProcessing) {
+                    launchEmulator();
+                }
+            }
+        }
+
+        function showNotification(text) {
+            const el = document.getElementById('notification');
+            if(el) {
+                el.innerText = text;
+                el.style.display = 'block';
+                setTimeout(() => { el.style.display = 'none'; }, 2000);
+            }
+        }
+
+        window.addEventListener("gamepadconnected", (e) => {
+            showNotification("GAMEPAD CONNECTED");
+            if (!gamepadLoop) pollGamepads();
+        });
+
+        // Patch AudioContext
+        (function() {
+            const originalConnect = AudioNode.prototype.connect;
+            AudioNode.prototype.connect = function(destination, output, input) {
+                if (destination && destination instanceof AudioDestinationNode) {
+                    const ctx = destination.context;
+                    if (!ctx._masterGain) {
+                        ctx._masterGain = ctx.createGain();
+                        ctx._masterGain.gain.value = 1.0;
+                        originalConnect.call(ctx._masterGain, destination);
+                        window.emulatorAudioContext = ctx;
+                    }
+                    return originalConnect.call(this, ctx._masterGain, output, input);
+                }
+                return originalConnect.apply(this, arguments);
+            };
+        })();
+    </script>
+
+    <script src="nostalgist.umd.min.js"></script>
+
+    <script>
+        let pendingConfig = null;
+        let nostalgistInstance = null;
+
+        async function launchEmulator() {
+            if (!pendingConfig || isProcessing) return;
+            isProcessing = true;
+
+            const container = document.getElementById('emulator-container');
+            const overlay = document.getElementById('start-overlay');
+
+            try {
+                // Resume audio context if needed
+                if (window.emulatorAudioContext) {
+                    await window.emulatorAudioContext.resume();
+                }
+
+                overlay.style.display = 'none';
+                container.innerHTML = '';
+                const canvas = document.createElement('canvas');
+                container.appendChild(canvas);
+
+                const coreWasmUrl = 'gearsystem_libretro.wasm';
+                const coreJsUrl = 'gearsystem_libretro.js';
+                
+                const romBlob = new Blob([new Uint8Array(pendingConfig.romData)], { type: 'application/octet-stream' });
+                const patchedJsUrl = await createPatchedCore(coreJsUrl);
+
+                nostalgistInstance = await Nostalgist.launch({
+                    element: canvas,
+                    rom: romBlob,
+                    core: 'gearsystem',
+                    resolveCoreJs(core) { return patchedJsUrl; },
+                    resolveCoreWasm(core) { return coreWasmUrl; },
+                    retroarchConfig: pendingConfig.retroarchConfig,
+                    sram: pendingConfig.saveData || null,
+                    style: { width: '100%', height: '100%', display: 'block' }
+                });
+                canvas.focus();
+
+            } catch (e) {
+                console.error("Emulator Launch Failed:", e);
+                window.parent.postMessage({ status: 'error', message: e.toString() }, '*');
+            } finally {
+                // Ensure the lock is released after launch attempt
+                isProcessing = false;
+            }
+        }
+
+        async function createPatchedCore(url) {
+            const response = await fetch(url);
+            let code = await response.text();
+            code = code.replace(/window\.AudioContext/g, '(window.emulatorAudioContext || window.AudioContext)');
+            code = code.replace(/new\s+\(?AudioContext\)?/g, 'new (window.emulatorAudioContext || window.AudioContext)');
+            const blob = new Blob([code], { type: 'application/javascript' });
+            return URL.createObjectURL(blob);
+        }
+
+        window.addEventListener('message', async (event) => {
+            const { command } = event.data;
+            
+            if (command === 'start') {
+                pendingConfig = event.data;
+                document.getElementById('start-overlay').style.display = 'flex';
+                // Start checking for gamepad input as soon as we are ready to boot
+                if (!gamepadLoop) pollGamepads();
+            }
+            else if (command === 'mute') {
+                const ctx = window.emulatorAudioContext;
+                if (ctx && ctx._masterGain) {
+                    const isMuted = ctx._masterGain.gain.value < 0.01;
+                    ctx._masterGain.gain.setTargetAtTime(isMuted ? 1.0 : 0.0, ctx.currentTime, 0.1);
+                }
+            }
+        });
+
+        document.getElementById('start-btn').addEventListener('click', launchEmulator);
+    </script>
+</body>
+</html>

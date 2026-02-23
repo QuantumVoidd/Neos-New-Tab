@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: black; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        #ruffle-container { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; flex-grow: 1; }
+        ruffle-player { width: 100% !important; height: 100% !important; display: block !important; outline: none; }
+        
+        #notification { 
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%); 
+            background: rgba(0, 0, 0, 0.9); border: 1px solid #00ff41; color: #00ff41; 
+            padding: 10px 20px; font-family: 'Courier New', monospace; z-index: 1000; 
+            display: none; pointer-events: none; border-radius: 5px; font-weight: bold;
+        }
+
+        /* GBA Sandbox Overlay Logic - contain prevents leaking */
+        #start-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: black;
+            background-image: url('cover.jpg');
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+            box-sizing: border-box; padding-bottom: 50px; z-index: 100; display: none; 
+        }
+
+        #start-btn { 
+            background: rgba(0, 0, 0, 0.6); 
+            border: 2px solid #00ff41; 
+            color: #00ff41; 
+            padding: 15px 40px; 
+            font-size: 1.5rem; 
+            cursor: pointer; 
+            text-transform: uppercase; 
+            box-shadow: 0 0 15px #00ff41; 
+            border-radius: 50px;
+            transition: all 0.2s;
+            backdrop-filter: blur(4px);
+            font-family: inherit;
+        }
+
+        #start-btn:hover {
+            background: #00ff41;
+            color: black;
+            box-shadow: 0 0 30px #00ff41;
+        }
+    </style>
+    <script>
+        // Global Ruffle Configuration
+        window.RufflePlayer = window.RufflePlayer || {};
+        window.RufflePlayer.config = {
+            "autoplay": "on",
+            "unmutedOverlayHidden": true,
+            "splashScreen": false
+        };
+    </script>
+    <script src="../../Ruffle/ruffle.js"></script>
+</head>
+<body>
+    <div id="notification"></div>
+    <div id="ruffle-container"></div>
+    
+    <div id="start-overlay"><button id="start-btn"> PLAY </button></div>
+
+    <script>
+        let rufflePlayer;
+        let pendingSwfFile = null;
+
+        function showNotification(text) {
+            const el = document.getElementById('notification');
+            el.innerText = text;
+            el.style.display = 'block';
+            setTimeout(() => { el.style.display = 'none'; }, 2000);
+        }
+
+        // --- GAMEPAD AUTO-DETECTION & MAPPING ---
+        const keys = {
+            up: { code: 'ArrowUp', key: 'ArrowUp', keyCode: 38, pressed: false }, // Added for Donkey Kong ladders
+            down: { code: 'ArrowDown', key: 'ArrowDown', keyCode: 40, pressed: false }, // Added for Donkey Kong ladders
+            left: { code: 'ArrowLeft', key: 'ArrowLeft', keyCode: 37, pressed: false },
+            right: { code: 'ArrowRight', key: 'ArrowRight', keyCode: 39, pressed: false },
+            fire: { code: 'Space', key: ' ', keyCode: 32, pressed: false }, // Mapped to Space/A for Jump
+            credit: { code: 'KeyC', key: 'c', keyCode: 67, pressed: false },
+            p1: { code: 'Digit1', key: '1', keyCode: 49, pressed: false },
+            p2: { code: 'Digit2', key: '2', keyCode: 50, pressed: false }
+        };
+
+        function triggerKeyEvent(type, keyObj) {
+            const event = new KeyboardEvent(type, {
+                key: keyObj.key,
+                code: keyObj.code,
+                keyCode: keyObj.keyCode,
+                which: keyObj.keyCode,
+                bubbles: true,
+                cancelable: true
+            });
+            document.dispatchEvent(event);
+            if (rufflePlayer) {
+                rufflePlayer.dispatchEvent(event);
+            }
+        }
+
+        function updateGamepad() {
+            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+            const gp = gamepads[0]; 
+            
+            if (gp) {
+                const isUp = gp.axes[1] < -0.5 || gp.buttons[12]?.pressed;
+                const isDown = gp.axes[1] > 0.5 || gp.buttons[13]?.pressed;
+                const isLeft = gp.axes[0] < -0.5 || gp.buttons[14]?.pressed; 
+                const isRight = gp.axes[0] > 0.5 || gp.buttons[15]?.pressed; 
+                const isFire = gp.buttons[0]?.pressed || gp.buttons[7]?.pressed; 
+                const isCredit = gp.buttons[8]?.pressed; 
+                const isP1 = gp.buttons[9]?.pressed; 
+                const isP2 = gp.buttons[3]?.pressed; 
+                
+                if (isUp && !keys.up.pressed) { keys.up.pressed = true; triggerKeyEvent('keydown', keys.up); }
+                else if (!isUp && keys.up.pressed) { keys.up.pressed = false; triggerKeyEvent('keyup', keys.up); }
+
+                if (isDown && !keys.down.pressed) { keys.down.pressed = true; triggerKeyEvent('keydown', keys.down); }
+                else if (!isDown && keys.down.pressed) { keys.down.pressed = false; triggerKeyEvent('keyup', keys.down); }
+
+                if (isLeft && !keys.left.pressed) { keys.left.pressed = true; triggerKeyEvent('keydown', keys.left); }
+                else if (!isLeft && keys.left.pressed) { keys.left.pressed = false; triggerKeyEvent('keyup', keys.left); }
+
+                if (isRight && !keys.right.pressed) { keys.right.pressed = true; triggerKeyEvent('keydown', keys.right); }
+                else if (!isRight && keys.right.pressed) { keys.right.pressed = false; triggerKeyEvent('keyup', keys.right); }
+
+                if (isFire && !keys.fire.pressed) { keys.fire.pressed = true; triggerKeyEvent('keydown', keys.fire); }
+                else if (!isFire && keys.fire.pressed) { keys.fire.pressed = false; triggerKeyEvent('keyup', keys.fire); }
+
+                if (isCredit && !keys.credit.pressed) { keys.credit.pressed = true; triggerKeyEvent('keydown', keys.credit); }
+                else if (!isCredit && keys.credit.pressed) { keys.credit.pressed = false; triggerKeyEvent('keyup', keys.credit); }
+
+                if (isP1 && !keys.p1.pressed) { keys.p1.pressed = true; triggerKeyEvent('keydown', keys.p1); }
+                else if (!isP1 && keys.p1.pressed) { keys.p1.pressed = false; triggerKeyEvent('keyup', keys.p1); }
+
+                if (isP2 && !keys.p2.pressed) { keys.p2.pressed = true; triggerKeyEvent('keydown', keys.p2); }
+                else if (!isP2 && keys.p2.pressed) { keys.p2.pressed = false; triggerKeyEvent('keyup', keys.p2); }
+            }
+            requestAnimationFrame(updateGamepad);
+        }
+        
+        requestAnimationFrame(updateGamepad);
+        
+        window.addEventListener("gamepadconnected", (e) => {
+            showNotification("GAMEPAD CONNECTED");
+        });
+
+        // --- FLASH INITIALIZATION ---
+        async function initFlashGame() {
+            if (!pendingSwfFile) return;
+
+            const audioCtx = window.AudioContext || window.webkitAudioContext;
+            if(audioCtx) { 
+                let ctx = new audioCtx(); 
+                if (ctx.state === 'suspended') await ctx.resume(); 
+            }
+
+            const ruffle = window.RufflePlayer.newest();
+            rufflePlayer = ruffle.createPlayer();
+            document.getElementById("ruffle-container").appendChild(rufflePlayer);
+
+            try {
+                await rufflePlayer.load({
+                    url: pendingSwfFile,
+                    allowScriptAccess: true,
+                    backgroundColor: "#000000"
+                });
+                
+                // CRITICAL: Set focus to Ruffle after load so controller/keyboard works immediately
+                rufflePlayer.focus();
+                
+                window.parent.postMessage({ status: 'running' }, '*');
+            } catch (err) {
+                window.parent.postMessage({ status: 'error' }, '*');
+            }
+        }
+
+        // Parent Window Message Receiver
+        window.addEventListener('message', async (event) => {
+            const { command, swfFile } = event.data;
+            
+            if (command === 'start') {
+                pendingSwfFile = swfFile;
+                document.getElementById('start-overlay').style.display = 'flex';
+            }
+
+            if (command === 'mute' && rufflePlayer) {
+                rufflePlayer.volume = (rufflePlayer.volume > 0) ? 0 : 1;
+                showNotification(rufflePlayer.volume === 0 ? "MUTED" : "UNMUTED");
+            }
+        });
+
+        // Ensure clicking anywhere inside the frame refocuses the game
+        window.addEventListener('mousedown', () => {
+            if (rufflePlayer) {
+                rufflePlayer.focus();
+            }
+        });
+
+        // Overlay Boot Button Trigger
+        document.getElementById('start-btn').addEventListener('click', function() {
+            document.getElementById('start-overlay').style.display = 'none';
+            initFlashGame();
+        });
+    </script>
+</body>
+</html>
