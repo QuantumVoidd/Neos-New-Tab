@@ -17,7 +17,7 @@ class SolarSystemApp {
         this.targetLookAt = new THREE.Vector3(0, 0, 0);
         this.currentLookAt = new THREE.Vector3(0, 0, 0);
         
-        this.currentFlySpeed = 4.0 * this.scaleFactor; 
+        this.currentFlySpeed = 12.0 * this.scaleFactor; // Adjusted for new base speed
         this.zoomLevel = 5.0; 
 
         // Manual Flight Controls State
@@ -26,6 +26,38 @@ class SolarSystemApp {
         this.isDragging = false;
         this.yaw = 0;
         this.pitch = 0;
+        
+        // Hyperspeed State
+        this.isBoosting = false;
+        this.boostCharge = 0;
+        this.joltMultiplier = 0;
+        this.hyperState = 'idle'; // Tracks audio states: idle, charging, jumping, exiting
+        this.tardisMatProgress = 0.0; // Tracks the rematerialization animation
+        
+        // FPS Limiting and Tracking
+        this.targetFPS = 60; // Default locked to 60
+        this.lastRenderTime = performance.now();
+        this.fpsCalcTime = performance.now();
+        this.framesThisSecond = 0;
+
+        this.getTexUrl = (path) => (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) ? chrome.runtime.getURL(path) : path;
+
+        // Standard Hyperspeed Audio Elements
+        this.audioBuildup = new Audio(this.getTexUrl('solarsystem-audio/hyperspeed_buildup.mp3'));
+        this.audioFlight = new Audio(this.getTexUrl('solarsystem-audio/hyperspeed_flight.mp3'));
+        this.audioFlight.loop = true;
+        this.audioExit = new Audio(this.getTexUrl('solarsystem-audio/hyperspeed_exit.mp3'));
+
+        // TARDIS Custom Hyperspeed Audio Elements
+        this.tardisAudioBuildup = new Audio(this.getTexUrl('solarsystem-audio/tardis_buildup.mp3'));
+        this.tardisAudioFlight = new Audio(this.getTexUrl('solarsystem-audio/tardis_flight.mp3'));
+        this.tardisAudioFlight.loop = true;
+        this.tardisAudioExit = new Audio(this.getTexUrl('solarsystem-audio/tardis_exit.mp3'));
+        
+        // Dedicated Cockpit Look State (1st Person)
+        this.cockpitYaw = 0;
+        this.cockpitPitch = 0;
+        this.lastLookTime = 0; 
 
         // Gamepad State
         this.gpDPadLeftDown = false;
@@ -40,12 +72,14 @@ class SolarSystemApp {
         this.planetExpressModel = null;
         this.rickMortyModel = null;
         this.benatarModel = null;
+        this.xwingModel = null;
+        this.xwingCockpitModel = null;
+        this.tardisModel = null;
+        this.enterpriseModel = null;
 
         // Realistic Relative Timing Multipliers
         this.baseOrb = 0.001; 
         this.baseRot = 0.01;  
-
-        this.getTexUrl = (path) => (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) ? chrome.runtime.getURL(path) : path;
 
         this.planetStats = {
             sun: "Type: Yellow Dwarf\nMass: 330,000 Earths",
@@ -54,11 +88,17 @@ class SolarSystemApp {
             earth: "Type: Terrestrial\nDay: 24h",
             moon: "Type: Satellite\nDay: 27d",
             mars: "Type: Terrestrial\nDay: 24.6h",
+            ceres: "Type: Dwarf Planet\nDay: 9h",
             jupiter: "Type: Gas Giant\nDay: 10h",
             saturn: "Type: Gas Giant\nDay: 10.7h",
             neptune: "Type: Ice Giant\nDay: 16h",
             pluto: "Type: Dwarf Planet\nDay: 6.4d",
+            charon: "Type: Satellite\nDay: 6.4d",
+            haumea: "Type: Dwarf Planet\nDay: 3.9h",
+            makemake: "Type: Dwarf Planet\nDay: 22.5h",
+            eris: "Type: Dwarf Planet\nDay: 25.9d",
             blackhole: "Type: Supermassive Black Hole\nMass: Unknown",
+            milkyway: "Type: Barred Spiral Galaxy\nDiameter: 100,000 ly\nStars: ~400 Billion",
             gateway: "Type: Space Station\nOrbit: NRHO (Moon)",
             iss: "Type: Space Station\nOrbit: LEO (Earth)",
             apollo: "Type: Lunar Lander\nLocation: Moon Surface"
@@ -78,14 +118,14 @@ class SolarSystemApp {
         this.loadingContainer = document.createElement('div');
         this.loadingContainer.style.cssText = `
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: black; z-index: 10005; display: flex; align-items: center;
+            background: black; z-index: 10020; display: flex; align-items: center;
             justify-content: center; flex-direction: column; color: #00ff41;
             font-family: 'Orbitron', 'Courier New', sans-serif; transition: opacity 3s;
         `;
         
         const text = document.createElement('h1');
         text.textContent = "INITIALIZING SOLAR SYSTEM...";
-        text.style.cssText = "z-index: 10006; text-shadow: 0 0 10px #00ff41; letter-spacing: 3px;";
+        text.style.cssText = "z-index: 10021; text-shadow: 0 0 10px #00ff41; letter-spacing: 3px;";
         this.loadingContainer.appendChild(text);
 
         this.container.appendChild(this.loadingContainer);
@@ -103,11 +143,36 @@ class SolarSystemApp {
         `;
         document.body.appendChild(this.container);
 
+        // --- HUD OVERLAY (FPS & Coordinates) ---
+        this.hudContainer = document.createElement('div');
+        this.hudContainer.style.cssText = `
+            position: absolute; top: 20px; left: 50px; 
+            color: #00ff41; font-family: 'Orbitron', 'Courier New', sans-serif;
+            font-size: 0.85rem; text-shadow: 0 0 5px #00ff41; z-index: 10003; pointer-events: none;
+            background: rgba(0, 0, 0, 0.4); padding: 12px 15px; border-radius: 4px; 
+            border: 1px solid rgba(0,255,65,0.2); backdrop-filter: blur(5px);
+        `;
+        
+        this.fpsDisplay = document.createElement('div');
+        this.fpsDisplay.textContent = "FPS: --";
+        this.fpsDisplay.style.marginBottom = "8px";
+        this.fpsDisplay.style.fontWeight = "bold";
+        
+        this.coordDisplay = document.createElement('div');
+        this.coordDisplay.textContent = "X: 0 | Y: 0 | Z: 0";
+        this.coordDisplay.style.fontSize = "0.75rem";
+        this.coordDisplay.style.opacity = "0.8";
+        
+        this.hudContainer.appendChild(this.fpsDisplay);
+        this.hudContainer.appendChild(this.coordDisplay);
+        this.container.appendChild(this.hudContainer);
+        // --------------------------------------------
+
         const trigger = document.createElement('div');
         trigger.style.cssText = `
             position: absolute; right: 0; top: 0; width: 30px; height: 100%;
             cursor: pointer; display: flex; align-items: center; justify-content: center;
-            background: transparent; z-index: 10003;
+            background: transparent; z-index: 10011;
         `;
         
         const indicator = document.createElement('div');
@@ -120,7 +185,7 @@ class SolarSystemApp {
             position: absolute; right: -280px; top: 0; width: 280px; height: 100%;
             background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(10px);
             border-left: 1px solid rgba(255, 255, 255, 0.1);
-            z-index: 10002; display: flex; flex-direction: column; padding: 25px;
+            z-index: 10010; display: flex; flex-direction: column; padding: 25px;
             box-sizing: border-box; color: #fff; overflow-y: auto;
             transition: right 0.3s ease;
         `;
@@ -148,7 +213,7 @@ class SolarSystemApp {
         destLabel.style.cssText = "font-size: 0.8rem; opacity: 0.6; margin-bottom: 20px;";
         this.sidebar.appendChild(destLabel);
 
-        this.destinations = ['Sun', 'Mercury', 'Venus', 'Earth', 'Moon', 'Mars', 'Jupiter', 'Saturn', 'Neptune', 'Pluto', 'BlackHole', 'Gateway', 'ISS', 'Apollo'];
+        this.destinations = ['Sun', 'Mercury', 'Venus', 'Earth', 'Moon', 'Mars', 'Ceres', 'Jupiter', 'Saturn', 'Neptune', 'Pluto', 'Charon', 'Haumea', 'Makemake', 'Eris', 'BlackHole', 'MilkyWay', 'Gateway', 'ISS', 'Apollo'];
         this.navButtons = [];
 
         this.destinations.forEach((dest, index) => {
@@ -177,6 +242,27 @@ class SolarSystemApp {
         helpText.style.cssText = "margin-top: auto; font-size: 0.75rem; opacity: 0.5; line-height: 1.8; margin-bottom: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;";
         this.sidebar.appendChild(helpText);
 
+        // --- FULLSCREEN BUTTON ---
+        const fsBtn = document.createElement('button');
+        fsBtn.textContent = 'TOGGLE FULLSCREEN';
+        fsBtn.style.cssText = `
+            background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; padding: 12px; margin-bottom: 15px;
+            cursor: pointer; font-family: inherit; font-weight: bold; border-radius: 4px;
+            text-transform: uppercase; letter-spacing: 1px; transition: 0.2s;
+        `;
+        fsBtn.addEventListener('mouseover', () => fsBtn.style.background = 'rgba(255,255,255,0.1)');
+        fsBtn.addEventListener('mouseout', () => fsBtn.style.background = 'transparent');
+        fsBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        });
+        this.sidebar.appendChild(fsBtn);
+
         const exitBtn = document.createElement('button');
         exitBtn.textContent = 'EXIT TO OS';
         exitBtn.style.cssText = `
@@ -199,7 +285,7 @@ class SolarSystemApp {
             position: absolute; left: -350px; top: 0; width: 350px; height: 100%;
             background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px);
             border-right: 1px solid rgba(0, 255, 65, 0.3);
-            z-index: 10002; display: flex; flex-direction: row;
+            z-index: 10010; display: flex; flex-direction: row;
             box-sizing: border-box; color: #00ff41;
             transition: left 0.3s ease;
         `;
@@ -208,7 +294,7 @@ class SolarSystemApp {
         trigger.style.cssText = `
             position: absolute; left: 0; top: 0; width: 30px; height: 100%;
             cursor: pointer; display: flex; align-items: center; justify-content: center;
-            background: transparent; z-index: 10003;
+            background: transparent; z-index: 10011;
         `;
         
         const indicator = document.createElement('div');
@@ -246,10 +332,12 @@ class SolarSystemApp {
         const planetsBtn = createTabBtn('engine-tab-planets', 'Planets', true);
         const envBtn = createTabBtn('engine-tab-env', 'ENV', false);
         const shipsBtn = createTabBtn('engine-tab-ships', 'Ships', false); 
+        const systemBtn = createTabBtn('engine-tab-system', 'System', false);
         
         navCol.appendChild(planetsBtn);
         navCol.appendChild(envBtn);
         navCol.appendChild(shipsBtn);
+        navCol.appendChild(systemBtn);
 
         const contentCol = document.createElement('div');
         contentCol.style.cssText = `flex-grow: 1; padding: 20px; display: flex; flex-direction: column; overflow-y: auto;`;
@@ -316,7 +404,9 @@ class SolarSystemApp {
             rb.onchange = (e) => {
                 if(e.target.checked) {
                     this.activeShip = value;
-                    if (value === 'falcon' || value === 'planetexpress' || value === 'benatar') this.shipView = '3rd'; 
+                    if (value === 'falcon' || value === 'planetexpress' || value === 'benatar' || value === 'tardis' || value === 'enterprise') {
+                        this.shipView = '3rd'; 
+                    }
                     if (value !== 'none') {
                         this.shipGroup.position.copy(this.camera.position);
                         
@@ -338,19 +428,64 @@ class SolarSystemApp {
 
         shipsTab.appendChild(createRadio('ship-select', 'none', 'None (Free Cam)', true));
         shipsTab.appendChild(createRadio('ship-select', 'tie', 'ADV Tie Fighter', false));
+        shipsTab.appendChild(createRadio('ship-select', 'xwing', 'X-Wing', false));
         shipsTab.appendChild(createRadio('ship-select', 'falcon', 'Millennium Falcon', false));
         shipsTab.appendChild(createRadio('ship-select', 'planetexpress', 'Planet Express', false));
         shipsTab.appendChild(createRadio('ship-select', 'rickmorty', 'Rick & Morty Cruiser', false));
         shipsTab.appendChild(createRadio('ship-select', 'benatar', 'Benatar', false));
+        shipsTab.appendChild(createRadio('ship-select', 'tardis', 'TARDIS', false));
+        shipsTab.appendChild(createRadio('ship-select', 'enterprise', 'USS Enterprise', false));
 
         const shipHelpText = document.createElement('div');
         shipHelpText.innerHTML = "<i>Press 'Y' on Gamepad or Keyboard to toggle 1st/3rd person view on supported ships.</i>";
         shipHelpText.style.cssText = "margin-top: 15px; font-size: 0.7rem; opacity: 0.6; line-height: 1.5; color: #aaa;";
         shipsTab.appendChild(shipHelpText);
 
+        // --- SYSTEM TAB ---
+        const systemTab = document.createElement('div');
+        systemTab.id = 'engine-tab-system';
+        systemTab.className = 'engine-tab-panel';
+        systemTab.style.cssText = "display: none; flex-direction: column;";
+
+        // HUD Toggle
+        const hudToggleBox = document.createElement('div');
+        hudToggleBox.style.cssText = "margin-bottom: 25px; display: flex; align-items: center; border-bottom: 1px solid rgba(0,255,65,0.2); padding-bottom: 15px;";
+        const hudCb = document.createElement('input'); 
+        hudCb.type = 'checkbox'; hudCb.checked = true; hudCb.style.accentColor = "#00ff41"; hudCb.style.marginRight = "10px";
+        hudCb.onchange = (e) => {
+            if (this.hudContainer) this.hudContainer.style.display = e.target.checked ? 'block' : 'none';
+        };
+        const hudCbLbl = document.createElement('span'); hudCbLbl.textContent = "Enable HUD (FPS & Coords)"; hudCbLbl.style.fontSize = "0.85rem";
+        hudToggleBox.appendChild(hudCb); hudToggleBox.appendChild(hudCbLbl);
+        systemTab.appendChild(hudToggleBox);
+
+        // FPS Limit Radios
+        const fpsLabel = document.createElement('div');
+        fpsLabel.textContent = "FRAME RATE LIMIT:";
+        fpsLabel.style.fontSize = "0.8rem"; fpsLabel.style.marginBottom = "10px"; fpsLabel.style.opacity = "0.7";
+        systemTab.appendChild(fpsLabel);
+
+        const createFpsRadio = (name, value, label, checked) => {
+            const container = document.createElement('div');
+            container.style.cssText = "margin-bottom: 15px; display: flex; align-items: center;";
+            const rb = document.createElement('input'); 
+            rb.type = 'radio'; rb.name = name; rb.value = value; rb.checked = checked;
+            rb.style.accentColor = "#00ff41"; rb.style.marginRight = "10px";
+            rb.onchange = (e) => {
+                if(e.target.checked) this.targetFPS = parseInt(value);
+            };
+            const rbLbl = document.createElement('span'); rbLbl.textContent = label; rbLbl.style.fontSize = "0.85rem";
+            container.appendChild(rb); container.appendChild(rbLbl);
+            return container;
+        };
+
+        systemTab.appendChild(createFpsRadio('fps-target', '60', '60 FPS (Locked / Default)', true));
+        systemTab.appendChild(createFpsRadio('fps-target', '120', '120 FPS (High Refresh)', false));
+
         contentCol.appendChild(planetsTab);
         contentCol.appendChild(envTab);
         contentCol.appendChild(shipsTab);
+        contentCol.appendChild(systemTab); 
 
         this.engineSidebar.appendChild(navCol);
         this.engineSidebar.appendChild(contentCol);
@@ -363,7 +498,7 @@ class SolarSystemApp {
         this.statsContainer = document.createElement('div');
         this.statsContainer.style.cssText = `
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
-            pointer-events: none; z-index: 10010; overflow: hidden;
+            pointer-events: none; z-index: 10002; overflow: hidden;
         `;
         this.container.appendChild(this.statsContainer);
         this.statLabels = {};
@@ -371,7 +506,7 @@ class SolarSystemApp {
 
     initThree() {
         this.scene = new THREE.Scene();
-        this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.05, 100000 * this.scaleFactor);
+        this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.05, 50000000 * this.scaleFactor);
         
         this.renderer = new THREE.WebGLRenderer({ 
             antialias: true, 
@@ -391,7 +526,7 @@ class SolarSystemApp {
 
         this.scene.add(new THREE.AmbientLight(0xffffff, 0.05));
 
-        this.sunLight = new THREE.PointLight(0xffffff, 3.0, 10000 * this.scaleFactor);
+        this.sunLight = new THREE.PointLight(0xffffff, 3.0, 50000 * this.scaleFactor);
         this.sunLight.position.set(0, 0, 0);
         this.sunLight.castShadow = false; 
         
@@ -404,6 +539,183 @@ class SolarSystemApp {
         if (this.planetExpressModel) this.planetExpressModel.visible = (this.activeShip === 'planetexpress');
         if (this.rickMortyModel) this.rickMortyModel.visible = (this.activeShip === 'rickmorty');
         if (this.benatarModel) this.benatarModel.visible = (this.activeShip === 'benatar');
+        
+        // NEW SHIPS
+        if (this.xwingModel) this.xwingModel.visible = (this.activeShip === 'xwing' && this.shipView === '3rd');
+        if (this.xwingCockpitModel) this.xwingCockpitModel.visible = (this.activeShip === 'xwing' && this.shipView === '1st');
+        if (this.tardisModel) this.tardisModel.visible = (this.activeShip === 'tardis');
+        if (this.enterpriseModel) this.enterpriseModel.visible = (this.activeShip === 'enterprise');
+    }
+
+    setTardisOpacity(alpha) {
+        if (!this.tardisModel) return;
+        this.tardisModel.traverse((child) => {
+            if (child.isMesh && child.material) {
+                if (child.userData.isSetupForAlpha === undefined) {
+                    child.material = child.material.clone();
+                    child.userData.isSetupForAlpha = true;
+                }
+                
+                alpha = Math.max(0, Math.min(1, alpha));
+                
+                child.material.opacity = alpha;
+                if (alpha < 0.99) {
+                    child.material.transparent = true;
+                    child.material.depthWrite = false; 
+                } else {
+                    child.material.transparent = false;
+                    child.material.depthWrite = true;
+                }
+            }
+        });
+    }
+
+    createMilkyWay() {
+        const particleCount = 150000;
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
+        const color = new THREE.Color();
+        
+        const S = this.scaleFactor;
+        const galaxyRadius = 2000000 * S; 
+        
+        const numArms = 4;
+        const armSpin = 3; 
+        const armSpread = 0.2; 
+        
+        const sunOffsetR = galaxyRadius * 0.55; 
+        const sunOffsetTheta = 1.0; 
+        
+        const galX = -Math.cos(sunOffsetTheta) * sunOffsetR;
+        const galZ = -Math.sin(sunOffsetTheta) * sunOffsetR;
+        
+        const safeZoneSq = (6000 * S) * (6000 * S);
+
+        for (let i = 0; i < particleCount; i++) {
+            const i3 = i * 3;
+            
+            let valid = false;
+            let localX, localY, localZ;
+            let r, theta, yOffset;
+            
+            while (!valid) {
+                const rand = Math.random();
+                
+                const randY = (Math.random() + Math.random() + Math.random() - 1.5) * 0.66;
+                
+                if (rand < 0.25) {
+                    const bulgeRadius = galaxyRadius * 0.12;
+                    r = Math.pow(Math.random(), 1.5) * bulgeRadius;
+                    theta = Math.random() * Math.PI * 2;
+                    
+                    const coreThickness = bulgeRadius * 0.6 * Math.sqrt(1 - Math.pow(r / bulgeRadius, 2));
+                    yOffset = randY * coreThickness;
+                    
+                    color.setHSL(0.1 + Math.random() * 0.05, 0.9, 0.8 + Math.random() * 0.2); 
+                } else if (rand < 0.45) {
+                    r = Math.pow(Math.random(), 1.2) * galaxyRadius;
+                    theta = Math.random() * Math.PI * 2;
+                    
+                    const diskThickness = galaxyRadius * 0.015 * (1 + r / galaxyRadius);
+                    yOffset = randY * diskThickness;
+                    
+                    color.setHSL(0.6, 0.3, 0.4 + Math.random() * 0.2); 
+                } else {
+                    const coreRadius = galaxyRadius * 0.1;
+                    r = coreRadius + Math.pow(Math.random(), 1.5) * (galaxyRadius - coreRadius);
+                    
+                    const armIndex = Math.floor(Math.random() * numArms);
+                    const armOffset = armIndex * ((Math.PI * 2) / numArms);
+                    
+                    const spiralAngle = Math.pow(r / galaxyRadius, 0.8) * armSpin * Math.PI + armOffset;
+                    
+                    const scatter = (Math.random() - 0.5) * armSpread * Math.PI * (0.5 + r / galaxyRadius);
+                    theta = spiralAngle + scatter;
+                    
+                    const diskThickness = galaxyRadius * 0.015 * (1 + r / galaxyRadius);
+                    yOffset = randY * diskThickness;
+                    
+                    if (Math.abs(scatter) < armSpread * 0.3) {
+                        color.setHSL(0.6 + Math.random() * 0.1, 0.9, 0.7 + Math.random() * 0.3); 
+                    } else {
+                        color.setHSL(0.1 + Math.random() * 0.1, 0.6, 0.5 + Math.random() * 0.3); 
+                    }
+                }
+
+                localX = Math.cos(theta) * r;
+                localY = yOffset;
+                localZ = Math.sin(theta) * r;
+
+                const worldX = localX + galX;
+                const worldY = localY;
+                const worldZ = localZ + galZ;
+                
+                if ((worldX*worldX + worldY*worldY + worldZ*worldZ) > safeZoneSq) {
+                    valid = true;
+                }
+            }
+
+            positions[i3] = localX;
+            positions[i3 + 1] = localY;
+            positions[i3 + 2] = localZ;
+            
+            colors[i3] = color.r;
+            colors[i3 + 1] = color.g;
+            colors[i3 + 2] = color.b;
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 32; canvas.height = 32;
+        const ctx = canvas.getContext('2d');
+        const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+        gradient.addColorStop(0, 'rgba(255,255,255,1)');
+        gradient.addColorStop(0.2, 'rgba(255,255,255,0.8)');
+        gradient.addColorStop(0.5, 'rgba(255,255,255,0.2)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 32, 32);
+        const starTexture = new THREE.CanvasTexture(canvas);
+
+        const particleMat = new THREE.PointsMaterial({
+            size: 600 * S, 
+            vertexColors: true,
+            blending: THREE.AdditiveBlending,
+            transparent: true,
+            opacity: 1.0, 
+            depthWrite: false,
+            map: starTexture
+        });
+        
+        this.milkyWayMat = particleMat;
+
+        this.milkyWayGroup = new THREE.Points(geometry, particleMat);
+        
+        this.galacticPivot = new THREE.Group();
+        this.scene.add(this.galacticPivot);
+        
+        this.milkyWayGroup.position.set(galX, 0, galZ); 
+        this.galacticPivot.add(this.milkyWayGroup);
+
+        this.galacticPivot.rotation.x = Math.PI / 3; 
+        this.galacticPivot.rotation.z = Math.PI / 6;   
+
+        const milkyWayCenter = new THREE.Group();
+        milkyWayCenter.position.set(galX, 0, galZ);
+        this.galacticPivot.add(milkyWayCenter);
+
+        this.planets['milkyway'] = { 
+            mesh: milkyWayCenter, 
+            orbitPivot: null, 
+            rotationSpeed: 0, 
+            orbitSpeed: 0, 
+            size: 2000000 * S,
+            visibilityRange: 30000000 * S, 
+            collisionSize: 200000 * S 
+        };
     }
 
     createPlanet(name, texturePath, size, distance, orbitSpeed, rotationSpeed, isEmissive = false) {
@@ -419,7 +731,206 @@ class SolarSystemApp {
         const geo = new THREE.SphereGeometry(size, 64, 64);
         let mat;
         
-        if (isEmissive) {
+        if (name === 'sun') {
+            mat = new THREE.MeshBasicMaterial({ map: loader.load(this.getTexUrl(texturePath)) });
+            mat.userData = { time: { value: 0.0 } };
+            
+            mat.onBeforeCompile = (shader) => {
+                shader.uniforms.time = mat.userData.time;
+                
+                shader.vertexShader = `
+                    varying vec3 vWorldPosition;
+                    ${shader.vertexShader}
+                `.replace(
+                    '#include <worldpos_vertex>',
+                    `#include <worldpos_vertex>
+                     vWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;`
+                );
+
+                shader.fragmentShader = `
+                    uniform float time;
+                    varying vec3 vWorldPosition;
+                    
+                    vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                    vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                    vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+                    vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+                    float snoise(vec3 v) {
+                        const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+                        const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+                        vec3 i  = floor(v + dot(v, C.yyy) );
+                        vec3 x0 = v - i + dot(i, C.xxx) ;
+                        vec3 g = step(x0.yzx, x0.xyz);
+                        vec3 l = 1.0 - g;
+                        vec3 i1 = min( g.xyz, l.zxy );
+                        vec3 i2 = max( g.xyz, l.zxy );
+                        vec3 x1 = x0 - i1 + C.xxx;
+                        vec3 x2 = x0 - i2 + C.yyy;
+                        vec3 x3 = x0 - D.yyy;
+                        i = mod289(i);
+                        vec4 p = permute( permute( permute(
+                                   i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+                                 + i.y + vec4(0.0, i1.y, i2.y, 1.0 ))
+                                 + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+                        float n_ = 0.142857142857;
+                        vec3  ns = n_ * D.wyz - D.xzx;
+                        vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+                        vec4 x_ = floor(j * ns.z);
+                        vec4 y_ = floor(j - 7.0 * x_ );
+                        vec4 x = x_ *ns.x + ns.yyyy;
+                        vec4 y = y_ *ns.x + ns.yyyy;
+                        vec4 h = 1.0 - abs(x) - abs(y);
+                        vec4 b0 = vec4( x.xy, y.xy );
+                        vec4 b1 = vec4( x.zw, y.zw );
+                        vec4 s0 = floor(b0)*2.0 + 1.0;
+                        vec4 s1 = floor(b1)*2.0 + 1.0;
+                        vec4 sh = -step(h, vec4(0.0));
+                        vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+                        vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+                        vec3 p0 = vec3(a0.xy,h.x);
+                        vec3 p1 = vec3(a0.zw,h.y);
+                        vec3 p2 = vec3(a1.xy,h.z);
+                        vec3 p3 = vec3(a1.zw,h.w);
+                        vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+                        p0 *= norm.x;
+                        p1 *= norm.y;
+                        p2 *= norm.z;
+                        p3 *= norm.w;
+                        vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+                        m = m * m;
+                        return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
+                    }
+                    
+                    ${shader.fragmentShader}
+                `.replace(
+                    '#include <map_fragment>',
+                    `
+                    #ifdef USE_MAP
+                        vec4 texColor = texture2D( map, vUv );
+                        diffuseColor *= texColor;
+                    #endif
+                     
+                     vec3 normPos = normalize(vWorldPosition);
+                     float n1 = snoise(normPos * 5.0 - time * 0.05);
+                     float n2 = snoise(normPos * 15.0 + time * 0.08) * 0.5;
+                     float n3 = snoise(normPos * 30.0 - time * 0.1) * 0.25;
+                     float totalNoise = n1 + n2 + n3; 
+                     
+                     float n = clamp((totalNoise + 1.0) / 2.0, 0.0, 1.0);
+                     
+                     vec3 valleyColor = vec3(0.6, 0.1, 0.0);
+                     vec3 peakColor = vec3(1.2, 0.9, 0.4); 
+                     
+                     diffuseColor.rgb *= mix(0.7, 1.3, n); 
+                     diffuseColor.rgb = mix(diffuseColor.rgb, peakColor, smoothstep(0.7, 1.0, n) * 0.8);
+                     diffuseColor.rgb = mix(diffuseColor.rgb, valleyColor, smoothstep(0.3, 0.0, n) * 0.8);
+                    `
+                );
+            };
+            this.sunMaterial = mat;
+
+            const coronaGeo = new THREE.SphereGeometry(size * 1.03, 128, 128); 
+            this.sunCoronaMat = new THREE.ShaderMaterial({
+                uniforms: {
+                    time: { value: 0.0 }
+                },
+                vertexShader: `
+                    varying vec3 vNormal;
+                    varying vec3 vPosition;
+                    void main() {
+                        vNormal = normalize(normalMatrix * normal);
+                        vPosition = position;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform float time;
+                    varying vec3 vNormal;
+                    varying vec3 vPosition;
+
+                    vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                    vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                    vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+                    vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+                    float snoise(vec3 v) {
+                        const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+                        const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+                        vec3 i  = floor(v + dot(v, C.yyy) );
+                        vec3 x0 = v - i + dot(i, C.xxx) ;
+                        vec3 g = step(x0.yzx, x0.xyz);
+                        vec3 l = 1.0 - g;
+                        vec3 i1 = min( g.xyz, l.zxy );
+                        vec3 i2 = max( g.xyz, l.zxy );
+                        vec3 x1 = x0 - i1 + C.xxx;
+                        vec3 x2 = x0 - i2 + C.yyy;
+                        vec3 x3 = x0 - D.yyy;
+                        i = mod289(i);
+                        vec4 p = permute( permute( permute(
+                                   i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+                                 + i.y + vec4(0.0, i1.y, i2.y, 1.0 ))
+                                 + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+                        float n_ = 0.142857142857;
+                        vec3  ns = n_ * D.wyz - D.xzx;
+                        vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+                        vec4 x_ = floor(j * ns.z);
+                        vec4 y_ = floor(j - 7.0 * x_ );
+                        vec4 x = x_ *ns.x + ns.yyyy;
+                        vec4 y = y_ *ns.x + ns.yyyy;
+                        vec4 h = 1.0 - abs(x) - abs(y);
+                        vec4 b0 = vec4( x.xy, y.xy );
+                        vec4 b1 = vec4( x.zw, y.zw );
+                        vec4 s0 = floor(b0)*2.0 + 1.0;
+                        vec4 s1 = floor(b1)*2.0 + 1.0;
+                        vec4 sh = -step(h, vec4(0.0));
+                        vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+                        vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+                        vec3 p0 = vec3(a0.xy,h.x);
+                        vec3 p1 = vec3(a0.zw,h.y);
+                        vec3 p2 = vec3(a1.xy,h.z);
+                        vec3 p3 = vec3(a1.zw,h.w);
+                        vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+                        p0 *= norm.x;
+                        p1 *= norm.y;
+                        p2 *= norm.z;
+                        p3 *= norm.w;
+                        vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+                        m = m * m;
+                        return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
+                    }
+
+                    void main() {
+                        float fresnel = dot(vNormal, vec3(0.0, 0.0, 1.0));
+                        fresnel = clamp(1.0 - fresnel, 0.0, 1.0);
+                        
+                        float edgeMask = pow(fresnel, 5.0);
+                        
+                        vec3 normPos = normalize(vPosition);
+                        
+                        float n1 = snoise(normPos * 8.0 - time * 0.1);
+                        float n2 = snoise(normPos * 20.0 + time * 0.2) * 0.5;
+                        float n3 = snoise(normPos * 40.0 - time * 0.3) * 0.25;
+                        
+                        float plasma = abs(n1 + n2 + n3);
+                        
+                        plasma = clamp(1.0 - plasma, 0.0, 1.0); 
+                        plasma = pow(plasma, 3.0); 
+                        
+                        float intensity = plasma * edgeMask * 3.0;
+                        
+                        vec3 color = mix(vec3(0.8, 0.1, 0.0), vec3(1.0, 0.6, 0.1), intensity);
+                        color = mix(color, vec3(1.0, 0.9, 0.4), smoothstep(0.5, 1.0, intensity));
+                        
+                        gl_FragColor = vec4(color, intensity);
+                    }
+                `,
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                depthWrite: false
+            });
+            const coronaMesh = new THREE.Mesh(coronaGeo, this.sunCoronaMat);
+            systemGroup.add(coronaMesh);
+
+        } else if (isEmissive) {
             mat = new THREE.MeshBasicMaterial({ map: loader.load(this.getTexUrl(texturePath)) });
         } else if (name === 'earth') {
             mat = new THREE.MeshStandardMaterial({
@@ -503,20 +1014,251 @@ class SolarSystemApp {
         return beltGroup;
     }
 
+    createHyperspaceEffect() {
+        this.hyperspaceGroup = new THREE.Group();
+        this.scene.add(this.hyperspaceGroup);
+
+        const streakCount = 3000;
+        
+        const geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 8);
+        geometry.rotateX(Math.PI / 2); 
+        
+        const material = new THREE.MeshBasicMaterial({
+            color: 0x88ccff, 
+            transparent: true,
+            opacity: 0.0,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        this.hyperspaceLines = new THREE.InstancedMesh(geometry, material, streakCount);
+        this.hyperspaceLines.frustumCulled = false;
+        
+        this.hyperspaceGroup.add(this.hyperspaceLines);
+        this.hyperspaceGroup.visible = false;
+        
+        this.warpAmount = 0;
+        this.streakData = [];
+        
+        for (let i = 0; i < streakCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 80 + Math.random() * 800; 
+            const x = Math.cos(angle) * radius;
+            const y = Math.sin(angle) * radius;
+            const z = (Math.random() - 0.5) * 2000;
+            const v = 1.0 + Math.random() * 2.0;
+
+            this.streakData.push({ x, y, z, v });
+        }
+        
+        this.dummyObj = new THREE.Object3D();
+    }
+
+    createTimeVortexEffect() {
+        this.tardisVortexMat = new THREE.ShaderMaterial({
+            uniforms: {
+                time: { value: 0.0 },
+                warpOpacity: { value: 0.0 }
+            },
+            vertexShader: `
+                #include <common>
+                #include <logdepthbuf_pars_vertex>
+                
+                uniform float time;
+                varying vec2 vUv;
+                
+                void main() {
+                    vUv = uv;
+                    vec3 transformed = position;
+                    
+                    float dist = abs(position.z) / 4000.0;
+                    float bend = pow(dist, 1.8) * 2200.0; 
+                    float angle = position.z * 0.0006 - time * 2.0;
+                    
+                    transformed.x += cos(angle) * bend;
+                    transformed.y += sin(angle) * bend;
+                    
+                    vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);
+                    gl_Position = projectionMatrix * mvPosition;
+                    
+                    #include <logdepthbuf_vertex>
+                }
+            `,
+            fragmentShader: `
+                #include <common>
+                #include <logdepthbuf_pars_fragment>
+                
+                uniform float time;
+                uniform float warpOpacity;
+                varying vec2 vUv;
+
+                vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+                vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+                
+                float snoise(vec3 v) {
+                    const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+                    const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+                    vec3 i  = floor(v + dot(v, C.yyy) );
+                    vec3 x0 = v - i + dot(i, C.xxx) ;
+                    vec3 g = step(x0.yzx, x0.xyz);
+                    vec3 l = 1.0 - g;
+                    vec3 i1 = min( g.xyz, l.zxy );
+                    vec3 i2 = max( g.xyz, l.zxy );
+                    vec3 x1 = x0 - i1 + C.xxx;
+                    vec3 x2 = x0 - i2 + C.yyy;
+                    vec3 x3 = x0 - D.yyy;
+                    i = mod289(i);
+                    vec4 p = permute( permute( permute(
+                               i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+                             + i.y + vec4(0.0, i1.y, i2.y, 1.0 ))
+                             + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+                    float n_ = 0.142857142857;
+                    vec3  ns = n_ * D.wyz - D.xzx;
+                    vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+                    vec4 x_ = floor(j * ns.z);
+                    vec4 y_ = floor(j - 7.0 * x_ );
+                    vec4 x = x_ *ns.x + ns.yyyy;
+                    vec4 y = y_ *ns.x + ns.yyyy;
+                    vec4 h = 1.0 - abs(x) - abs(y);
+                    vec4 b0 = vec4( x.xy, y.xy );
+                    vec4 b1 = vec4( x.zw, y.zw );
+                    vec4 s0 = floor(b0)*2.0 + 1.0;
+                    vec4 s1 = floor(b1)*2.0 + 1.0;
+                    vec4 sh = -step(h, vec4(0.0));
+                    vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+                    vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+                    vec3 p0 = vec3(a0.xy,h.x);
+                    vec3 p1 = vec3(a0.zw,h.y);
+                    vec3 p2 = vec3(a1.xy,h.z);
+                    vec3 p3 = vec3(a1.zw,h.w);
+                    vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+                    p0 *= norm.x;
+                    p1 *= norm.y;
+                    p2 *= norm.z;
+                    p3 *= norm.w;
+                    vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+                    m = m * m;
+                    return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
+                }
+
+                float fbm(vec3 x) {
+                    float v = 0.0;
+                    float a = 0.5;
+                    for (int i = 0; i < 4; ++i) {
+                        v += a * snoise(x);
+                        x = x * 2.0;
+                        a *= 0.5;
+                    }
+                    return v;
+                }
+
+                void main() {
+                    vec2 uv = vUv;
+                    
+                    float angle = uv.x * 3.14159265359 * 2.0;
+                    float twist = (uv.y * 3.0) + (time * 0.8);
+                    angle += twist;
+                    
+                    float moveY = uv.y * 8.0 + time * 6.0; 
+                    vec3 pos1 = vec3(cos(angle) * 1.5, sin(angle) * 1.5, moveY);
+                    vec3 pos2 = vec3(cos(angle) * 3.0, sin(angle) * 3.0, moveY * 1.5 - time); 
+
+                    float n1 = fbm(pos1);
+                    float n2 = fbm(pos2 - vec3(0.0, 0.0, time * 2.0));
+                    
+                    float plasma = (n1 + n2);
+                    plasma = clamp((plasma + 1.0) * 0.5, 0.0, 1.0);
+                    plasma = smoothstep(0.4, 0.8, plasma); 
+                    
+                    vec3 darkBlue = vec3(0.0, 0.1, 0.3); 
+                    vec3 brightCyan = vec3(0.1, 0.9, 1.0);
+                    vec3 white = vec3(1.0, 1.0, 1.0);
+                    
+                    vec3 color = mix(darkBlue, brightCyan, plasma);
+                    color = mix(color, white, pow(plasma, 3.0));
+                    
+                    float edgeFade = smoothstep(0.0, 0.1, vUv.y) * smoothstep(1.0, 0.9, vUv.y);
+
+                    gl_FragColor = vec4(color, warpOpacity * edgeFade);
+
+                    #include <logdepthbuf_fragment>
+                }
+            `,
+            side: THREE.BackSide,
+            transparent: true,
+            depthWrite: true 
+        });
+
+        const vortexGeo = new THREE.CylinderGeometry(300, 300, 8000, 32, 80, true);
+        vortexGeo.rotateX(Math.PI / 2); 
+        
+        const vortexMesh = new THREE.Mesh(vortexGeo, this.tardisVortexMat);
+        vortexMesh.frustumCulled = false;
+        
+        this.tardisVortexGroup = new THREE.Group();
+        this.tardisVortexGroup.add(vortexMesh);
+        this.tardisVortexGroup.visible = false;
+        
+        this.scene.add(this.tardisVortexGroup);
+    }
+
     buildSolarSystem() {
         const gltfLoader = new THREE.GLTFLoader();
+        
+        gltfLoader.register(function(parser) {
+            return {
+                name: 'uv-patch',
+                loadMaterial: function(materialIndex) {
+                    const materialDef = parser.json.materials[materialIndex];
+                    if (materialDef) {
+                        if (materialDef.normalTexture && materialDef.normalTexture.texCoord !== undefined) {
+                            materialDef.normalTexture.texCoord = 0;
+                        }
+                        if (materialDef.emissiveTexture && materialDef.emissiveTexture.texCoord !== undefined) {
+                            materialDef.emissiveTexture.texCoord = 0;
+                        }
+                        if (materialDef.pbrMetallicRoughness) {
+                            if (materialDef.pbrMetallicRoughness.baseColorTexture && materialDef.pbrMetallicRoughness.baseColorTexture.texCoord !== undefined) {
+                                materialDef.pbrMetallicRoughness.baseColorTexture.texCoord = 0;
+                            }
+                            if (materialDef.pbrMetallicRoughness.metallicRoughnessTexture && materialDef.pbrMetallicRoughness.metallicRoughnessTexture.texCoord !== undefined) {
+                                materialDef.pbrMetallicRoughness.metallicRoughnessTexture.texCoord = 0;
+                            }
+                        }
+                    }
+                    return null; 
+                }
+            };
+        });
+
+        const fixModelUVs = (model) => {
+            model.traverse((child) => {
+                if (child.isMesh && child.geometry) {
+                    if (child.geometry.attributes.uv && !child.geometry.attributes.uv2) {
+                        child.geometry.setAttribute('uv2', child.geometry.attributes.uv);
+                    }
+                }
+            });
+        };
+
         const dracoLoader = new THREE.DRACOLoader();
         dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
         gltfLoader.setDRACOLoader(dracoLoader);
         const loader = new THREE.TextureLoader();
         const S = this.scaleFactor; 
 
-        const spaceSkyGeo = new THREE.SphereGeometry(60000 * S, 64, 64);
+        const spaceSkyGeo = new THREE.SphereGeometry(25000000 * S, 64, 64);
         const spaceSkyMat = new THREE.MeshBasicMaterial({
             map: loader.load(this.getTexUrl('three-textures/8k_stars.jpg')),
             side: THREE.BackSide
         });
         this.scene.add(new THREE.Mesh(spaceSkyGeo, spaceSkyMat));
+
+        this.createMilkyWay();
+        this.createHyperspaceEffect();
+        this.createTimeVortexEffect();
 
         this.createPlanet('sun', 'three-textures/8k_sun.jpg', 218 * S, 0, 0, this.baseOrb / 27, true);
         this.createPlanet('mercury', 'three-textures/8k_mercury.jpg', 0.76 * S, 300 * S, this.baseOrb * 4.1, this.baseRot / 58);
@@ -557,6 +1299,7 @@ class SolarSystemApp {
 
         gltfLoader.load(this.getTexUrl('three-models/star_wars_galaxies_-_tie_advanced.glb'), (gltf) => {
             const tie = gltf.scene;
+            fixModelUVs(tie); 
             tie.scale.set(0.015, 0.015, 0.015);
             const box = new THREE.Box3().setFromObject(tie);
             const center = box.getCenter(new THREE.Vector3());
@@ -567,13 +1310,14 @@ class SolarSystemApp {
             this.updateShipVisibility();
         });
 
-        gltfLoader.load(this.getTexUrl('three-models/star_wars_galaxies_-_yt1300_outside.glb'), (gltf) => {
+        gltfLoader.load(this.getTexUrl('three-models/millennium falcon.glb'), (gltf) => {
             const falcon = gltf.scene;
-            falcon.scale.set(0.2, 0.2, 0.2); 
+            fixModelUVs(falcon); 
+            falcon.scale.set(0.4, 0.4, 0.4); 
             const box = new THREE.Box3().setFromObject(falcon);
             const center = box.getCenter(new THREE.Vector3());
             falcon.position.sub(center);
-            falcon.rotation.y = Math.PI;
+            falcon.rotation.y = 0; 
 
             this.falconModel = new THREE.Group();
             this.falconModel.add(falcon);
@@ -583,6 +1327,7 @@ class SolarSystemApp {
 
         gltfLoader.load(this.getTexUrl('three-models/planet_express_spaceship.glb'), (gltf) => {
             const ship = gltf.scene;
+            fixModelUVs(ship); 
             ship.scale.set(0.2, 0.2, 0.2); 
             
             const box = new THREE.Box3().setFromObject(ship);
@@ -601,6 +1346,7 @@ class SolarSystemApp {
 
         gltfLoader.load(this.getTexUrl('three-models/rick_and_morty_space_ship.glb'), (gltf) => {
             const ship = gltf.scene;
+            fixModelUVs(ship); 
             ship.scale.set(1.2, 1.2, 1.5);
             const box = new THREE.Box3().setFromObject(ship);
             const center = box.getCenter(new THREE.Vector3());
@@ -615,6 +1361,7 @@ class SolarSystemApp {
 
         gltfLoader.load(this.getTexUrl('three-models/guardians_of_the_galaxy_avengers_benatar_ship.glb'), (gltf) => {
             const ship = gltf.scene;
+            fixModelUVs(ship); 
             ship.scale.set(0.01, 0.01, 0.01);
             const box = new THREE.Box3().setFromObject(ship);
             const center = box.getCenter(new THREE.Vector3());
@@ -624,6 +1371,63 @@ class SolarSystemApp {
             this.benatarModel = new THREE.Group();
             this.benatarModel.add(ship);
             this.shipGroup.add(this.benatarModel);
+            this.updateShipVisibility();
+        });
+
+        gltfLoader.load(this.getTexUrl('three-models/x-wing.glb'), (gltf) => {
+            const ship = gltf.scene;
+            fixModelUVs(ship); 
+            ship.scale.set(0.2, 0.2, 0.2); 
+            const box = new THREE.Box3().setFromObject(ship);
+            const center = box.getCenter(new THREE.Vector3());
+            ship.position.sub(center);
+            ship.rotation.y = 0; 
+            
+            this.xwingModel = new THREE.Group();
+            this.xwingModel.add(ship);
+            this.shipGroup.add(this.xwingModel);
+            this.updateShipVisibility();
+        });
+
+        gltfLoader.load(this.getTexUrl('three-models/x-wing_cockpit_version_2.glb'), (gltf) => {
+            const ship = gltf.scene;
+            fixModelUVs(ship); 
+            ship.scale.set(1.0, 1.0, 1.0);
+            const box = new THREE.Box3().setFromObject(ship);
+            const center = box.getCenter(new THREE.Vector3());
+            ship.position.sub(center);
+            
+            this.xwingCockpitModel = new THREE.Group();
+            this.xwingCockpitModel.add(ship);
+            this.shipGroup.add(this.xwingCockpitModel);
+            this.updateShipVisibility();
+        });
+
+        gltfLoader.load(this.getTexUrl('three-models/tardis.glb'), (gltf) => {
+            const ship = gltf.scene;
+            fixModelUVs(ship); 
+            ship.scale.set(0.5, 0.5, 0.5); 
+            const box = new THREE.Box3().setFromObject(ship);
+            const center = box.getCenter(new THREE.Vector3());
+            ship.position.sub(center);
+            
+            this.tardisModel = new THREE.Group();
+            this.tardisModel.add(ship);
+            this.shipGroup.add(this.tardisModel);
+            this.updateShipVisibility();
+        });
+
+        gltfLoader.load(this.getTexUrl('three-models/u.s.s._enterprise_ncc-1701-a.glb'), (gltf) => {
+            const ship = gltf.scene;
+            fixModelUVs(ship); 
+            ship.scale.set(0.03, 0.03, 0.03); 
+            const box = new THREE.Box3().setFromObject(ship);
+            const center = box.getCenter(new THREE.Vector3());
+            ship.position.sub(center);
+            
+            this.enterpriseModel = new THREE.Group();
+            this.enterpriseModel.add(ship);
+            this.shipGroup.add(this.enterpriseModel);
             this.updateShipVisibility();
         });
 
@@ -645,6 +1449,7 @@ class SolarSystemApp {
 
         gltfLoader.load(this.getTexUrl('three-models/Gateway Core.glb'), (gltf) => {
             const model = gltf.scene;
+            fixModelUVs(model); 
             model.scale.set(0.02 * S, 0.02 * S, 0.02 * S);
             model.traverse((child) => {
                 if (child.isMesh) {
@@ -669,6 +1474,7 @@ class SolarSystemApp {
 
         gltfLoader.load(this.getTexUrl('three-models/ISS_stationary.glb'), (gltf) => {
             const model = gltf.scene;
+            fixModelUVs(model); 
             model.scale.set(0.0025 * S, 0.0025 * S, 0.0025 * S); 
             const box = new THREE.Box3().setFromObject(model);
             const center = box.getCenter(new THREE.Vector3());
@@ -694,17 +1500,32 @@ class SolarSystemApp {
 
         gltfLoader.load(this.getTexUrl('three-models/Apollo Lunar Module.glb'), (gltf) => {
             const model = gltf.scene;
+            fixModelUVs(model); 
             model.scale.set(0.008 * S, 0.008 * S, 0.008 * S);
             model.rotation.set(0, 0, Math.PI / 2);
             apolloGroup.add(model);
         });
 
         this.createPlanet('mars', 'three-textures/8k_mars.jpg', 1.06 * S, 700 * S, this.baseOrb * 0.53, this.baseRot / 1.02);
+        this.createPlanet('ceres', 'three-textures/4k_ceres_fictional.jpg', 0.15 * S, 950 * S, this.baseOrb * 0.2, this.baseRot * 2.6);
+
         this.mainAsteroidBelt = this.createAsteroidBelt(850 * S, 1050 * S, 1500, 80 * S);
         this.createPlanet('jupiter', 'three-textures/8k_jupiter.jpg', 22.4 * S, 1200 * S, this.baseOrb * 0.08, this.baseRot * 2.4);
 
         const saturn = this.createPlanet('saturn', 'three-textures/8k_saturn.jpg', 18.9 * S, 1800 * S, this.baseOrb * 0.034, this.baseRot * 2.2);
         const ringGeo = new THREE.RingGeometry(25 * S, 45 * S, 64);
+        
+        const pos = ringGeo.attributes.position;
+        const uvs = ringGeo.attributes.uv;
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i);
+            const y = pos.getY(i);
+            const radius = Math.sqrt(x * x + y * y);
+            const u = (radius - 25 * S) / (45 * S - 25 * S);
+            const v = (Math.atan2(y, x) + Math.PI) / (Math.PI * 2);
+            uvs.setXY(i, u, v);
+        }
+
         this.saturnRingMat = new THREE.MeshStandardMaterial({
             map: loader.load(this.getTexUrl('three-textures/8k_saturn_ring_alpha.png')),
             side: THREE.DoubleSide, transparent: true, opacity: 0.9
@@ -716,21 +1537,37 @@ class SolarSystemApp {
         this.createPlanet('neptune', 'three-textures/2k_neptune.jpg', 7.76 * S, 2600 * S, this.baseOrb * 0.006, this.baseRot * 1.5);
         this.kuiperBelt = this.createAsteroidBelt(3000 * S, 3600 * S, 2500, 150 * S);
 
-        const plutoOrbit = new THREE.Group();
-        this.scene.add(plutoOrbit);
-        const plutoGroup = new THREE.Group();
-        plutoGroup.position.set(3100 * S, 0, 0); 
-        plutoOrbit.add(plutoGroup);
-        this.planets['pluto'] = { mesh: plutoGroup, orbitPivot: plutoOrbit, rotationSpeed: this.baseRot * 0.15, orbitSpeed: this.baseOrb * 0.004, size: 0.5 * S, visibilityRange: 200 * S };
+        const pluto = this.createPlanet('pluto', 'three-textures/pluto_semi_fictional.png', 0.5 * S, 3100 * S, this.baseOrb * 0.004, 0);
+        pluto.visibilityRange = 200 * S;
         
-        gltfLoader.load(this.getTexUrl('three-models/pluto.glb'), (gltf) => {
-            const model = gltf.scene;
-            model.scale.set(0.01 * S, 0.01 * S, 0.01 * S);
-            const box = new THREE.Box3().setFromObject(model);
-            const center = box.getCenter(new THREE.Vector3());
-            model.position.sub(center);
-            plutoGroup.add(model);
+        const barycenterPivot = new THREE.Group();
+        pluto.systemGroup.add(barycenterPivot);
+        
+        barycenterPivot.add(pluto.mesh);
+        pluto.mesh.position.set(-0.9 * S, 0, 0);
+        
+        const charonGeo = new THREE.SphereGeometry(0.25 * S, 64, 64);
+        const charonMat = new THREE.MeshStandardMaterial({ 
+            map: loader.load(this.getTexUrl('three-textures/8k_charon.png')), 
+            roughness: 0.8,
+            metalness: 0.1
         });
+        const charonMesh = new THREE.Mesh(charonGeo, charonMat);
+        charonMesh.position.set(7.35 * S, 0, 0); 
+        barycenterPivot.add(charonMesh);
+
+        this.planets['charon'] = { 
+            mesh: charonMesh, 
+            orbitPivot: barycenterPivot, 
+            rotationSpeed: 0, 
+            orbitSpeed: this.baseRot * 0.15, 
+            size: 0.25 * S, 
+            visibilityRange: 150 * S 
+        };
+
+        this.createPlanet('haumea', 'three-textures/4k_haumea_fictional.jpg', 0.25 * S, 3200 * S, this.baseOrb * 0.0035, this.baseRot * 6.0);
+        this.createPlanet('makemake', 'three-textures/4K_makemake_fictional.jpg', 0.22 * S, 3400 * S, this.baseOrb * 0.003, this.baseRot * 1.0);
+        this.createPlanet('eris', 'three-textures/4k_eris_fictional.jpg', 0.36 * S, 3800 * S, this.baseOrb * 0.002, this.baseRot * 0.04);
 
         const blackHoleGroup = new THREE.Group();
         blackHoleGroup.position.set(25000 * S, 5000 * S, -25000 * S);
@@ -743,6 +1580,7 @@ class SolarSystemApp {
         
         gltfLoader.load(this.getTexUrl('three-models/black_hole.glb'), (gltf) => {
             const model = gltf.scene;
+            fixModelUVs(model); 
             model.scale.set(0.5 * S, 0.5 * S, 0.5 * S); 
             const box = new THREE.Box3().setFromObject(model);
             const center = box.getCenter(new THREE.Vector3());
@@ -750,8 +1588,8 @@ class SolarSystemApp {
             blackHoleGroup.add(model);
         });
 
-        this.camera.position.set(550 * S, 10 * S, 40 * S);
-        this.triggerDestination(3); 
+        this.camera.position.set(500 * S, 800 * S, 1200 * S);
+        this.camera.lookAt(new THREE.Vector3(0, 0, 0));
     }
 
     triggerDestination(index) {
@@ -795,8 +1633,9 @@ class SolarSystemApp {
                 e.preventDefault();
             }
             
-            if (key === 'y' && (this.activeShip === 'tie' || this.activeShip === 'rickmorty')) {
+            if (key === 'y' && (this.activeShip === 'tie' || this.activeShip === 'rickmorty' || this.activeShip === 'xwing')) {
                 this.shipView = this.shipView === '1st' ? '3rd' : '1st';
+                this.updateShipVisibility();
             }
 
             if (this.keys.hasOwnProperty(key)) {
@@ -835,10 +1674,19 @@ class SolarSystemApp {
             const deltaX = e.clientX - this.mouse.x;
             const deltaY = e.clientY - this.mouse.y;
 
-            this.yaw -= deltaX * 0.005;
-            this.pitch -= deltaY * 0.005;
-            
-            this.pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, this.pitch));
+            if (this.activeShip !== 'none' && this.shipView === '1st') {
+                this.cockpitYaw -= deltaX * 0.005;
+                this.cockpitPitch -= deltaY * 0.005;
+                
+                this.cockpitYaw = Math.max(-Math.PI * 0.7, Math.min(Math.PI * 0.7, this.cockpitYaw));
+                this.cockpitPitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, this.cockpitPitch));
+                
+                this.lastLookTime = performance.now();
+            } else {
+                this.yaw -= deltaX * 0.005;
+                this.pitch -= deltaY * 0.005;
+                this.pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, this.pitch));
+            }
 
             this.mouse.x = e.clientX;
             this.mouse.y = e.clientY;
@@ -878,21 +1726,37 @@ class SolarSystemApp {
             
             if (this.activeShip === 'none') {
                 let moveSpeed = this.currentFlySpeed;
+                let boostThrust = 0;
                 
-                if (gp.buttons[6] && gp.buttons[6].pressed) moveSpeed += (gp.buttons[6].value * this.currentFlySpeed * 2.0);
+                if (gp.buttons[6] && gp.buttons[6].pressed) {
+                    moveSpeed += (gp.buttons[6].value * this.currentFlySpeed * 2.0 * this.joltMultiplier);
+                    boostThrust = gp.buttons[6].value * this.joltMultiplier; 
+                }
                 
                 if (Math.abs(gp.axes[1]) > 0.1) { 
                     this.camera.position.add(direction.multiplyScalar(-gp.axes[1] * moveSpeed));
+                } else if (boostThrust > 0) {
+                    this.camera.position.add(direction.multiplyScalar(boostThrust * moveSpeed));
                 }
+
                 if (Math.abs(gp.axes[0]) > 0.1) { 
                     this.camera.position.add(right.multiplyScalar(-gp.axes[0] * moveSpeed));
                 }
             }
 
-            if (Math.abs(gp.axes[2]) > 0.1) this.yaw -= gp.axes[2] * 0.05;
-            if (Math.abs(gp.axes[3]) > 0.1) this.pitch -= gp.axes[3] * 0.05;
-            
-            this.pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, this.pitch));
+            if (this.activeShip !== 'none' && this.shipView === '1st') {
+                if (Math.abs(gp.axes[2]) > 0.1 || Math.abs(gp.axes[3]) > 0.1) {
+                    if (Math.abs(gp.axes[2]) > 0.1) this.cockpitYaw -= gp.axes[2] * 0.05;
+                    if (Math.abs(gp.axes[3]) > 0.1) this.cockpitPitch -= gp.axes[3] * 0.05;
+                    this.cockpitYaw = Math.max(-Math.PI * 0.7, Math.min(Math.PI * 0.7, this.cockpitYaw));
+                    this.cockpitPitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, this.cockpitPitch));
+                    this.lastLookTime = performance.now();
+                }
+            } else {
+                if (Math.abs(gp.axes[2]) > 0.1) this.yaw -= gp.axes[2] * 0.05;
+                if (Math.abs(gp.axes[3]) > 0.1) this.pitch -= gp.axes[3] * 0.05;
+                this.pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, this.pitch));
+            }
 
             if (gp.buttons[14] && gp.buttons[14].pressed) {
                 if (!this.gpDPadLeftDown) {
@@ -913,8 +1777,9 @@ class SolarSystemApp {
             if (gp.buttons[3] && gp.buttons[3].pressed) {
                 if (!this.gpYDown) {
                     this.gpYDown = true;
-                    if (this.activeShip === 'tie' || this.activeShip === 'rickmorty') {
+                    if (this.activeShip === 'tie' || this.activeShip === 'rickmorty' || this.activeShip === 'xwing') {
                         this.shipView = this.shipView === '1st' ? '3rd' : '1st';
+                        this.updateShipVisibility();
                     }
                 }
             } else { this.gpYDown = false; }
@@ -928,16 +1793,25 @@ class SolarSystemApp {
 
     updateFlyControls(targetObj, direction) {
         let moveSpeed = this.currentFlySpeed; 
+        let autoForward = false;
         
-        if (this.keys['shift']) moveSpeed *= 3.0;
+        if (this.keys['shift']) {
+            moveSpeed += (this.currentFlySpeed * 2.0 * this.joltMultiplier);
+            if (this.joltMultiplier > 0.01) autoForward = true;
+        }
         
         const forward = direction.clone();
         const right = new THREE.Vector3().crossVectors(this.camera.up, forward).normalize();
 
-        if (this.keys['w']) targetObj.position.add(forward.multiplyScalar(moveSpeed));
+        let wPressed = false;
+        if (this.keys['w']) { targetObj.position.add(forward.multiplyScalar(moveSpeed)); wPressed = true; }
         if (this.keys['s']) targetObj.position.add(forward.multiplyScalar(-moveSpeed));
         if (this.keys['a']) targetObj.position.add(right.multiplyScalar(-moveSpeed)); 
         if (this.keys['d']) targetObj.position.add(right.multiplyScalar(moveSpeed));  
+
+        if (autoForward && !wPressed) {
+            targetObj.position.add(forward.multiplyScalar(moveSpeed));
+        }
     }
 
     resolveCollisions() {
@@ -989,13 +1863,115 @@ class SolarSystemApp {
             this.animate();
         }, 50);
     }
+    
+    close() {
+        this.isActive = false;
+        this.container.style.opacity = '0';
+        setTimeout(() => {
+            this.container.style.display = 'none';
+        }, 500); 
+    }
 
     animate() {
         if (!this.isActive) return;
         requestAnimationFrame(() => this.animate());
 
+        const now = performance.now();
+        if (this.targetFPS > 0) {
+            const fpsInterval = 1000 / this.targetFPS;
+            const elapsed = now - this.lastRenderTime;
+            if (elapsed < fpsInterval) return; 
+            this.lastRenderTime = now - (elapsed % fpsInterval);
+        } else {
+            this.lastRenderTime = now;
+        }
+
+        this.framesThisSecond++;
+        if (now - this.fpsCalcTime >= 1000) {
+            if (this.fpsDisplay) this.fpsDisplay.textContent = `FPS: ${this.framesThisSecond}`;
+            this.framesThisSecond = 0;
+            this.fpsCalcTime = now;
+        }
+
+        this.isBoosting = false;
+
+        let wantsToBoost = this.keys['shift'];
+        const gamepadsArray = navigator.getGamepads();
+        for (let i = 0; i < gamepadsArray.length; i++) {
+            const gp = gamepadsArray[i];
+            if (gp && gp.buttons[6] && gp.buttons[6].value > 0.1) {
+                wantsToBoost = true;
+            }
+        }
+
+        const currentAudioBuildup = this.activeShip === 'tardis' ? this.tardisAudioBuildup : this.audioBuildup;
+        const currentAudioFlight = this.activeShip === 'tardis' ? this.tardisAudioFlight : this.audioFlight;
+        const currentAudioExit = this.activeShip === 'tardis' ? this.tardisAudioExit : this.audioExit;
+        
+        const otherAudioBuildup = this.activeShip === 'tardis' ? this.audioBuildup : this.tardisAudioBuildup;
+        const otherAudioFlight = this.activeShip === 'tardis' ? this.audioFlight : this.tardisAudioFlight;
+        const otherAudioExit = this.activeShip === 'tardis' ? this.audioExit : this.tardisAudioExit;
+
+        otherAudioBuildup.pause();
+        otherAudioFlight.pause();
+
+        if (wantsToBoost && !this.focusedPlanet) {
+            let chargeRate = (this.activeShip === 'tardis') ? 0.0035 : 0.012;
+            
+            this.boostCharge = Math.min(1.0, this.boostCharge + chargeRate); 
+            this.isBoosting = true;
+            
+            if (this.boostCharge < 0.8 && this.hyperState !== 'charging' && this.hyperState !== 'jumping') {
+                this.hyperState = 'charging';
+                currentAudioBuildup.currentTime = 0;
+                currentAudioBuildup.play().catch(() => {});
+            } else if (this.boostCharge >= 0.8 && this.hyperState !== 'jumping') {
+                this.hyperState = 'jumping';
+                currentAudioBuildup.pause();
+                currentAudioFlight.currentTime = 0;
+                currentAudioFlight.play().catch(() => {});
+            }
+        } else {
+            if (this.hyperState === 'jumping') {
+                this.hyperState = 'exiting';
+                this.tardisMatProgress = 0.0; 
+                currentAudioFlight.pause();
+                currentAudioExit.currentTime = 0;
+                currentAudioExit.play().catch(() => {});
+            } else if (this.hyperState === 'charging') {
+                this.hyperState = 'idle';
+                currentAudioBuildup.pause();
+            } 
+            
+            if (this.activeShip === 'tardis') {
+                if (this.hyperState === 'exiting' && this.tardisMatProgress >= 1.0) {
+                    this.hyperState = 'idle';
+                }
+            } else {
+                if (this.boostCharge === 0) {
+                    this.hyperState = 'idle';
+                }
+            }
+
+            let cooldownRate = (this.activeShip === 'tardis') ? 0.015 : 0.05;
+            this.boostCharge = Math.max(0.0, this.boostCharge - cooldownRate);
+        }
+
+        this.joltMultiplier = 0;
+        if (this.boostCharge > 0.8) {
+            this.joltMultiplier = Math.pow((this.boostCharge - 0.8) / 0.2, 3);
+        }
+
         let minCameraDist = Infinity;
         const targetObj = (this.activeShip !== 'none') ? this.shipGroup : this.camera;
+
+        if (this.coordDisplay && this.hudContainer && this.hudContainer.style.display !== 'none') {
+            const sf = this.scaleFactor;
+            const niceX = Math.round(targetObj.position.x / sf).toLocaleString();
+            const niceY = Math.round(targetObj.position.y / sf).toLocaleString();
+            const niceZ = Math.round(targetObj.position.z / sf).toLocaleString();
+            this.coordDisplay.textContent = `X: ${niceX} | Y: ${niceY} | Z: ${niceZ}`;
+        }
 
         for (const key in this.planets) {
             const p = this.planets[key];
@@ -1007,12 +1983,40 @@ class SolarSystemApp {
             if (surfaceDist < minCameraDist) minCameraDist = surfaceDist;
         }
 
-        this.currentFlySpeed = 4.0 * (this.scaleFactor / 5); 
+        this.currentFlySpeed = 12.0 * (this.scaleFactor / 5); 
         const proximityThreshold = 100 * this.scaleFactor;
         
         if (minCameraDist < proximityThreshold) {
             let t = Math.max(0, minCameraDist / proximityThreshold);
-            this.currentFlySpeed = (0.02 * this.scaleFactor) + (3.98 * (this.scaleFactor / 5)) * (t * t); 
+            this.currentFlySpeed = (0.05 * this.scaleFactor) + (11.95 * (this.scaleFactor / 5)) * (t * t); 
+        } 
+        
+        const interstellarThreshold = 40000 * this.scaleFactor; 
+        if (minCameraDist > interstellarThreshold) {
+            let t = Math.min(1.0, (minCameraDist - interstellarThreshold) / (1000000 * this.scaleFactor));
+            this.currentFlySpeed += (this.currentFlySpeed * 10000.0) * (t * t);
+        }
+
+        if (this.sunMaterial && this.sunMaterial.userData.time) {
+            this.sunMaterial.userData.time.value += 0.01; 
+        }
+        if (this.sunCoronaMat) {
+            this.sunCoronaMat.uniforms.time.value += 0.01; 
+        }
+
+        if (this.milkyWayMat && this.planets['milkyway']) {
+            const mwPos = new THREE.Vector3();
+            this.planets['milkyway'].mesh.getWorldPosition(mwPos);
+            const distToMw = this.camera.position.distanceTo(mwPos);
+            
+            const minSize = 600 * this.scaleFactor;
+            const maxSize = 60000 * this.scaleFactor; 
+            
+            let t = Math.max(0, (distToMw - (500000 * this.scaleFactor)) / (9500000 * this.scaleFactor));
+            t = Math.min(1, t);
+            t = t * t * (3 - 2 * t); 
+            
+            this.milkyWayMat.size = minSize + (maxSize - minSize) * t;
         }
 
         this.pollGamepad();
@@ -1024,17 +2028,31 @@ class SolarSystemApp {
             p.mesh.updateMatrixWorld(true);
             p.mesh.getWorldPosition(wPos);
             const distToCam = targetObj.position.distanceTo(wPos);
-            let speedMult = 1.0;
+            
+            p.currentSpeedMult = 1.0;
             const slowZone = p.slowZone || p.visibilityRange || (p.size * 40); 
             const minZone = p.size * 3;   
+            
             if (distToCam < slowZone) {
                 let t = (distToCam - minZone) / (slowZone - minZone);
                 t = Math.max(0, Math.min(1, t));
                 t = Math.pow(t, 3);
-                speedMult = 0.0001 + 0.9999 * t;
+                p.currentSpeedMult = 0.0001 + 0.9999 * t;
             }
-            if (p.orbitPivot) p.orbitPivot.rotation.y += p.orbitSpeed * speedMult;
-            if (p.mesh) p.mesh.rotation.y += p.rotationSpeed * speedMult;
+        }
+
+        if (this.planets['moon'] && this.planets['earth']) {
+            if (this.planets['moon'].currentSpeedMult < this.planets['earth'].currentSpeedMult) {
+                this.planets['earth'].currentSpeedMult = this.planets['moon'].currentSpeedMult;
+            }
+        }
+
+        for (const key in this.planets) {
+            const p = this.planets[key];
+            if (!p.mesh) continue;
+            
+            if (p.orbitPivot) p.orbitPivot.rotation.y += p.orbitSpeed * p.currentSpeedMult;
+            if (p.mesh) p.mesh.rotation.y += p.rotationSpeed * p.currentSpeedMult;
         }
 
         if (this.mainAsteroidBelt) this.mainAsteroidBelt.rotation.y -= this.baseOrb * 0.1;
@@ -1052,7 +2070,9 @@ class SolarSystemApp {
             this.focusedPlanet.mesh.getWorldPosition(worldPos);
 
             let viewDist = this.focusedPlanet.size * this.zoomLevel;
-            if (this.focusedPlanet.size > (20 * this.scaleFactor)) viewDist = this.focusedPlanet.size * (this.zoomLevel * 0.5);
+            if (this.focusedPlanet.size > (20 * this.scaleFactor) && this.focusedPlanet.size < (100000 * this.scaleFactor)) {
+                viewDist = this.focusedPlanet.size * (this.zoomLevel * 0.5);
+            }
 
             const minViewDist = (this.focusedPlanet.collisionSize !== undefined ? this.focusedPlanet.collisionSize : this.focusedPlanet.size) + 0.2;
             if (viewDist < minViewDist) viewDist = minViewDist;
@@ -1099,133 +2119,153 @@ class SolarSystemApp {
 
         } else if (this.activeShip !== 'none') {
             
-            // ==========================================
-            // TRUE 6DOF FLIGHT LOGIC (GTA 5 JET STYLE)
-            // ==========================================
-            
             let roll = 0;
             let pitchInput = 0;
             let yawInput = 0;
             let accel = 0;
-            let boostMult = 1.0;
+            let boostThrust = 0; 
 
-            // Keyboard Ship Inputs
-            if (this.keys['a']) yawInput -= 1; // Steer Left (Yaw)
-            if (this.keys['d']) yawInput += 1; // Steer Right (Yaw)
-            if (this.keys['w']) pitchInput -= 1; // Pitch Nose Down
-            if (this.keys['s']) pitchInput += 1; // Pitch Nose Up
-            if (this.keys['q']) roll -= 1; // Roll Left
-            if (this.keys['e']) roll += 1; // Roll Right
+            if (this.keys['a']) yawInput -= 1; 
+            if (this.keys['d']) yawInput += 1; 
+            if (this.keys['w']) pitchInput -= 1; 
+            if (this.keys['s']) pitchInput += 1; 
+            if (this.keys['q']) roll -= 1; 
+            if (this.keys['e']) roll += 1; 
             
-            // Optional Arrow keys for pitch
             if (this.keys['arrowup']) pitchInput -= 1; 
             if (this.keys['arrowdown']) pitchInput += 1; 
             
-            if (this.keys['shift']) boostMult = 4.0; // Boost
-            if (this.keys['space']) accel += 1; // Accelerate
+            if (this.keys['shift']) { 
+                boostThrust += 4.0 * this.joltMultiplier; 
+            } 
+            if (this.keys['space']) accel += 1; 
 
-            // Gamepad Ship Inputs
             const gamepads = navigator.getGamepads();
             for (let i = 0; i < gamepads.length; i++) {
                 const gp = gamepads[i];
                 if (!gp) continue;
                 
-                // Left Stick X -> Yaw (Steer Left/Right)
                 if (Math.abs(gp.axes[0]) > 0.1) yawInput += gp.axes[0]; 
-                
-                // Left Stick Y -> Pitch
-                // (+ Y is pulling stick back = Pitch Nose Up)
                 if (Math.abs(gp.axes[1]) > 0.1) pitchInput += gp.axes[1]; 
 
-                // LB / RB -> Roll
-                if (gp.buttons[4] && gp.buttons[4].pressed) roll -= 1; // Roll Left
-                if (gp.buttons[5] && gp.buttons[5].pressed) roll += 1; // Roll Right
+                if (gp.buttons[4] && gp.buttons[4].pressed) roll -= 1; 
+                if (gp.buttons[5] && gp.buttons[5].pressed) roll += 1; 
 
-                // Right Trigger -> Accelerate
                 if (gp.buttons[7] && gp.buttons[7].pressed) {
                     accel += gp.buttons[7].value;
                 }
 
-                // Left Trigger -> Speed Boost
                 if (gp.buttons[6] && gp.buttons[6].pressed) {
-                    boostMult += gp.buttons[6].value * 3.0; // up to 4x multiplier
+                    boostThrust += gp.buttons[6].value * 4.0 * this.joltMultiplier; 
                 }
             }
 
-            // Clamp inputs
             roll = Math.max(-1, Math.min(1, roll));
             pitchInput = Math.max(-1, Math.min(1, pitchInput));
             yawInput = Math.max(-1, Math.min(1, yawInput));
             accel = Math.max(0, Math.min(1, accel));
 
-            // Apply Rotations Locally (True 6DOF avoiding Gimbal Lock)
-            this.shipGroup.rotateZ(-roll * 0.04);       // Roll
-            this.shipGroup.rotateX(-pitchInput * 0.03); // Pitch
-            this.shipGroup.rotateY(-yawInput * 0.02);   // Yaw
+            this.shipGroup.rotateZ(-roll * 0.04);       
+            this.shipGroup.rotateX(-pitchInput * 0.03); 
+            this.shipGroup.rotateY(-yawInput * 0.02);   
 
-            // Compute local Forward Vector (+Z) converted to World Space
             const shipDir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.shipGroup.quaternion).normalize();
 
-            // Move Ship
-            const moveSpeed = this.currentFlySpeed * boostMult;
-            if (accel > 0) {
-                this.shipGroup.position.add(shipDir.multiplyScalar(accel * moveSpeed));
+            const totalThrust = accel + boostThrust;
+            if (totalThrust > 0) {
+                this.shipGroup.position.add(shipDir.multiplyScalar(totalThrust * this.currentFlySpeed));
             }
 
-            // CRITICAL FIX: Update the ship's world matrix immediately so the 1st person camera
-            // doesn't lag a frame behind when moving fast (which caused the interior to disappear)
             this.shipGroup.updateMatrixWorld(true);
 
-            // --- CAMERA FOLLOW LOGIC ---
             let camDist = 110.0;
             let heightOffset = 35.0;
             let firstPersonOffset = new THREE.Vector3(0, 0, 0);
 
-            // Fetch Visual Scales
             if (this.activeShip === 'tie') { 
                 camDist = 190.0; heightOffset = 30.0; 
-                // Adjusted TIE offset to be seated further forward
-                if (this.shipView === '1st') { this.tieModel.scale.set(1.0, 1.0, 1.0); firstPersonOffset.set(0, 0.2, 1.4); }
-                else { this.tieModel.scale.set(10.0, 10.0, 10.0); }
+                if (this.shipView === '1st') { 
+                    if (this.tieModel) this.tieModel.scale.set(1.0, 1.0, 1.0); 
+                    firstPersonOffset.set(0, 0.2, 1.4); 
+                } else { 
+                    if (this.tieModel) this.tieModel.scale.set(10.0, 10.0, 10.0); 
+                }
             }
             else if (this.activeShip === 'falcon') { 
                 camDist = 110.0; heightOffset = 35.0; 
-                this.falconModel.scale.set(10.0, 10.0, 10.0);
+                if (this.falconModel) this.falconModel.scale.set(10.0, 10.0, 10.0);
             }
             else if (this.activeShip === 'planetexpress') { 
                 camDist = 110.0; heightOffset = 20.0; 
-                this.planetExpressModel.scale.set(10.0, 10.0, 10.0);
+                if (this.planetExpressModel) this.planetExpressModel.scale.set(10.0, 10.0, 10.0);
             }
             else if (this.activeShip === 'rickmorty') { 
                 camDist = 110.0; heightOffset = 35.0; 
-                // Adjusted Rick & Morty offset to be seated further forward
-                if (this.shipView === '1st') { this.rickMortyModel.scale.set(1.0, 1.0, 1.0); firstPersonOffset.set(0.5, 0.3, 0.2); }
-                else { this.rickMortyModel.scale.set(10.0, 10.0, 10.0); }
+                if (this.shipView === '1st') { 
+                    if (this.rickMortyModel) this.rickMortyModel.scale.set(1.0, 1.0, 1.0); 
+                    firstPersonOffset.set(0.5, 0.3, 0.2); 
+                } else { 
+                    if (this.rickMortyModel) this.rickMortyModel.scale.set(10.0, 10.0, 10.0); 
+                }
             }
             else if (this.activeShip === 'benatar') { 
                 camDist = 110.0; heightOffset = 20.0; 
-                this.benatarModel.scale.set(1.0, 1.0, 1.0);
+                if (this.benatarModel) this.benatarModel.scale.set(1.0, 1.0, 1.0);
+            }
+            else if (this.activeShip === 'xwing') {
+                camDist = 120.0; heightOffset = 30.0;
+                if (this.shipView === '1st') {
+                    if (this.xwingCockpitModel) this.xwingCockpitModel.scale.set(5.0, 5.0, 5.0);
+                    firstPersonOffset.set(0, 3.9, -8.0);
+                } else {
+                    if (this.xwingModel) this.xwingModel.scale.set(2.0, 2.0, 2.0); 
+                }
+            }
+            else if (this.activeShip === 'tardis') {
+                camDist = 40.0; heightOffset = 10.0;
+                if (this.tardisModel) this.tardisModel.scale.set(15.0, 15.0, 15.0);
+            }
+            else if (this.activeShip === 'enterprise') {
+                camDist = 150.0; heightOffset = 40.0;
+                if (this.enterpriseModel) this.enterpriseModel.scale.set(20.0, 20.0, 20.0);
             }
 
             if (this.shipView === '1st') {
-                // 1st Person: Camera sits inside the rolling cockpit
+                let isGamepadLooking = false;
+                const gamepads = navigator.getGamepads();
+                for (let i = 0; i < gamepads.length; i++) {
+                    const gp = gamepads[i];
+                    if (gp && (Math.abs(gp.axes[2]) > 0.1 || Math.abs(gp.axes[3]) > 0.1)) {
+                        isGamepadLooking = true;
+                        this.lastLookTime = performance.now(); 
+                        break;
+                    }
+                }
+                
+                if (!this.isDragging && !isGamepadLooking && (performance.now() - this.lastLookTime > 1500)) {
+                    this.cockpitYaw *= 0.96;   
+                    this.cockpitPitch *= 0.96; 
+                }
+
                 const idealPos = this.shipGroup.localToWorld(firstPersonOffset.clone());
                 this.camera.position.copy(idealPos);
                 
-                // Allow free look INSIDE the cockpit. 
-                // We construct the absolute world direction directly from yaw and pitch
-                const worldCamDir = new THREE.Vector3(
-                    Math.cos(this.pitch) * Math.sin(this.yaw),
-                    Math.sin(this.pitch),
-                    Math.cos(this.pitch) * Math.cos(this.yaw)
+                const localLook = new THREE.Vector3(
+                    Math.sin(this.cockpitYaw) * Math.cos(this.cockpitPitch),
+                    Math.sin(this.cockpitPitch),
+                    Math.cos(this.cockpitYaw) * Math.cos(this.cockpitPitch)
                 ).normalize();
                 
-                // Camera horizon rolls perfectly with the ship
+                const worldCamDir = localLook.applyQuaternion(this.shipGroup.quaternion).normalize();
+                
                 this.camera.up.copy(new THREE.Vector3(0, 1, 0).applyQuaternion(this.shipGroup.quaternion));
                 this.camera.lookAt(idealPos.clone().add(worldCamDir));
+
+                const shipForward = new THREE.Vector3(0, 0, 1).applyQuaternion(this.shipGroup.quaternion).normalize();
+                this.yaw = Math.atan2(shipForward.x, shipForward.z);
+                this.pitch = Math.asin(Math.max(-1, Math.min(1, shipForward.y)));
+
             } else {
-                // 3rd Person Orbit Camera (GTA Style)
-                // Camera ignores ship roll and stays level to the horizon 
                 this.camera.up.set(0, 1, 0); 
 
                 const targetLookAt = this.shipGroup.position.clone().add(new THREE.Vector3(0, heightOffset * 0.5, 0));
@@ -1243,10 +2283,114 @@ class SolarSystemApp {
             }
 
         } else {
-            // Standard Free Cam 
             this.camera.up.set(0, 1, 0); 
             this.camera.lookAt(this.camera.position.clone().add(direction));
             this.updateFlyControls(this.camera, direction);
+        }
+
+        if (this.activeShip === 'tardis') {
+            let targetAlpha = 1.0;
+            
+            if (this.hyperState === 'charging') {
+                let progress = 1.0 - (this.boostCharge / 0.8);
+                let throb = 0.5 + 0.5 * Math.cos(progress * Math.PI * 12);
+                targetAlpha = Math.max(0, Math.min(1, progress * throb));
+            } else if (this.hyperState === 'jumping') {
+                targetAlpha = 1.0;
+            } else if (this.hyperState === 'exiting') {
+                this.tardisMatProgress += 0.0035; 
+                if (this.tardisMatProgress > 1.0) this.tardisMatProgress = 1.0;
+                
+                let throb = 0.5 + 0.5 * Math.cos(this.tardisMatProgress * Math.PI * 12);
+                targetAlpha = Math.max(0, Math.min(1, this.tardisMatProgress * throb));
+            } else {
+                targetAlpha = 1.0;
+            }
+            
+            this.setTardisOpacity(targetAlpha);
+        }
+
+        if (this.hyperspaceGroup || this.tardisVortexGroup) {
+            
+            if (this.activeShip === 'tardis') {
+                if (this.hyperState === 'jumping') {
+                    this.warpAmount = this.joltMultiplier; 
+                } else {
+                    this.warpAmount = 0.0;
+                }
+            } else {
+                this.warpAmount = (this.boostCharge * 0.1) + (this.joltMultiplier * 0.9);
+            }
+
+            if (this.warpAmount > 0.01) {
+                const targetObj = (this.activeShip !== 'none') ? this.shipGroup : this.camera;
+                const activeForward = (this.activeShip !== 'none') 
+                    ? new THREE.Vector3(0, 0, 1).applyQuaternion(this.shipGroup.quaternion).normalize()
+                    : direction.clone().normalize();
+
+                if (this.activeShip === 'tardis') {
+                    if (this.hyperspaceGroup) this.hyperspaceGroup.visible = false;
+                    
+                    if (this.tardisVortexGroup) {
+                        this.tardisVortexGroup.visible = true;
+                        
+                        if (this.tardisVortexMat && this.tardisVortexMat.uniforms) {
+                            this.tardisVortexMat.uniforms.warpOpacity.value = this.warpAmount;
+                            this.tardisVortexMat.uniforms.time.value += 0.02;
+                        }
+                        
+                        this.tardisVortexGroup.rotateZ(0.05);
+
+                        this.tardisVortexGroup.position.copy(targetObj.position);
+                        this.tardisVortexGroup.lookAt(targetObj.position.clone().add(activeForward));
+                    }
+                } else {
+                    if (this.tardisVortexGroup) this.tardisVortexGroup.visible = false;
+
+                    if (this.hyperspaceGroup) {
+                        this.hyperspaceGroup.visible = true;
+                        this.hyperspaceLines.material.opacity = this.warpAmount * 0.8;
+
+                        this.hyperspaceGroup.position.copy(targetObj.position);
+                        this.hyperspaceGroup.lookAt(targetObj.position.clone().add(activeForward));
+
+                        const baseSpeed = 200.0 * this.warpAmount;
+                        const stretchAmount = 600.0 * this.warpAmount; 
+                        
+                        const thickness = 2.0 + (this.warpAmount * 4.0);
+
+                        for (let i = 0; i < 3000; i++) {
+                            let data = this.streakData[i];
+                            data.z += data.v * baseSpeed;
+                            
+                            if (data.z > 500) data.z -= 3500;
+                            
+                            const length = stretchAmount + (data.v * 50);
+                            
+                            this.dummyObj.position.set(data.x, data.y, data.z - (length * 0.5));
+                            this.dummyObj.scale.set(thickness, thickness, length);
+                            this.dummyObj.updateMatrix();
+                            
+                            this.hyperspaceLines.setMatrixAt(i, this.dummyObj.matrix);
+                        }
+                        
+                        this.hyperspaceLines.instanceMatrix.needsUpdate = true;
+                    }
+                }
+
+                if (this.camera) {
+                    this.camera.fov = 50 + (25 * Math.pow(this.warpAmount, 2));
+                    this.camera.updateProjectionMatrix();
+                }
+            } else {
+                if (this.hyperspaceGroup) this.hyperspaceGroup.visible = false;
+                if (this.tardisVortexGroup) this.tardisVortexGroup.visible = false;
+
+                if (this.camera && this.camera.fov !== 50) {
+                    this.camera.fov = 50;
+                    this.camera.updateProjectionMatrix();
+                }
+            }
         }
 
         this.resolveCollisions();
