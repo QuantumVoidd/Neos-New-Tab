@@ -5,7 +5,7 @@
 const SystemLogger = {
     container: null,
     maxLogs: 50,
-    matrixChars: "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789",
+    matrixChars: "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ",
     
     init: function() {
         this.container = document.getElementById('system-log-content');
@@ -21,7 +21,8 @@ const SystemLogger = {
 
     sanitize: function(str) {
         if (!str) return null;
-        const clean = str.replace(/[^\x20-\x7E]/g, '').trim();
+        // FIX: Coerce the input to a string to prevent 'str.replace is not a function'
+        const clean = String(str).replace(/[^\x20-\x7E]/g, '').trim();
         return clean.length > 0 ? clean : null;
     },
 

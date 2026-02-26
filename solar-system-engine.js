@@ -1,5 +1,6 @@
-class SolarSystemApp {
+class SolarSystemEngine extends SolarSystemAssets {
     constructor() {
+        super(); // Initialize parent class
         this.isActive = false;
         this.planets = {}; 
         
@@ -17,11 +18,11 @@ class SolarSystemApp {
         this.targetLookAt = new THREE.Vector3(0, 0, 0);
         this.currentLookAt = new THREE.Vector3(0, 0, 0);
         
-        this.currentFlySpeed = 12.0 * this.scaleFactor; // Adjusted for new base speed
+        this.currentFlySpeed = 12.0 * this.scaleFactor; 
         this.zoomLevel = 5.0; 
 
         // Manual Flight Controls State
-        this.keys = { w: false, a: false, s: false, d: false, arrowup: false, arrowdown: false, shift: false, q: false, e: false, space: false };
+        this.keys = { w: false, a: false, s: false, d: false, arrowup: false, arrowdown: false, shift: false, q: false, e: false, space: false, digit1: false, digit2: false };
         this.mouse = new THREE.Vector2();
         this.isDragging = false;
         this.yaw = 0;
@@ -31,14 +32,26 @@ class SolarSystemApp {
         this.isBoosting = false;
         this.boostCharge = 0;
         this.joltMultiplier = 0;
-        this.hyperState = 'idle'; // Tracks audio states: idle, charging, jumping, exiting
-        this.tardisMatProgress = 0.0; // Tracks the rematerialization animation
+        this.hyperState = 'idle'; 
+        this.tardisMatProgress = 0.0; 
         
         // FPS Limiting and Tracking
-        this.targetFPS = 60; // Default locked to 60
+        // Load saved FPS or default to 60
+        this.targetFPS = parseInt(localStorage.getItem('solarSystemTargetFPS')) || 60; 
         this.lastRenderTime = performance.now();
         this.fpsCalcTime = performance.now();
         this.framesThisSecond = 0;
+
+        // --- REAL TIME SIMULATION STATE ---
+        this.simDate = new Date();
+        this.j2000Epoch = new Date('2000-01-01T12:00:00Z').getTime(); // Added Base Epoch
+        this.timeScale = 1.0; 
+        
+        // True Real-Time Radians per Millisecond
+        // 1 Earth Year = 31,556,952,000 ms
+        this.baseOrb = (2 * Math.PI) / 31556952000; 
+        // 1 Earth Day = 86,400,000 ms
+        this.baseRot = (2 * Math.PI) / 86400000;    
 
         this.getTexUrl = (path) => (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) ? chrome.runtime.getURL(path) : path;
 
@@ -63,10 +76,34 @@ class SolarSystemApp {
         this.gpDPadLeftDown = false;
         this.gpDPadRightDown = false;
         this.gpYDown = false; 
+        this.gpXDown = false; 
+        this.gpSelectDown = false; // Map toggle state
 
-        // Ship State
+        // Ship & Rover State
         this.activeShip = 'none';
         this.shipView = '3rd';
+        this.isDrivingRover = false;
+        this.activeSurfaceVehicle = 'none'; // 'none', 'rover', 'sev'
+        this.showRoverPrompt = false;
+        this.promptType = 'none'; // 'mars' or 'generic'
+        this.roverHeading = 0;
+        
+        // Rover specific camera orbit angles
+        this.roverCamYaw = 0;
+        this.roverCamPitch = -0.2; // Initialize looking slightly down at the rover
+        this.lastRoverLookTime = 0; // Tracks delay for auto-centering
+
+        // Map & Route Planning State
+        this.isMapOpen = false;
+        this.activeWaypoint = null;
+        this.mapEntities = []; 
+        this.mapZoom = 1.0;
+        this.mapAngle = 0;
+        this.isMapDragging = false;
+        this.mapDragStart = { x: 0, y: 0 };
+        this.mapDragStartAngle = 0;
+
+        // Models
         this.tieModel = null;
         this.falconModel = null;
         this.planetExpressModel = null;
@@ -76,10 +113,15 @@ class SolarSystemApp {
         this.xwingCockpitModel = null;
         this.tardisModel = null;
         this.enterpriseModel = null;
-
-        // Realistic Relative Timing Multipliers
-        this.baseOrb = 0.001; 
-        this.baseRot = 0.01;  
+        this.globalHawkModel = null;
+        this.saturnVModel = null;
+        this.jupiterCModel = null;
+        
+        // Surface Vehicles
+        this.roverModel = null; // Perseverance (Mars only)
+        this.sevModel = null;   // SEV (Global)
+        this.sevGroup = null;   // Container for SEV
+        this.currentPlanetSurface = null; // The planet object we are currently driving on
 
         this.planetStats = {
             sun: "Type: Yellow Dwarf\nMass: 330,000 Earths",
@@ -88,9 +130,22 @@ class SolarSystemApp {
             earth: "Type: Terrestrial\nDay: 24h",
             moon: "Type: Satellite\nDay: 27d",
             mars: "Type: Terrestrial\nDay: 24.6h",
+            phobos: "Type: Satellite\nDay: 0.3d",
+            deimos: "Type: Satellite\nDay: 1.26d",
             ceres: "Type: Dwarf Planet\nDay: 9h",
             jupiter: "Type: Gas Giant\nDay: 10h",
+            io: "Type: Satellite\nDay: 1.77d",
+            europa: "Type: Satellite\nDay: 3.55d",
+            ganymede: "Type: Satellite\nDay: 7.15d",
+            callisto: "Type: Satellite\nDay: 16.7d",
             saturn: "Type: Gas Giant\nDay: 10.7h",
+            mimas: "Type: Satellite\nDay: 0.94d",
+            enceladus: "Type: Satellite\nDay: 1.37d",
+            tethys: "Type: Satellite\nDay: 1.88d",
+            dione: "Type: Satellite\nDay: 2.73d",
+            rhea: "Type: Satellite\nDay: 4.51d",
+            titan: "Type: Satellite\nDay: 15.9d",
+            iapetus: "Type: Satellite\nDay: 79.3d",
             neptune: "Type: Ice Giant\nDay: 16h",
             pluto: "Type: Dwarf Planet\nDay: 6.4d",
             charon: "Type: Satellite\nDay: 6.4d",
@@ -101,17 +156,61 @@ class SolarSystemApp {
             milkyway: "Type: Barred Spiral Galaxy\nDiameter: 100,000 ly\nStars: ~400 Billion",
             gateway: "Type: Space Station\nOrbit: NRHO (Moon)",
             iss: "Type: Space Station\nOrbit: LEO (Earth)",
-            apollo: "Type: Lunar Lander\nLocation: Moon Surface"
+            apollo: "Type: Lunar Lander\nLocation: Moon Surface",
+            rover: "Type: Surface Rover\nMission: Perseverance 2020\nLocation: Jezero Crater, Mars"
         };
 
         this.initialized = false;
+        this.hudVisible = true;
+        this.uiColor = localStorage.getItem('solarSystemUIColor') || '#00ff41';
 
         this.createUI();
-        this.createEngineMenu();
+        this.createEngineMenu(); // Pulled from the parent class (SolarSystemAssets)
         this.createStatsOverlay();
+        this.setUIColor(this.uiColor); 
+        
         this.initThree();
         this.buildSolarSystem();
         this.addEventListeners();
+    }
+
+    setUIColor(hex) {
+        this.uiColor = hex;
+        localStorage.setItem('solarSystemUIColor', hex);
+        
+        // Extract RGB components for rgba() capability in CSS variables
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        
+        if (this.container) {
+            this.container.style.setProperty('--ui-color', hex);
+            this.container.style.setProperty('--ui-rgb', `${r}, ${g}, ${b}`);
+        }
+    }
+
+    // --- ABSOLUTE TIME POSITIONING ALGORITHM ---
+    syncPositionsToDate(targetDate) {
+        const timeDiff = targetDate.getTime() - this.j2000Epoch;
+        
+        for (const key in this.planets) {
+            const p = this.planets[key];
+            if (!p.mesh) continue;
+            
+            // Calculate absolute orbital position
+            if (p.orbitPivot) {
+                p.orbitPivot.rotation.y = (p.basePhase || 0) + (p.orbitSpeed * timeDiff);
+            }
+            
+            // Calculate absolute axial rotation (excluding sun, blackhole, milkyway which use shaders/specials)
+            if (p.mesh && key !== 'sun' && key !== 'blackhole' && key !== 'milkyway') {
+                p.mesh.rotation.y = (p.rotationSpeed * timeDiff);
+            }
+        }
+        
+        // Sync Asteroid Fields
+        if (this.mainAsteroidBelt) this.mainAsteroidBelt.rotation.y = -this.baseOrb * 0.1 * timeDiff;
+        if (this.kuiperBelt) this.kuiperBelt.rotation.y = -this.baseOrb * 0.05 * timeDiff;
     }
 
     createLoadingScreen() {
@@ -119,13 +218,13 @@ class SolarSystemApp {
         this.loadingContainer.style.cssText = `
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
             background: black; z-index: 10020; display: flex; align-items: center;
-            justify-content: center; flex-direction: column; color: #00ff41;
+            justify-content: center; flex-direction: column; color: var(--ui-color);
             font-family: 'Orbitron', 'Courier New', sans-serif; transition: opacity 3s;
         `;
         
         const text = document.createElement('h1');
         text.textContent = "INITIALIZING SOLAR SYSTEM...";
-        text.style.cssText = "z-index: 10021; text-shadow: 0 0 10px #00ff41; letter-spacing: 3px;";
+        text.style.cssText = "z-index: 10021; text-shadow: 0 0 10px var(--ui-color); letter-spacing: 3px;";
         this.loadingContainer.appendChild(text);
 
         this.container.appendChild(this.loadingContainer);
@@ -146,353 +245,635 @@ class SolarSystemApp {
         // --- HUD OVERLAY (FPS & Coordinates) ---
         this.hudContainer = document.createElement('div');
         this.hudContainer.style.cssText = `
-            position: absolute; top: 20px; left: 50px; 
-            color: #00ff41; font-family: 'Orbitron', 'Courier New', sans-serif;
-            font-size: 0.85rem; text-shadow: 0 0 5px #00ff41; z-index: 10003; pointer-events: none;
-            background: rgba(0, 0, 0, 0.4); padding: 12px 15px; border-radius: 4px; 
-            border: 1px solid rgba(0,255,65,0.2); backdrop-filter: blur(5px);
+            position: absolute; top: 25px; left: 50%; transform: translateX(-50%);
+            color: var(--ui-color); font-family: 'Orbitron', 'Courier New', sans-serif;
+            font-size: 0.8rem; text-shadow: 0 0 5px var(--ui-color); z-index: 10003; pointer-events: none;
+            background: rgba(0, 0, 0, 0.7); padding: 10px 30px; border-radius: 50px; 
+            border: 1px solid rgba(var(--ui-rgb), 0.4); backdrop-filter: blur(5px);
+            box-shadow: 0 0 15px rgba(var(--ui-rgb), 0.2);
+            text-align: center; transition: opacity 0.3s ease; display: flex; gap: 20px;
         `;
         
         this.fpsDisplay = document.createElement('div');
         this.fpsDisplay.textContent = "FPS: --";
-        this.fpsDisplay.style.marginBottom = "8px";
         this.fpsDisplay.style.fontWeight = "bold";
         
         this.coordDisplay = document.createElement('div');
         this.coordDisplay.textContent = "X: 0 | Y: 0 | Z: 0";
-        this.coordDisplay.style.fontSize = "0.75rem";
-        this.coordDisplay.style.opacity = "0.8";
+        this.coordDisplay.style.opacity = "0.9";
         
         this.hudContainer.appendChild(this.fpsDisplay);
         this.hudContainer.appendChild(this.coordDisplay);
         this.container.appendChild(this.hudContainer);
         // --------------------------------------------
 
-        const trigger = document.createElement('div');
-        trigger.style.cssText = `
-            position: absolute; right: 0; top: 0; width: 30px; height: 100%;
-            cursor: pointer; display: flex; align-items: center; justify-content: center;
-            background: transparent; z-index: 10011;
-        `;
-        
-        const indicator = document.createElement('div');
-        indicator.textContent = '◀';
-        indicator.style.cssText = `color: #fff; text-shadow: 0 0 5px #fff; opacity: 0.5; transition: 0.3s; font-size: 1.5rem; pointer-events: none;`;
-        trigger.appendChild(indicator);
-
-        this.sidebar = document.createElement('div');
-        this.sidebar.style.cssText = `
-            position: absolute; right: -280px; top: 0; width: 280px; height: 100%;
-            background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(10px);
-            border-left: 1px solid rgba(255, 255, 255, 0.1);
-            z-index: 10010; display: flex; flex-direction: column; padding: 25px;
-            box-sizing: border-box; color: #fff; overflow-y: auto;
-            transition: right 0.3s ease;
+        // --- TIME CONTROL UI (Bottom Center) ---
+        this.timeContainer = document.createElement('div');
+        this.timeContainer.style.cssText = `
+            position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%);
+            color: var(--ui-color); font-family: 'Orbitron', 'Courier New', sans-serif;
+            font-size: 0.8rem; text-shadow: 0 0 5px var(--ui-color); z-index: 10003; 
+            background: rgba(0, 0, 0, 0.7); padding: 10px 30px; border-radius: 50px; 
+            border: 1px solid rgba(var(--ui-rgb), 0.4); backdrop-filter: blur(5px);
+            box-shadow: 0 0 15px rgba(var(--ui-rgb), 0.2);
+            text-align: center; transition: opacity 0.3s ease; display: flex; align-items: center; gap: 15px;
         `;
 
-        trigger.addEventListener('mouseenter', () => {
-            this.sidebar.style.right = '0';
-            indicator.style.opacity = '0';
-        });
-        this.sidebar.addEventListener('mouseenter', () => {
-            this.sidebar.style.right = '0';
-            indicator.style.opacity = '0';
-        });
-        this.sidebar.addEventListener('mouseleave', () => {
-            this.sidebar.style.right = '-280px';
-            indicator.style.opacity = '0.5';
-        });
-        
-        const header = document.createElement('h2');
-        header.textContent = "SOLAR SYSTEM";
-        header.style.cssText = "margin-top: 0; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 15px; font-size: 1.2rem; letter-spacing: 2px;";
-        this.sidebar.appendChild(header);
-
-        const destLabel = document.createElement('p');
-        destLabel.textContent = "SELECT DESTINATION:";
-        destLabel.style.cssText = "font-size: 0.8rem; opacity: 0.6; margin-bottom: 20px;";
-        this.sidebar.appendChild(destLabel);
-
-        this.destinations = ['Sun', 'Mercury', 'Venus', 'Earth', 'Moon', 'Mars', 'Ceres', 'Jupiter', 'Saturn', 'Neptune', 'Pluto', 'Charon', 'Haumea', 'Makemake', 'Eris', 'BlackHole', 'MilkyWay', 'Gateway', 'ISS', 'Apollo'];
-        this.navButtons = [];
-
-        this.destinations.forEach((dest, index) => {
+        const createBtn = (html, title, onClick) => {
             const btn = document.createElement('button');
-            btn.textContent = dest.toUpperCase();
-            btn.dataset.index = index;
+            btn.innerHTML = html;
+            btn.title = title;
             btn.style.cssText = `
-                background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #fff;
-                padding: 12px; margin-bottom: 10px; cursor: pointer; transition: 0.3s;
-                text-align: left; font-family: inherit; font-size: 0.9rem; letter-spacing: 1px;
-                border-radius: 4px;
+                background: transparent; border: 1px solid rgba(var(--ui-rgb), 0.5); color: var(--ui-color);
+                border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;
+                cursor: pointer; font-size: 0.9rem; transition: 0.2s; padding: 0; text-shadow: 0 0 5px var(--ui-color);
             `;
-            btn.addEventListener('mouseover', () => btn.style.background = 'rgba(255,255,255,0.1)');
-            btn.addEventListener('mouseout', () => {
-                if(btn.dataset.active !== 'true') btn.style.background = 'transparent';
-            });
-            btn.addEventListener('click', () => {
-                this.triggerDestination(index);
-            });
-            this.navButtons.push(btn);
-            this.sidebar.appendChild(btn);
-        });
-
-        const helpText = document.createElement('div');
-        helpText.innerHTML = "<b>W S / L-Stick Y</b> : Pitch<br><b>A D / L-Stick X</b> : Steer (Yaw)<br><b>Q E / LB RB</b> : Roll<br><b>Space / RT</b> : Accelerate<br><b>Shift / LT</b> : Boost<br><b>Mouse / R-Stick</b> : Look Around<br><b>D-Pad L/R</b> : Cycle Planets<br><b>Y Button</b> : Switch Ship View";
-        helpText.style.cssText = "margin-top: auto; font-size: 0.75rem; opacity: 0.5; line-height: 1.8; margin-bottom: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;";
-        this.sidebar.appendChild(helpText);
-
-        // --- FULLSCREEN BUTTON ---
-        const fsBtn = document.createElement('button');
-        fsBtn.textContent = 'TOGGLE FULLSCREEN';
-        fsBtn.style.cssText = `
-            background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; padding: 12px; margin-bottom: 15px;
-            cursor: pointer; font-family: inherit; font-weight: bold; border-radius: 4px;
-            text-transform: uppercase; letter-spacing: 1px; transition: 0.2s;
-        `;
-        fsBtn.addEventListener('mouseover', () => fsBtn.style.background = 'rgba(255,255,255,0.1)');
-        fsBtn.addEventListener('mouseout', () => fsBtn.style.background = 'transparent');
-        fsBtn.addEventListener('click', () => {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(err => {
-                    console.log(`Error attempting to enable fullscreen: ${err.message}`);
-                });
-            } else {
-                document.exitFullscreen();
-            }
-        });
-        this.sidebar.appendChild(fsBtn);
-
-        const exitBtn = document.createElement('button');
-        exitBtn.textContent = 'EXIT TO OS';
-        exitBtn.style.cssText = `
-            background: #ff3333; border: none; color: white; padding: 15px;
-            cursor: pointer; font-family: inherit; font-weight: bold; border-radius: 4px;
-            text-transform: uppercase; letter-spacing: 1px; transition: 0.2s;
-        `;
-        exitBtn.addEventListener('mouseover', () => exitBtn.style.background = '#ff6666');
-        exitBtn.addEventListener('mouseout', () => exitBtn.style.background = '#ff3333');
-        exitBtn.addEventListener('click', () => this.close());
-        this.sidebar.appendChild(exitBtn);
-
-        this.container.appendChild(trigger);
-        this.container.appendChild(this.sidebar);
-    }
-
-    createEngineMenu() {
-        this.engineSidebar = document.createElement('div');
-        this.engineSidebar.style.cssText = `
-            position: absolute; left: -350px; top: 0; width: 350px; height: 100%;
-            background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px);
-            border-right: 1px solid rgba(0, 255, 65, 0.3);
-            z-index: 10010; display: flex; flex-direction: row;
-            box-sizing: border-box; color: #00ff41;
-            transition: left 0.3s ease;
-        `;
-
-        const trigger = document.createElement('div');
-        trigger.style.cssText = `
-            position: absolute; left: 0; top: 0; width: 30px; height: 100%;
-            cursor: pointer; display: flex; align-items: center; justify-content: center;
-            background: transparent; z-index: 10011;
-        `;
-        
-        const indicator = document.createElement('div');
-        indicator.textContent = '▶';
-        indicator.style.cssText = `color: #00ff41; text-shadow: 0 0 5px #00ff41; opacity: 0.5; transition: 0.3s; font-size: 1.5rem; pointer-events: none;`;
-        trigger.appendChild(indicator);
-
-        trigger.addEventListener('mouseenter', () => { this.engineSidebar.style.left = '0'; indicator.style.opacity = '0'; });
-        this.engineSidebar.addEventListener('mouseenter', () => { this.engineSidebar.style.left = '0'; indicator.style.opacity = '0'; });
-        this.engineSidebar.addEventListener('mouseleave', () => { this.engineSidebar.style.left = '-350px'; indicator.style.opacity = '0.5'; });
-
-        const navCol = document.createElement('div');
-        navCol.style.cssText = `width: 120px; border-right: 1px solid rgba(0, 255, 65, 0.2); display: flex; flex-direction: column; padding-top: 20px;`;
-        
-        const createTabBtn = (id, text, active) => {
-            const btn = document.createElement('div');
-            btn.textContent = text;
-            btn.style.cssText = `
-                padding: 15px 10px; cursor: pointer; text-transform: uppercase; font-size: 0.85rem;
-                font-weight: bold; transition: 0.2s; background: ${active ? 'rgba(0, 255, 65, 0.1)' : 'transparent'};
-                border-left: 3px solid ${active ? '#00ff41' : 'transparent'};
-            `;
-            btn.onclick = () => {
-                document.querySelectorAll('.engine-tab-btn').forEach(b => {
-                    b.style.background = 'transparent'; b.style.borderLeft = '3px solid transparent';
-                });
-                btn.style.background = 'rgba(0, 255, 65, 0.1)'; btn.style.borderLeft = '3px solid #00ff41';
-                document.querySelectorAll('.engine-tab-panel').forEach(p => p.style.display = 'none');
-                document.getElementById(id).style.display = 'flex';
-            };
-            btn.className = 'engine-tab-btn';
+            btn.onmouseover = () => { btn.style.background = 'rgba(var(--ui-rgb), 0.3)'; btn.style.boxShadow = '0 0 8px var(--ui-color)'; };
+            btn.onmouseout = () => { btn.style.background = 'transparent'; btn.style.boxShadow = 'none'; };
+            btn.onclick = onClick;
             return btn;
         };
 
-        const planetsBtn = createTabBtn('engine-tab-planets', 'Planets', true);
-        const envBtn = createTabBtn('engine-tab-env', 'ENV', false);
-        const shipsBtn = createTabBtn('engine-tab-ships', 'Ships', false); 
-        const systemBtn = createTabBtn('engine-tab-system', 'System', false);
-        
-        navCol.appendChild(planetsBtn);
-        navCol.appendChild(envBtn);
-        navCol.appendChild(shipsBtn);
-        navCol.appendChild(systemBtn);
+        const btnRev = createBtn('⏪', 'Rewind (10 Days/sec)', () => { this.timeScale = -864000; }); 
+        const btnStop = createBtn('⏹️', 'Stop Time', () => { this.timeScale = 0; });
+        const btnPlay = createBtn('▶️', 'Play (1 Day/sec)', () => { this.timeScale = 86400; });
+        const btnFwd = createBtn('⏩', 'Fast Forward (10 Days/sec)', () => { this.timeScale = 864000; });
+        const btnReset = createBtn('🔄', 'Reset to Real Time', () => { 
+            this.timeScale = 1; 
+            this.simDate = new Date(); 
+            // FIRE ABSOLUTE POSITION SYNC HERE
+            if(this.syncPositionsToDate) {
+                this.syncPositionsToDate(this.simDate);
+            }
+        });
 
-        const contentCol = document.createElement('div');
-        contentCol.style.cssText = `flex-grow: 1; padding: 20px; display: flex; flex-direction: column; overflow-y: auto;`;
+        this.dateDisplay = document.createElement('div');
+        this.dateDisplay.style.fontWeight = "bold";
+        this.dateDisplay.style.minWidth = "230px";
+        this.dateDisplay.style.textAlign = "right";
+        this.dateDisplay.style.pointerEvents = "none";
+
+        this.timeContainer.appendChild(btnRev);
+        this.timeContainer.appendChild(btnStop);
+        this.timeContainer.appendChild(btnPlay);
+        this.timeContainer.appendChild(btnFwd);
+        this.timeContainer.appendChild(btnReset);
+        this.timeContainer.appendChild(this.dateDisplay);
+
+        this.container.appendChild(this.timeContainer);
+        // --------------------------------------------
+
+        // --- ROVER DEPLOYMENT HUD PROMPT ---
+        this.roverPrompt = document.createElement('div');
+        this.roverPrompt.style.cssText = `
+            position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
+            color: var(--ui-color); font-family: 'Orbitron', 'Courier New', sans-serif;
+            font-size: 1.1rem; text-shadow: 0 0 10px var(--ui-color); z-index: 10005;
+            background: rgba(0, 0, 0, 0.8); padding: 15px 30px; border-radius: 50px;
+            border: 2px solid rgba(var(--ui-rgb), 0.6); display: none; font-weight: bold;
+            letter-spacing: 2px; text-transform: uppercase; box-shadow: 0 0 20px rgba(var(--ui-rgb), 0.3);
+            pointer-events: none; transition: opacity 0.3s ease; text-align: center;
+        `;
+        this.container.appendChild(this.roverPrompt);
+        // --------------------------------------------
+
+        // --- HUD TOGGLE ICON (Top Right) ---
+        this.hudToggleIcon = document.createElement('div');
+        this.hudToggleIcon.innerHTML = `
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: 100%;">
+                <circle cx="50" cy="50" r="48" fill="rgba(0, 0, 0, 0.8)" stroke="var(--ui-color)" stroke-width="2"/>
+                <path d="M 20 50 Q 50 20 80 50 Q 50 80 20 50 Z" fill="none" stroke="#ffffff" stroke-width="6"/>
+                <circle cx="50" cy="50" r="14" fill="none" stroke="#ffffff" stroke-width="6"/>
+                <circle cx="50" cy="50" r="6" fill="#ffffff"/>
+            </svg>
+        `;
+        this.hudToggleIcon.style.cssText = `
+            position: absolute; top: 25px; right: 30px; width: 40px; height: 40px;
+            cursor: pointer; z-index: 10020; transition: transform 0.2s, filter 0.2s;
+            filter: drop-shadow(0 0 5px rgba(var(--ui-rgb), 0.5)); opacity: 0.9;
+        `;
+        this.hudToggleIcon.addEventListener('mouseover', () => {
+            this.hudToggleIcon.style.transform = 'scale(1.1)';
+            this.hudToggleIcon.style.filter = 'drop-shadow(0 0 10px var(--ui-color))';
+            this.hudToggleIcon.style.opacity = '1';
+        });
+        this.hudToggleIcon.addEventListener('mouseout', () => {
+            this.hudToggleIcon.style.transform = 'scale(1.0)';
+            this.hudToggleIcon.style.filter = 'drop-shadow(0 0 5px rgba(var(--ui-rgb), 0.5))';
+            this.hudToggleIcon.style.opacity = '0.9';
+        });
+        this.hudToggleIcon.addEventListener('click', () => {
+            this.hudVisible = !this.hudVisible;
+            const op = this.hudVisible ? '1' : '0';
+            const ev = this.hudVisible ? 'auto' : 'none';
+            this.sidebarWrapper.style.opacity = op;
+            this.sidebarWrapper.style.pointerEvents = ev;
+            this.engineSidebarWrapper.style.opacity = op;
+            this.engineSidebarWrapper.style.pointerEvents = ev;
+            if (this.hudContainer && document.getElementById('hud-checkbox') && document.getElementById('hud-checkbox').checked) {
+                this.hudContainer.style.opacity = op;
+                this.timeContainer.style.opacity = op;
+                this.timeContainer.style.pointerEvents = ev;
+            }
+        });
+        this.container.appendChild(this.hudToggleIcon);
+
+
+        // --- RIGHT SIDEBAR (3D Trapezoid with Rounded Corners & Black Backdrop) ---
+        this.sidebarWrapper = document.createElement('div');
+        this.sidebarWrapper.style.cssText = `
+            position: absolute; right: 30px; top: 12%; width: 280px; height: 76%;
+            perspective: 600px; 
+            z-index: 10010; transition: opacity 0.3s ease; pointer-events: none;
+        `;
+
+        this.sidebar = document.createElement('div');
+        this.sidebar.style.cssText = `
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8); 
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(var(--ui-rgb), 0.4); 
+            border-radius: 25px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.9); 
+            transform: rotateY(-25deg); 
+            transform-origin: right center;
+            display: flex; flex-direction: column; 
+            padding: 30px 25px;
+            box-sizing: border-box; color: #fff; overflow-y: auto; overflow-x: hidden;
+            pointer-events: auto;
+        `;
         
         const header = document.createElement('h2');
-        header.textContent = "BETA";
-        header.style.cssText = "margin-top: 0; border-bottom: 1px solid rgba(0,255,65,0.2); padding-bottom: 15px; font-size: 1.2rem; letter-spacing: 2px;";
-        contentCol.appendChild(header);
+        header.textContent = "NAVIGATION";
+        header.style.cssText = "margin-top: 0; text-align: center; margin-bottom: 25px; font-size: 1.1rem; letter-spacing: 3px; color: var(--ui-color); text-shadow: 0 0 5px var(--ui-color);";
+        this.sidebar.appendChild(header);
 
-        // --- PLANETS TAB ---
-        const planetsTab = document.createElement('div');
-        planetsTab.id = 'engine-tab-planets';
-        planetsTab.className = 'engine-tab-panel';
-        planetsTab.style.cssText = "display: flex; flex-direction: column;";
-        
-        const createSlider = (label, val, onChange) => {
-            const container = document.createElement('div');
-            container.style.cssText = "margin-bottom: 20px;";
-            const lbl = document.createElement('div'); lbl.textContent = label; lbl.style.fontSize = "0.8rem"; lbl.style.marginBottom = "5px";
-            const slider = document.createElement('input'); slider.type = "range"; slider.min = "0"; slider.max = "1"; slider.step = "0.01"; slider.value = val;
-            slider.style.width = "100%"; slider.style.accentColor = "#00ff41";
-            slider.oninput = (e) => onChange(parseFloat(e.target.value));
-            container.appendChild(lbl); container.appendChild(slider);
-            return container;
-        };
-        
-        planetsTab.appendChild(createSlider("Saturn Ring Opacity", 0.9, (v) => {
-            if(this.saturnRingMat) this.saturnRingMat.opacity = v;
-        }));
-        planetsTab.appendChild(createSlider("Earth Clouds Opacity", 0.8, (v) => {
-            if(this.earthCloudMat) this.earthCloudMat.opacity = v;
-        }));
+        // --- MAP TOGGLE BUTTON (Added right under Navigation header) ---
+        const mapBtn = document.createElement('button');
+        mapBtn.innerHTML = "🗺️ ASTROMETRICS MAP";
+        mapBtn.style.cssText = `
+            background: rgba(0, 0, 0, 0.6); border: 2px solid var(--ui-color); color: var(--ui-color);
+            padding: 12px 10px; margin-bottom: 20px; cursor: pointer; transition: all 0.25s ease;
+            text-align: center; font-family: inherit; font-size: 0.85rem; font-weight: bold; letter-spacing: 2px;
+            border-radius: 50px; width: 100%; display: block; box-shadow: 0 0 15px rgba(var(--ui-rgb), 0.2);
+            text-shadow: 0 0 5px var(--ui-color);
+        `;
+        mapBtn.addEventListener('mouseover', () => {
+            mapBtn.style.background = 'rgba(var(--ui-rgb), 0.3)';
+            mapBtn.style.transform = 'scale(1.05)';
+        });
+        mapBtn.addEventListener('mouseout', () => {
+            mapBtn.style.background = 'rgba(0, 0, 0, 0.6)';
+            mapBtn.style.transform = 'scale(1.0)';
+        });
+        mapBtn.addEventListener('click', () => this.toggleMap());
+        this.sidebar.appendChild(mapBtn);
 
-        // --- ENVIRONMENT TAB ---
-        const envTab = document.createElement('div');
-        envTab.id = 'engine-tab-env';
-        envTab.className = 'engine-tab-panel';
-        envTab.style.cssText = "display: none; flex-direction: column;";
-        
-        const toggleContainer = document.createElement('div');
-        toggleContainer.style.cssText = "margin-bottom: 20px; display: flex; align-items: center;";
-        const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = true; cb.style.accentColor = "#00ff41"; cb.style.marginRight = "10px";
-        cb.onchange = (e) => {
-            const v = e.target.checked;
-            if(this.mainAsteroidBelt) this.mainAsteroidBelt.visible = v;
-            if(this.kuiperBelt) this.kuiperBelt.visible = v;
-        };
-        const cbLbl = document.createElement('span'); cbLbl.textContent = "Enable Asteroid Fields"; cbLbl.style.fontSize = "0.85rem";
-        toggleContainer.appendChild(cb); toggleContainer.appendChild(cbLbl);
-        envTab.appendChild(toggleContainer);
+        this.destinations = [];
+        this.navButtons = [];
 
-        // --- SHIPS TAB ---
-        const shipsTab = document.createElement('div');
-        shipsTab.id = 'engine-tab-ships';
-        shipsTab.className = 'engine-tab-panel';
-        shipsTab.style.cssText = "display: none; flex-direction: column;";
+        const destinationGroups = [
+            { label: 'STARS & GALAXIES', items: ['Sun', 'BlackHole', 'MilkyWay'] },
+            { label: 'PLANETS', items: ['Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Neptune'] },
+            { label: 'DWARF PLANETS', items: ['Ceres', 'Pluto', 'Haumea', 'Makemake', 'Eris'] },
+            { label: 'MOONS', items: ['Moon', 'Phobos', 'Deimos', 'Io', 'Europa', 'Ganymede', 'Callisto', 'Mimas', 'Enceladus', 'Tethys', 'Dione', 'Rhea', 'Titan', 'Iapetus', 'Charon'] },
+            { label: 'STATIONS & CRAFT', items: ['Gateway', 'ISS', 'Apollo', 'Rover'] }
+        ];
 
-        const createRadio = (name, value, label, checked) => {
-            const container = document.createElement('div');
-            container.style.cssText = "margin-bottom: 15px; display: flex; align-items: center;";
-            const rb = document.createElement('input'); 
-            rb.type = 'radio'; rb.name = name; rb.value = value; rb.checked = checked;
-            rb.style.accentColor = "#00ff41"; rb.style.marginRight = "10px";
-            rb.onchange = (e) => {
-                if(e.target.checked) {
-                    this.activeShip = value;
-                    if (value === 'falcon' || value === 'planetexpress' || value === 'benatar' || value === 'tardis' || value === 'enterprise') {
-                        this.shipView = '3rd'; 
+        let indexCounter = 0;
+        destinationGroups.forEach(group => {
+            const grpHeader = document.createElement('div');
+            grpHeader.textContent = group.label;
+            grpHeader.style.cssText = "font-size: 0.75rem; color: #888; margin-top: 20px; margin-bottom: 5px; letter-spacing: 2px; text-transform: uppercase;";
+            this.sidebar.appendChild(grpHeader);
+
+            const hr = document.createElement('hr');
+            hr.style.cssText = "border: 0; border-top: 1px solid rgba(var(--ui-rgb), 0.3); margin-bottom: 12px; width: 100%;";
+            this.sidebar.appendChild(hr);
+
+            group.items.forEach(dest => {
+                this.destinations.push(dest);
+                const btn = document.createElement('button');
+                btn.textContent = dest.toUpperCase();
+                btn.dataset.index = indexCounter;
+                btn.style.cssText = `
+                    background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(var(--ui-rgb), 0.5); color: var(--ui-color);
+                    padding: 10px 20px; margin-bottom: 10px; cursor: pointer; transition: all 0.25s ease;
+                    text-align: center; font-family: inherit; font-size: 0.85rem; letter-spacing: 2px;
+                    border-radius: 50px; width: 100%; display: block;
+                `;
+                btn.addEventListener('mouseover', () => {
+                    btn.style.background = 'rgba(var(--ui-rgb), 0.2)';
+                    btn.style.boxShadow = '0 0 10px rgba(var(--ui-rgb), 0.3)';
+                    btn.style.transform = 'scale(1.03)';
+                });
+                btn.addEventListener('mouseout', () => {
+                    btn.style.transform = 'scale(1.0)';
+                    if(btn.dataset.active !== 'true') {
+                        btn.style.background = 'rgba(0, 0, 0, 0.6)';
+                        btn.style.boxShadow = 'none';
                     }
-                    if (value !== 'none') {
-                        this.shipGroup.position.copy(this.camera.position);
-                        
-                        // Set the ship's initial rotation to match the camera's looking direction
-                        const shipDir = new THREE.Vector3(
-                            Math.cos(this.pitch) * Math.sin(this.yaw),
-                            Math.sin(this.pitch),
-                            Math.cos(this.pitch) * Math.cos(this.yaw)
-                        ).normalize();
-                        this.shipGroup.lookAt(this.shipGroup.position.clone().add(shipDir));
-                    }
-                    this.updateShipVisibility();
-                }
-            };
-            const rbLbl = document.createElement('span'); rbLbl.textContent = label; rbLbl.style.fontSize = "0.85rem";
-            container.appendChild(rb); container.appendChild(rbLbl);
-            return container;
-        };
+                });
+                const currentIndex = indexCounter;
+                btn.addEventListener('click', () => {
+                    this.triggerDestination(currentIndex);
+                });
+                this.navButtons.push(btn);
+                this.sidebar.appendChild(btn);
+                indexCounter++;
+            });
+        });
 
-        shipsTab.appendChild(createRadio('ship-select', 'none', 'None (Free Cam)', true));
-        shipsTab.appendChild(createRadio('ship-select', 'tie', 'ADV Tie Fighter', false));
-        shipsTab.appendChild(createRadio('ship-select', 'xwing', 'X-Wing', false));
-        shipsTab.appendChild(createRadio('ship-select', 'falcon', 'Millennium Falcon', false));
-        shipsTab.appendChild(createRadio('ship-select', 'planetexpress', 'Planet Express', false));
-        shipsTab.appendChild(createRadio('ship-select', 'rickmorty', 'Rick & Morty Cruiser', false));
-        shipsTab.appendChild(createRadio('ship-select', 'benatar', 'Benatar', false));
-        shipsTab.appendChild(createRadio('ship-select', 'tardis', 'TARDIS', false));
-        shipsTab.appendChild(createRadio('ship-select', 'enterprise', 'USS Enterprise', false));
+        this.sidebarWrapper.appendChild(this.sidebar);
+        this.container.appendChild(this.sidebarWrapper);
 
-        const shipHelpText = document.createElement('div');
-        shipHelpText.innerHTML = "<i>Press 'Y' on Gamepad or Keyboard to toggle 1st/3rd person view on supported ships.</i>";
-        shipHelpText.style.cssText = "margin-top: 15px; font-size: 0.7rem; opacity: 0.6; line-height: 1.5; color: #aaa;";
-        shipsTab.appendChild(shipHelpText);
+        // --- HOLOGRAPHIC NAV-MAP OVERLAY ---
+        this.mapContainer = document.createElement('div');
+        this.mapContainer.style.cssText = `
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 70vw; height: 80vh; 
+            background: rgba(0, 20, 20, 0.85);
+            background-image: repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(var(--ui-rgb), 0.03) 2px, rgba(var(--ui-rgb), 0.03) 3px);
+            border: 2px solid var(--ui-color); border-radius: 20px;
+            box-shadow: 0 0 50px rgba(var(--ui-rgb), 0.4), inset 0 0 50px rgba(var(--ui-rgb), 0.1);
+            backdrop-filter: blur(15px); display: none; z-index: 10015;
+            flex-direction: column; align-items: center; padding: 0; box-sizing: border-box;
+            pointer-events: auto; overflow: hidden;
+        `;
+        
+        const mapHeader = document.createElement('div');
+        mapHeader.style.cssText = "width: 100%; padding: 20px 0; background: rgba(var(--ui-rgb), 0.1); border-bottom: 1px solid rgba(var(--ui-rgb), 0.4); text-align: center;";
+        
+        const mapTitle = document.createElement('h2');
+        mapTitle.textContent = "HOLOGRAPHIC ASTROMETRICS";
+        mapTitle.style.cssText = "color: var(--ui-color); margin: 0; letter-spacing: 6px; font-size: 1.4rem; text-shadow: 0 0 10px var(--ui-color); text-transform: uppercase;";
+        mapHeader.appendChild(mapTitle);
+        this.mapContainer.appendChild(mapHeader);
 
-        // --- SYSTEM TAB ---
-        const systemTab = document.createElement('div');
-        systemTab.id = 'engine-tab-system';
-        systemTab.className = 'engine-tab-panel';
-        systemTab.style.cssText = "display: none; flex-direction: column;";
+        this.mapCanvas = document.createElement('canvas');
+        // Set internal resolution higher for sharpness
+        this.mapCanvas.width = 1600; 
+        this.mapCanvas.height = 1000;
+        this.mapCanvas.style.cssText = "flex-grow: 1; min-height: 0; width: 100%; cursor: crosshair; display: block;";
+        this.mapContainer.appendChild(this.mapCanvas);
+        
+        const mapFooter = document.createElement('div');
+        mapFooter.style.cssText = "width: 100%; padding: 15px 0; background: rgba(0, 0, 0, 0.5); border-top: 1px solid rgba(var(--ui-rgb), 0.4); text-align: center;";
+        mapFooter.innerHTML = "LEFT CLICK: SET NAV POINT &nbsp;|&nbsp; SCROLL: ZOOM &nbsp;|&nbsp; DRAG: ROTATE &nbsp;|&nbsp; OBJECTS SCALE LOGARITHMICALLY";
+        mapFooter.style.color = "var(--ui-color)";
+        mapFooter.style.fontSize = "0.8rem";
+        mapFooter.style.letterSpacing = "2px";
+        mapFooter.style.textShadow = "0 0 5px var(--ui-color)";
+        this.mapContainer.appendChild(mapFooter);
 
-        // HUD Toggle
-        const hudToggleBox = document.createElement('div');
-        hudToggleBox.style.cssText = "margin-bottom: 25px; display: flex; align-items: center; border-bottom: 1px solid rgba(0,255,65,0.2); padding-bottom: 15px;";
-        const hudCb = document.createElement('input'); 
-        hudCb.type = 'checkbox'; hudCb.checked = true; hudCb.style.accentColor = "#00ff41"; hudCb.style.marginRight = "10px";
-        hudCb.onchange = (e) => {
-            if (this.hudContainer) this.hudContainer.style.display = e.target.checked ? 'block' : 'none';
-        };
-        const hudCbLbl = document.createElement('span'); hudCbLbl.textContent = "Enable HUD (FPS & Coords)"; hudCbLbl.style.fontSize = "0.85rem";
-        hudToggleBox.appendChild(hudCb); hudToggleBox.appendChild(hudCbLbl);
-        systemTab.appendChild(hudToggleBox);
+        this.container.appendChild(this.mapContainer);
 
-        // FPS Limit Radios
-        const fpsLabel = document.createElement('div');
-        fpsLabel.textContent = "FRAME RATE LIMIT:";
-        fpsLabel.style.fontSize = "0.8rem"; fpsLabel.style.marginBottom = "10px"; fpsLabel.style.opacity = "0.7";
-        systemTab.appendChild(fpsLabel);
+        // Map Canvas Interaction
+        this.mapCanvas.addEventListener('click', (e) => this.handleMapClick(e));
+        
+        // Map Zoom and Drag Handlers
+        this.mapCanvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomSpeed = 0.05;
+            if (e.deltaY < 0) {
+                this.mapZoom = Math.min(this.mapZoom + zoomSpeed, 5.0);
+            } else {
+                this.mapZoom = Math.max(this.mapZoom - zoomSpeed, 0.5);
+            }
+        });
 
-        const createFpsRadio = (name, value, label, checked) => {
-            const container = document.createElement('div');
-            container.style.cssText = "margin-bottom: 15px; display: flex; align-items: center;";
-            const rb = document.createElement('input'); 
-            rb.type = 'radio'; rb.name = name; rb.value = value; rb.checked = checked;
-            rb.style.accentColor = "#00ff41"; rb.style.marginRight = "10px";
-            rb.onchange = (e) => {
-                if(e.target.checked) this.targetFPS = parseInt(value);
-            };
-            const rbLbl = document.createElement('span'); rbLbl.textContent = label; rbLbl.style.fontSize = "0.85rem";
-            container.appendChild(rb); container.appendChild(rbLbl);
-            return container;
-        };
+        this.mapCanvas.addEventListener('mousedown', (e) => {
+            this.isMapDragging = true;
+            this.mapDragStart = { x: e.clientX, y: e.clientY };
+            this.mapDragStartAngle = this.mapAngle;
+        });
 
-        systemTab.appendChild(createFpsRadio('fps-target', '60', '60 FPS (Locked / Default)', true));
-        systemTab.appendChild(createFpsRadio('fps-target', '120', '120 FPS (High Refresh)', false));
+        window.addEventListener('mousemove', (e) => {
+            if (this.isMapDragging && this.isMapOpen) {
+                const deltaX = e.clientX - this.mapDragStart.x;
+                this.mapAngle = this.mapDragStartAngle + (deltaX * 0.005);
+            }
+        });
 
-        contentCol.appendChild(planetsTab);
-        contentCol.appendChild(envTab);
-        contentCol.appendChild(shipsTab);
-        contentCol.appendChild(systemTab); 
-
-        this.engineSidebar.appendChild(navCol);
-        this.engineSidebar.appendChild(contentCol);
-
-        this.container.appendChild(trigger);
-        this.container.appendChild(this.engineSidebar);
+        window.addEventListener('mouseup', () => {
+            this.isMapDragging = false;
+        });
     }
+
+    // --- MAP DRAWING AND LOGIC METHODS ---
+    toggleMap() {
+        this.isMapOpen = !this.isMapOpen;
+        if (this.isMapOpen) {
+            this.mapContainer.style.display = 'flex';
+        } else {
+            this.mapContainer.style.display = 'none';
+        }
+    }
+
+    drawMap() {
+        if (!this.isMapOpen || !this.mapCanvas) return;
+        const ctx = this.mapCanvas.getContext('2d');
+        const cw = this.mapCanvas.width;
+        const ch = this.mapCanvas.height;
+        
+        // --- 1. SETUP CANVAS ---
+        ctx.clearRect(0, 0, cw, ch);
+        ctx.fillStyle = "rgba(0, 10, 10, 0.2)";
+        ctx.fillRect(0, 0, cw, ch);
+
+        const cx = cw / 2;
+        const cy = ch / 2;
+        
+        // Holographic Tilt Factors
+        const tiltX = 1.0;
+        const tiltY = 0.55; // Compresses Z-depth to look like a tilted disk
+        const mapScale = (Math.min(cw, ch) / 2) * 0.95 * this.mapZoom; 
+
+        // --- 2. DRAW HOLOGRAPHIC GRID ---
+        ctx.strokeStyle = `rgba(var(--ui-rgb), 0.15)`;
+        ctx.lineWidth = 1;
+        
+        // Helper for rotation
+        const rotatePoint = (x, y) => {
+            const rx = x * Math.cos(this.mapAngle) - y * Math.sin(this.mapAngle);
+            const ry = x * Math.sin(this.mapAngle) + y * Math.cos(this.mapAngle);
+            return { x: rx, y: ry };
+        };
+        
+        // Concentric ellipses
+        for(let i=1; i<=6; i++) {
+            ctx.beginPath();
+            // Since we are rotating, simple ellipses won't work perfectly if tilted *after* rotation
+            // We draw them as polygons or just 2D circles transformed
+            // Simplified: Draw projected circles
+            for (let a = 0; a <= Math.PI * 2; a += 0.05) {
+                const rBase = (cw/2 * 0.9) * (i/6); // Base radius relative to canvas size, not zoom (fixed grid)
+                // Actually grid should scale with zoom? Usually yes.
+                const r = rBase * this.mapZoom; 
+                
+                const gx = Math.cos(a) * r;
+                const gz = Math.sin(a) * r;
+                
+                // Rotate
+                const rot = rotatePoint(gx, gz);
+                
+                // Tilt projection
+                const px = cx + rot.x * tiltX;
+                const py = cy + rot.y * tiltY;
+                
+                if (a === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.stroke();
+        }
+        
+        // Radial lines
+        for(let i=0; i<12; i++) {
+            const angle = (i / 12) * Math.PI * 2;
+            const r = cw * this.mapZoom; 
+            
+            const gx = Math.cos(angle) * r;
+            const gz = Math.sin(angle) * r;
+            
+            const rot = rotatePoint(gx, gz);
+            
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(cx + rot.x * tiltX, cy + rot.y * tiltY);
+            ctx.stroke();
+        }
+        
+        // --- 3. CALCULATE POSITIONS & ENTITIES ---
+        this.mapEntities = []; // Reset current frame entities
+        const parentMapPositions = {}; // Store parent positions to offset moons
+        
+        const sortedPlanets = Object.keys(this.planets).sort((a, b) => {
+            // Draw order: Sun first, then others by distance so closer things overlap further things if needed
+            if (a === 'sun') return -1; 
+            if (b === 'sun') return 1;
+            return 0; 
+        });
+
+        // First pass: Calculate Sun and Planets (Parents)
+        sortedPlanets.forEach(key => {
+            const p = this.planets[key];
+            if (!p.mesh) return;
+
+            // Determine if it's a moon (has a parent planet in our list)
+            const isMoon = (key !== 'sun' && key !== 'mercury' && key !== 'venus' && key !== 'earth' && key !== 'mars' && key !== 'jupiter' && key !== 'saturn' && key !== 'neptune' && key !== 'uranus' && key !== 'pluto' && key !== 'blackhole' && key !== 'milkyway' && key !== 'ceres' && key !== 'haumea' && key !== 'makemake' && key !== 'eris');
+            
+            if (isMoon) return; // Skip moons in first pass
+
+            const wPos = new THREE.Vector3();
+            p.mesh.updateMatrixWorld(true);
+            p.mesh.getWorldPosition(wPos);
+
+            const dist = wPos.length();
+            if (dist > 4000 * this.scaleFactor * 1.5) return; // Clip distant objects
+
+            // Logarithmic Compression
+            const compression = 0.45; 
+            const scaledDist = Math.pow(dist, compression);
+            const maxScaledDist = Math.pow(3800 * this.scaleFactor, compression);
+            const normalizedDist = scaledDist / maxScaledDist;
+            
+            const r = normalizedDist * mapScale * (1/this.mapZoom * 1000); // Remove zoom from normalization to apply it later properly? 
+            // Actually reusing logic:
+            // mapScale includes this.mapZoom.
+            
+            const rawR = normalizedDist * (Math.min(cw, ch) / 2) * 0.95 * this.mapZoom;
+
+            // Project 3D pos to flat plane
+            const angle = Math.atan2(wPos.z, wPos.x); 
+            
+            // Apply map rotation
+            const rx = Math.cos(angle) * rawR;
+            const rz = Math.sin(angle) * rawR;
+            
+            const rot = rotatePoint(rx, rz);
+            
+            const mx = cx + rot.x * tiltX;
+            const my = cy + rot.y * tiltY;
+
+            parentMapPositions[key] = { x: mx, y: my, realPos: wPos };
+            
+            this.mapEntities.push({
+                key: key,
+                x: mx,
+                y: my,
+                isMoon: false,
+                realPos: wPos
+            });
+        });
+
+        // Second pass: Calculate Moons (relative to parents)
+        sortedPlanets.forEach(key => {
+            if (parentMapPositions[key]) return; // Already processed
+            if (key === 'blackhole' || key === 'milkyway') return;
+
+            const p = this.planets[key];
+            if (!p.mesh) return;
+
+            const wPos = new THREE.Vector3();
+            p.mesh.updateMatrixWorld(true);
+            p.mesh.getWorldPosition(wPos);
+
+            // Find parent
+            let parentKey = 'sun';
+            let minDist = Infinity;
+            // Simple heuristic to find parent based on proximity in the 3D scene
+            for(const pKey in parentMapPositions) {
+                const d = wPos.distanceTo(parentMapPositions[pKey].realPos);
+                if (d < minDist) {
+                    minDist = d;
+                    parentKey = pKey;
+                }
+            }
+
+            if (parentKey && parentMapPositions[parentKey]) {
+                const parent = parentMapPositions[parentKey];
+                
+                // Vector from parent to moon
+                const relX = wPos.x - parent.realPos.x;
+                const relZ = wPos.z - parent.realPos.z;
+                let relAngle = Math.atan2(relZ, relX);
+                
+                // Artificial visual offset: Minimum 30px away, scaled slightly by distance
+                const moonOffset = 35 + (minDist / (50 * this.scaleFactor)) * 10; 
+                
+                // Rotate offset based on map angle? 
+                // We want the moon cluster to rotate with the map, so yes.
+                const rotOffsetX = Math.cos(relAngle) * moonOffset;
+                const rotOffsetZ = Math.sin(relAngle) * moonOffset;
+                
+                // Apply rotation to the offset vector
+                const rot = rotatePoint(rotOffsetX, rotOffsetZ);
+
+                const mx = parent.x + rot.x; // * tiltX is implicitly handled if we consider the moon projection flat relative to parent
+                const my = parent.y + rot.y * tiltY;
+
+                this.mapEntities.push({
+                    key: key,
+                    x: mx,
+                    y: my,
+                    isMoon: true,
+                    parentX: parent.x,
+                    parentY: parent.y
+                });
+            }
+        });
+
+        // --- 4. RENDER ENTITIES ---
+        this.mapEntities.forEach(ent => {
+            const isTarget = (this.activeWaypoint === ent.key);
+            let color = this.uiColor;
+            let size = 4;
+            let label = ent.key.toUpperCase();
+            
+            if (ent.key === 'sun') { color = '#ffff00'; size = 8; }
+            else if (['earth', 'mars', 'jupiter', 'saturn'].includes(ent.key)) { size = 6; }
+            else if (ent.isMoon) { size = 3; color = '#aaaaaa'; }
+
+            // Special Color Override for Nav Target
+            if (isTarget) {
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#ffff00';
+                ctx.fillStyle = '#ffff00';
+            } else {
+                ctx.shadowBlur = 5;
+                ctx.shadowColor = color;
+                ctx.fillStyle = color;
+            }
+
+            if (ent.isMoon) {
+                ctx.beginPath();
+                ctx.moveTo(ent.parentX, ent.parentY);
+                ctx.lineTo(ent.x, ent.y);
+                ctx.strokeStyle = `rgba(var(--ui-rgb), 0.3)`;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+
+            // Draw Blip
+            ctx.beginPath();
+            ctx.arc(ent.x, ent.y, size, 0, Math.PI*2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Draw Label
+            if (!ent.isMoon || isTarget) {
+                ctx.fillStyle = isTarget ? '#ffff00' : `rgba(var(--ui-rgb), 0.9)`;
+                ctx.font = isTarget ? 'bold 13px Orbitron' : '11px Orbitron';
+                ctx.fillText(label, ent.x + 10, ent.y + 4);
+            }
+        });
+
+        // --- 5. DRAW SHIP POS ---
+        const shipTarget = (this.activeShip !== 'none') ? this.shipGroup : this.camera;
+        const sPos = new THREE.Vector3();
+        shipTarget.getWorldPosition(sPos);
+        
+        // Calculate ship map pos using same logic as planets
+        const sDist = sPos.length();
+        const sComp = 0.45;
+        const sScaled = Math.pow(sDist, sComp);
+        const sMax = Math.pow(3800 * this.scaleFactor, sComp);
+        const sNorm = sScaled / sMax;
+        const sR = sNorm * (Math.min(cw, ch) / 2) * 0.95 * this.mapZoom;
+        const sAng = Math.atan2(sPos.z, sPos.x);
+        
+        const sRX = Math.cos(sAng) * sR;
+        const sRZ = Math.sin(sAng) * sR;
+        const sRot = rotatePoint(sRX, sRZ);
+        
+        const sx = cx + sRot.x * tiltX;
+        const sy = cy + sRot.y * tiltY;
+
+        ctx.fillStyle = '#ff00ff';
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#ff00ff';
+        ctx.beginPath();
+        // Triangle ship icon
+        ctx.moveTo(sx, sy - 8);
+        ctx.lineTo(sx - 6, sy + 7);
+        ctx.lineTo(sx + 6, sy + 7);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        
+        ctx.fillStyle = '#ff00ff';
+        ctx.font = 'bold 12px Orbitron';
+        ctx.fillText("YOU", sx + 10, sy + 4);
+    }
+
+    handleMapClick(e) {
+        if(this.isMapDragging) return; // Prevent click on drag end
+        const rect = this.mapCanvas.getBoundingClientRect();
+        const scaleX = this.mapCanvas.width / rect.width;
+        const scaleY = this.mapCanvas.height / rect.height;
+        const clickX = (e.clientX - rect.left) * scaleX;
+        const clickY = (e.clientY - rect.top) * scaleY;
+
+        let closest = null;
+        let minDist = Infinity;
+
+        // Check against the calculated entities from drawMap
+        this.mapEntities.forEach(ent => {
+            const dist = Math.hypot(ent.x - clickX, ent.y - clickY);
+            // Click radius
+            if (dist < 30 && dist < minDist) {
+                minDist = dist;
+                closest = ent.key;
+            }
+        });
+
+        if (closest) {
+            this.activeWaypoint = closest;
+        } else {
+            this.activeWaypoint = null; // Clear waypoint if clicking empty space
+        }
+    }
+    // --------------------------------------
 
     createStatsOverlay() {
         this.statsContainer = document.createElement('div');
@@ -502,6 +883,27 @@ class SolarSystemApp {
         `;
         this.container.appendChild(this.statsContainer);
         this.statLabels = {};
+
+        // --- WAYPOINT GUIDANCE HUD ELEMENTS ---
+        this.waypointMarker = document.createElement('div');
+        this.waypointMarker.style.cssText = `
+            position: absolute; width: 40px; height: 40px; border: 2px solid #ffeb3b; 
+            border-radius: 50%; display: none; z-index: 10004; pointer-events: none; 
+            transform: translate(-50%, -50%); box-shadow: 0 0 15px #ffeb3b inset, 0 0 15px #ffeb3b;
+            transition: opacity 0.2s;
+        `;
+        this.waypointMarker.innerHTML = `<div style="position:absolute;top:50%;left:50%;width:6px;height:6px;background:#ffeb3b;transform:translate(-50%,-50%);border-radius:50%; box-shadow: 0 0 8px #ffeb3b;"></div>`;
+        this.container.appendChild(this.waypointMarker);
+
+        this.waypointHud = document.createElement('div');
+        this.waypointHud.style.cssText = `
+            position: absolute; top: 15%; left: 50%; transform: translateX(-50%); 
+            color: #ffeb3b; font-family: 'Orbitron', 'Courier New', sans-serif; font-size: 1.2rem; 
+            text-shadow: 0 0 10px #ffeb3b; font-weight: bold; display: none; 
+            z-index: 10005; pointer-events: none; text-align: center; letter-spacing: 2px;
+            background: rgba(0, 0, 0, 0.5); padding: 10px 20px; border-radius: 10px; border: 1px solid rgba(255, 235, 59, 0.3);
+        `;
+        this.container.appendChild(this.waypointHud);
     }
 
     initThree() {
@@ -539,12 +941,19 @@ class SolarSystemApp {
         if (this.planetExpressModel) this.planetExpressModel.visible = (this.activeShip === 'planetexpress');
         if (this.rickMortyModel) this.rickMortyModel.visible = (this.activeShip === 'rickmorty');
         if (this.benatarModel) this.benatarModel.visible = (this.activeShip === 'benatar');
-        
-        // NEW SHIPS
         if (this.xwingModel) this.xwingModel.visible = (this.activeShip === 'xwing' && this.shipView === '3rd');
         if (this.xwingCockpitModel) this.xwingCockpitModel.visible = (this.activeShip === 'xwing' && this.shipView === '1st');
         if (this.tardisModel) this.tardisModel.visible = (this.activeShip === 'tardis');
         if (this.enterpriseModel) this.enterpriseModel.visible = (this.activeShip === 'enterprise');
+        if (this.globalHawkModel) this.globalHawkModel.visible = (this.activeShip === 'globalhawk');
+        if (this.shuttleModel) this.shuttleModel.visible = (this.activeShip === 'shuttle');
+        
+        // ROCKETS
+        if (this.saturnVModel) this.saturnVModel.visible = (this.activeShip === 'saturnv');
+        if (this.jupiterCModel) this.jupiterCModel.visible = (this.activeShip === 'jupiterc');
+        if (this.atlasVModel) this.atlasVModel.visible = (this.activeShip === 'atlasv');
+        if (this.nexusModel) this.nexusModel.visible = (this.activeShip === 'nexus');
+        if (this.classicRocketModel) this.classicRocketModel.visible = (this.activeShip === 'classicrocket');
     }
 
     setTardisOpacity(alpha) {
@@ -986,7 +1395,7 @@ class SolarSystemApp {
         mesh.receiveShadow = false;
         systemGroup.add(mesh);
 
-        this.planets[name] = { mesh, orbitPivot, systemGroup, orbitSpeed, rotationSpeed, size };
+        this.planets[name] = { mesh, orbitPivot, systemGroup, orbitSpeed, rotationSpeed, size, basePhase: 0 };
         return this.planets[name];
     }
 
@@ -1260,7 +1669,7 @@ class SolarSystemApp {
         this.createHyperspaceEffect();
         this.createTimeVortexEffect();
 
-        this.createPlanet('sun', 'three-textures/8k_sun.jpg', 218 * S, 0, 0, this.baseOrb / 27, true);
+        this.createPlanet('sun', 'three-textures/8k_sun.jpg', 218 * S, 0, 0, this.baseRot / 27, true);
         this.createPlanet('mercury', 'three-textures/8k_mercury.jpg', 0.76 * S, 300 * S, this.baseOrb * 4.1, this.baseRot / 58);
 
         const venus = this.createPlanet('venus', 'three-textures/8k_venus_surface.jpg', 1.9 * S, 400 * S, this.baseOrb * 1.6, -this.baseRot / 243);
@@ -1291,145 +1700,11 @@ class SolarSystemApp {
         this.planets['moon'] = { 
             mesh: moonMesh, orbitPivot: moonOrbitPivot, 
             rotationSpeed: 0, orbitSpeed: this.baseOrb * 13.5, size: 0.54 * S,
-            visibilityRange: 40 * S, slowZone: 150 * S
+            visibilityRange: 40 * S, slowZone: 150 * S, basePhase: 0
         };
 
         this.shipGroup = new THREE.Group();
         this.scene.add(this.shipGroup);
-
-        gltfLoader.load(this.getTexUrl('three-models/star_wars_galaxies_-_tie_advanced.glb'), (gltf) => {
-            const tie = gltf.scene;
-            fixModelUVs(tie); 
-            tie.scale.set(0.015, 0.015, 0.015);
-            const box = new THREE.Box3().setFromObject(tie);
-            const center = box.getCenter(new THREE.Vector3());
-            tie.position.sub(center); 
-            this.tieModel = new THREE.Group();
-            this.tieModel.add(tie);
-            this.shipGroup.add(this.tieModel);
-            this.updateShipVisibility();
-        });
-
-        gltfLoader.load(this.getTexUrl('three-models/millennium falcon.glb'), (gltf) => {
-            const falcon = gltf.scene;
-            fixModelUVs(falcon); 
-            falcon.scale.set(0.4, 0.4, 0.4); 
-            const box = new THREE.Box3().setFromObject(falcon);
-            const center = box.getCenter(new THREE.Vector3());
-            falcon.position.sub(center);
-            falcon.rotation.y = 0; 
-
-            this.falconModel = new THREE.Group();
-            this.falconModel.add(falcon);
-            this.shipGroup.add(this.falconModel);
-            this.updateShipVisibility();
-        });
-
-        gltfLoader.load(this.getTexUrl('three-models/planet_express_spaceship.glb'), (gltf) => {
-            const ship = gltf.scene;
-            fixModelUVs(ship); 
-            ship.scale.set(0.2, 0.2, 0.2); 
-            
-            const box = new THREE.Box3().setFromObject(ship);
-            const center = box.getCenter(new THREE.Vector3());
-            ship.position.set(-center.x, -center.y, -center.z);
-            
-            const wrapper = new THREE.Group();
-            wrapper.add(ship);
-            wrapper.rotation.y = -Math.PI / 2; 
-            
-            this.planetExpressModel = new THREE.Group();
-            this.planetExpressModel.add(wrapper);
-            this.shipGroup.add(this.planetExpressModel);
-            this.updateShipVisibility();
-        });
-
-        gltfLoader.load(this.getTexUrl('three-models/rick_and_morty_space_ship.glb'), (gltf) => {
-            const ship = gltf.scene;
-            fixModelUVs(ship); 
-            ship.scale.set(1.2, 1.2, 1.5);
-            const box = new THREE.Box3().setFromObject(ship);
-            const center = box.getCenter(new THREE.Vector3());
-            ship.position.sub(center);
-            ship.rotation.y = 0; 
-            
-            this.rickMortyModel = new THREE.Group();
-            this.rickMortyModel.add(ship);
-            this.shipGroup.add(this.rickMortyModel);
-            this.updateShipVisibility();
-        });
-
-        gltfLoader.load(this.getTexUrl('three-models/guardians_of_the_galaxy_avengers_benatar_ship.glb'), (gltf) => {
-            const ship = gltf.scene;
-            fixModelUVs(ship); 
-            ship.scale.set(0.01, 0.01, 0.01);
-            const box = new THREE.Box3().setFromObject(ship);
-            const center = box.getCenter(new THREE.Vector3());
-            ship.position.sub(center);
-            ship.rotation.y = 0; 
-            
-            this.benatarModel = new THREE.Group();
-            this.benatarModel.add(ship);
-            this.shipGroup.add(this.benatarModel);
-            this.updateShipVisibility();
-        });
-
-        gltfLoader.load(this.getTexUrl('three-models/x-wing.glb'), (gltf) => {
-            const ship = gltf.scene;
-            fixModelUVs(ship); 
-            ship.scale.set(0.2, 0.2, 0.2); 
-            const box = new THREE.Box3().setFromObject(ship);
-            const center = box.getCenter(new THREE.Vector3());
-            ship.position.sub(center);
-            ship.rotation.y = 0; 
-            
-            this.xwingModel = new THREE.Group();
-            this.xwingModel.add(ship);
-            this.shipGroup.add(this.xwingModel);
-            this.updateShipVisibility();
-        });
-
-        gltfLoader.load(this.getTexUrl('three-models/x-wing_cockpit_version_2.glb'), (gltf) => {
-            const ship = gltf.scene;
-            fixModelUVs(ship); 
-            ship.scale.set(1.0, 1.0, 1.0);
-            const box = new THREE.Box3().setFromObject(ship);
-            const center = box.getCenter(new THREE.Vector3());
-            ship.position.sub(center);
-            
-            this.xwingCockpitModel = new THREE.Group();
-            this.xwingCockpitModel.add(ship);
-            this.shipGroup.add(this.xwingCockpitModel);
-            this.updateShipVisibility();
-        });
-
-        gltfLoader.load(this.getTexUrl('three-models/tardis.glb'), (gltf) => {
-            const ship = gltf.scene;
-            fixModelUVs(ship); 
-            ship.scale.set(0.5, 0.5, 0.5); 
-            const box = new THREE.Box3().setFromObject(ship);
-            const center = box.getCenter(new THREE.Vector3());
-            ship.position.sub(center);
-            
-            this.tardisModel = new THREE.Group();
-            this.tardisModel.add(ship);
-            this.shipGroup.add(this.tardisModel);
-            this.updateShipVisibility();
-        });
-
-        gltfLoader.load(this.getTexUrl('three-models/u.s.s._enterprise_ncc-1701-a.glb'), (gltf) => {
-            const ship = gltf.scene;
-            fixModelUVs(ship); 
-            ship.scale.set(0.03, 0.03, 0.03); 
-            const box = new THREE.Box3().setFromObject(ship);
-            const center = box.getCenter(new THREE.Vector3());
-            ship.position.sub(center);
-            
-            this.enterpriseModel = new THREE.Group();
-            this.enterpriseModel.add(ship);
-            this.shipGroup.add(this.enterpriseModel);
-            this.updateShipVisibility();
-        });
 
         const gatewayOrbit = new THREE.Group();
         moonOrbitPivot.add(gatewayOrbit);
@@ -1441,24 +1716,12 @@ class SolarSystemApp {
 
         this.planets['gateway'] = { 
             mesh: gatewayGroup, orbitPivot: gatewayOrbit, 
-            rotationSpeed: this.baseRot * 2, orbitSpeed: this.baseOrb * 40, size: 0.05 * S, visibilityRange: 15 * S
+            rotationSpeed: this.baseRot * 2, orbitSpeed: this.baseOrb * 40, size: 0.05 * S, visibilityRange: 15 * S, basePhase: 0
         };
 
         const gatewayEnvMap = loader.load(this.getTexUrl('three-models/Low Lunar Orbit.jpg'));
         gatewayEnvMap.mapping = THREE.EquirectangularReflectionMapping;
-
-        gltfLoader.load(this.getTexUrl('three-models/Gateway Core.glb'), (gltf) => {
-            const model = gltf.scene;
-            fixModelUVs(model); 
-            model.scale.set(0.02 * S, 0.02 * S, 0.02 * S);
-            model.traverse((child) => {
-                if (child.isMesh) {
-                    child.material.envMap = gatewayEnvMap;
-                    child.material.envMapIntensity = 1.5;
-                }
-            });
-            gatewayGroup.add(model);
-        });
+        this.gatewayEnvMap = gatewayEnvMap; 
 
         const issOrbit = new THREE.Group();
         earth.systemGroup.add(issOrbit);
@@ -1469,22 +1732,8 @@ class SolarSystemApp {
 
         this.planets['iss'] = { 
             mesh: issGroup, orbitPivot: issOrbit, 
-            rotationSpeed: this.baseRot * 3, orbitSpeed: this.baseOrb * 30, size: 0.1 * S, visibilityRange: 20 * S
+            rotationSpeed: this.baseRot * 3, orbitSpeed: this.baseOrb * 30, size: 0.1 * S, visibilityRange: 20 * S, basePhase: 0
         };
-
-        gltfLoader.load(this.getTexUrl('three-models/ISS_stationary.glb'), (gltf) => {
-            const model = gltf.scene;
-            fixModelUVs(model); 
-            model.scale.set(0.0025 * S, 0.0025 * S, 0.0025 * S); 
-            const box = new THREE.Box3().setFromObject(model);
-            const center = box.getCenter(new THREE.Vector3());
-            model.position.x = -center.x;
-            model.position.y = -center.y;
-            model.position.z = -center.z;
-            const centerContainer = new THREE.Group();
-            centerContainer.add(model);
-            issGroup.add(centerContainer);
-        });
 
         const apolloGroup = new THREE.Group();
         apolloGroup.position.set(-0.545 * S, 0, 0); 
@@ -1495,22 +1744,77 @@ class SolarSystemApp {
 
         this.planets['apollo'] = { 
             mesh: apolloGroup, orbitPivot: null, 
-            rotationSpeed: 0, orbitSpeed: 0, size: 0.02 * S, visibilityRange: 8 * S, collisionSize: 0.02 * S
+            rotationSpeed: 0, orbitSpeed: 0, size: 0.02 * S, visibilityRange: 8 * S, collisionSize: 0.02 * S, basePhase: 0
         };
 
-        gltfLoader.load(this.getTexUrl('three-models/Apollo Lunar Module.glb'), (gltf) => {
-            const model = gltf.scene;
-            fixModelUVs(model); 
-            model.scale.set(0.008 * S, 0.008 * S, 0.008 * S);
-            model.rotation.set(0, 0, Math.PI / 2);
-            apolloGroup.add(model);
-        });
-
         this.createPlanet('mars', 'three-textures/8k_mars.jpg', 1.06 * S, 700 * S, this.baseOrb * 0.53, this.baseRot / 1.02);
+
+        // --- MARS MOONS ---
+        const createMarsMoon = (name, texture, sizeS, distS, speed) => {
+            const orbitPivot = new THREE.Group();
+            this.planets['mars'].systemGroup.add(orbitPivot);
+            
+            const geo = new THREE.SphereGeometry(sizeS, 32, 32);
+            const mat = new THREE.MeshStandardMaterial({ 
+                map: loader.load(this.getTexUrl(texture)), roughness: 0.8, metalness: 0.1 
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(distS, 0, 0);
+            orbitPivot.add(mesh);
+            
+            this.planets[name] = { 
+                mesh: mesh, orbitPivot: orbitPivot, rotationSpeed: speed, orbitSpeed: speed, 
+                size: sizeS, visibilityRange: Math.max(sizeS * 150, 15 * S), slowZone: Math.max(sizeS * 200, 30 * S), basePhase: 0
+            };
+        };
+
+        createMarsMoon('phobos', 'three-textures/mars-moons/Mars - Phobos.jpg', 0.02 * S, 3 * S, this.baseRot * 3.1);
+        createMarsMoon('deimos', 'three-textures/mars-moons/Mars - Deimos.jpg', 0.01 * S, 8 * S, this.baseRot * 0.79);
+
+        // --- PERSEVERANCE ROVER (MARS SURFACE) ---
+        this.roverGroup = new THREE.Group();
+        this.roverPos = new THREE.Vector3(0, 0, 1.06 * S); 
+        this.roverGroup.position.copy(this.roverPos);
+        this.planets['mars'].mesh.add(this.roverGroup);
+
+        this.planets['rover'] = { 
+            mesh: this.roverGroup, orbitPivot: null, rotationSpeed: 0, orbitSpeed: 0, 
+            size: 0.005 * S, visibilityRange: 8 * S, collisionSize: 0.005 * S, basePhase: 0
+        };
+
+        const roverLight = new THREE.PointLight(0xffdd88, 0.05, 5 * S);
+        roverLight.position.set(0, 0.02 * S, 0);
+        this.roverGroup.add(roverLight);
+
         this.createPlanet('ceres', 'three-textures/4k_ceres_fictional.jpg', 0.15 * S, 950 * S, this.baseOrb * 0.2, this.baseRot * 2.6);
 
         this.mainAsteroidBelt = this.createAsteroidBelt(850 * S, 1050 * S, 1500, 80 * S);
         this.createPlanet('jupiter', 'three-textures/8k_jupiter.jpg', 22.4 * S, 1200 * S, this.baseOrb * 0.08, this.baseRot * 2.4);
+
+        // --- JUPITER MOONS ---
+        const createJupiterMoon = (name, texture, sizeS, distS, speed) => {
+            const orbitPivot = new THREE.Group();
+            this.planets['jupiter'].systemGroup.add(orbitPivot);
+            
+            const geo = new THREE.SphereGeometry(sizeS, 32, 32);
+            const mat = new THREE.MeshStandardMaterial({ 
+                map: loader.load(this.getTexUrl(texture)), roughness: 0.8, metalness: 0.1 
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(distS, 0, 0);
+            orbitPivot.add(mesh);
+            
+            this.planets[name] = { 
+                mesh: mesh, orbitPivot: orbitPivot, rotationSpeed: speed, orbitSpeed: speed, 
+                size: sizeS, visibilityRange: Math.max(sizeS * 150, 40 * S), slowZone: Math.max(sizeS * 200, 80 * S), basePhase: 0
+            };
+        };
+
+        createJupiterMoon('io', 'three-textures/jupiters-moons/Jupiter - Io (B).jpg', 0.29 * S, 40 * S, this.baseRot * 0.56);
+        createJupiterMoon('europa', 'three-textures/jupiters-moons/Jupiter - Europa.jpg', 0.25 * S, 60 * S, this.baseRot * 0.28);
+        createJupiterMoon('ganymede', 'three-textures/jupiters-moons/Jupiter - Ganymede.jpg', 0.41 * S, 95 * S, this.baseRot * 0.14);
+        createJupiterMoon('callisto', 'three-textures/jupiters-moons/Jupiter - Callisto.jpg', 0.38 * S, 160 * S, this.baseRot * 0.06);
+
 
         const saturn = this.createPlanet('saturn', 'three-textures/8k_saturn.jpg', 18.9 * S, 1800 * S, this.baseOrb * 0.034, this.baseRot * 2.2);
         const ringGeo = new THREE.RingGeometry(25 * S, 45 * S, 64);
@@ -1533,6 +1837,42 @@ class SolarSystemApp {
         const ringMesh = new THREE.Mesh(ringGeo, this.saturnRingMat);
         ringMesh.rotation.x = Math.PI / 2 + 0.3;
         saturn.mesh.add(ringMesh);
+
+        // --- SATURN MOONS ---
+        const createSaturnMoon = (name, texture, sizeS, distS, speed, inclination) => {
+            const orbitPivot = new THREE.Group();
+            if (inclination) orbitPivot.rotation.z = inclination;
+            saturn.systemGroup.add(orbitPivot);
+            
+            const geo = new THREE.SphereGeometry(sizeS, 32, 32);
+            const mat = new THREE.MeshStandardMaterial({ 
+                map: loader.load(this.getTexUrl(texture)), 
+                roughness: 0.8, 
+                metalness: 0.1 
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(distS, 0, 0);
+            orbitPivot.add(mesh);
+            
+            this.planets[name] = { 
+                mesh: mesh, 
+                orbitPivot: orbitPivot, 
+                rotationSpeed: speed, 
+                orbitSpeed: speed, 
+                size: sizeS, 
+                visibilityRange: Math.max(sizeS * 150, 40 * S), 
+                slowZone: Math.max(sizeS * 200, 80 * S), 
+                basePhase: 0
+            };
+        };
+
+        createSaturnMoon('mimas', 'three-textures/saturns-moons/Saturn - Mimas.jpg', 0.06 * S, 61 * S, this.baseRot * 1.06, 0.027);
+        createSaturnMoon('enceladus', 'three-textures/saturns-moons/Saturn - Enceladus.jpg', 0.08 * S, 78 * S, this.baseRot * 0.73, 0.0001);
+        createSaturnMoon('tethys', 'three-textures/saturns-moons/Saturn - Tethys.jpg', 0.17 * S, 97 * S, this.baseRot * 0.53, 0.019);
+        createSaturnMoon('dione', 'three-textures/saturns-moons/Saturn - Dione.jpg', 0.18 * S, 124 * S, this.baseRot * 0.36, 0.0003);
+        createSaturnMoon('rhea', 'three-textures/saturns-moons/Saturn - Rhea.jpg', 0.24 * S, 173 * S, this.baseRot * 0.22, 0.006);
+        createSaturnMoon('titan', 'three-textures/saturns-moons/Saturn - Titan.jpg', 0.81 * S, 280 * S, this.baseRot * 0.062, 0.005);
+        createSaturnMoon('iapetus', 'three-textures/saturns-moons/Saturn - Iapetus.jpg', 0.23 * S, 450 * S, this.baseRot * 0.012, 0.27);
 
         this.createPlanet('neptune', 'three-textures/2k_neptune.jpg', 7.76 * S, 2600 * S, this.baseOrb * 0.006, this.baseRot * 1.5);
         this.kuiperBelt = this.createAsteroidBelt(3000 * S, 3600 * S, 2500, 150 * S);
@@ -1562,7 +1902,8 @@ class SolarSystemApp {
             rotationSpeed: 0, 
             orbitSpeed: this.baseRot * 0.15, 
             size: 0.25 * S, 
-            visibilityRange: 150 * S 
+            visibilityRange: 150 * S,
+            basePhase: 0
         };
 
         this.createPlanet('haumea', 'three-textures/4k_haumea_fictional.jpg', 0.25 * S, 3200 * S, this.baseOrb * 0.0035, this.baseRot * 6.0);
@@ -1575,18 +1916,30 @@ class SolarSystemApp {
         this.planets['blackhole'] = { 
             mesh: blackHoleGroup, orbitPivot: null, 
             rotationSpeed: this.baseRot * 2.0, orbitSpeed: 0, 
-            size: 50 * S, visibilityRange: 30000 * S, collisionSize: 100 * S 
+            size: 50 * S, visibilityRange: 30000 * S, collisionSize: 100 * S, basePhase: 0 
+        };
+
+        // --- ASSIGN INITIAL EPOCH OFFSETS ---
+        const j2000Phases = {
+            mercury: 4.40, venus: 3.18, earth: 1.75, moon: 2.18, mars: 6.20, ceres: 3.96,
+            phobos: 1.20, deimos: 0.80,
+            jupiter: 0.60, saturn: 0.87, 
+            io: 2.30, europa: 0.10, ganymede: 1.50, callisto: 4.80,
+            mimas: 4.64, enceladus: 3.07, tethys: 0.15, dione: 2.92, rhea: 4.08, titan: 5.52, iapetus: 6.17,
+            neptune: 5.32, pluto: 4.17, charon: 3.14,
+            haumea: 3.49, makemake: 2.79, eris: 0.60, iss: 1.5, gateway: 2.5, rover: 0.0
         };
         
-        gltfLoader.load(this.getTexUrl('three-models/black_hole.glb'), (gltf) => {
-            const model = gltf.scene;
-            fixModelUVs(model); 
-            model.scale.set(0.5 * S, 0.5 * S, 0.5 * S); 
-            const box = new THREE.Box3().setFromObject(model);
-            const center = box.getCenter(new THREE.Vector3());
-            model.position.sub(center);
-            blackHoleGroup.add(model);
-        });
+        for (const key in this.planets) {
+            this.planets[key].basePhase = j2000Phases[key] || (Math.random() * Math.PI * 2);
+        }
+        
+        // Load external models from the secondary assets class
+        if (typeof this.loadExtraModels === 'function') {
+            this.loadExtraModels(gltfLoader, fixModelUVs, S);
+        }
+        
+        this.syncPositionsToDate(this.simDate);
 
         this.camera.position.set(500 * S, 800 * S, 1200 * S);
         this.camera.lookAt(new THREE.Vector3(0, 0, 0));
@@ -1596,9 +1949,14 @@ class SolarSystemApp {
         if (index < 0) index = this.destinations.length - 1;
         if (index >= this.destinations.length) index = 0;
         
-        this.navButtons.forEach(b => { b.style.background = 'transparent'; b.dataset.active = 'false'; });
+        this.navButtons.forEach(b => { 
+            b.style.background = 'rgba(0, 0, 0, 0.6)'; 
+            b.style.boxShadow = 'none';
+            b.dataset.active = 'false'; 
+        });
         const activeBtn = this.navButtons[index];
-        activeBtn.style.background = 'rgba(255,255,255,0.2)';
+        activeBtn.style.background = 'rgba(var(--ui-rgb), 0.2)';
+        activeBtn.style.boxShadow = '0 0 10px rgba(var(--ui-rgb), 0.3)';
         activeBtn.dataset.active = 'true';
         
         const destName = this.destinations[index].toLowerCase();
@@ -1606,7 +1964,18 @@ class SolarSystemApp {
         
         this.isFlyingToDest = true;
         this.flyProgress = 0;
-        this.zoomLevel = 5.0; 
+        
+        // Dynamic Destination Zoom Fixes
+        if (destName === 'blackhole') {
+            this.zoomLevel = 150.0;
+        } else if (destName === 'milkyway') {
+            this.zoomLevel = 1.5; 
+        } else if (destName === 'rover') {
+            this.zoomLevel = 3.0;
+        } else {
+            this.zoomLevel = 5.0; 
+        }
+
         this.startCamPos.copy(this.camera.position);
         
         const dir = new THREE.Vector3();
@@ -1618,9 +1987,103 @@ class SolarSystemApp {
         this.focusedPlanet = null;
         this.isFlyingToDest = false;
         this.navButtons.forEach(b => { 
-            b.style.background = 'transparent'; 
+            b.style.background = 'rgba(0, 0, 0, 0.6)'; 
+            b.style.boxShadow = 'none';
             b.dataset.active = 'false'; 
         });
+    }
+
+    // --- SEV DEPLOYMENT LOGIC ---
+    deployVehicle(type) {
+        const targetObj = (this.activeShip !== 'none') ? this.shipGroup : this.camera;
+        
+        // Find closest planet
+        let closest = null;
+        let minDist = Infinity;
+        
+        for (const key in this.planets) {
+            // EXCLUDE non-landable objects AND Earth/Jupiter/Saturn for SEV deployment
+            if (['sun', 'milkyway', 'blackhole', 'iss', 'gateway', 'rover', 'apollo', 'earth', 'jupiter', 'saturn'].includes(key)) continue; 
+            const p = this.planets[key];
+            if (!p.mesh) continue;
+            
+            const wPos = new THREE.Vector3();
+            p.mesh.updateMatrixWorld(true);
+            p.mesh.getWorldPosition(wPos);
+            
+            const dist = targetObj.position.distanceTo(wPos) - p.size;
+            if (dist < minDist) {
+                minDist = dist;
+                closest = key;
+            }
+        }
+        
+        // Threshold check: Must be close to surface
+        if (closest && this.planets[closest]) {
+            const p = this.planets[closest];
+            if (minDist < p.size * 6.0 || minDist < 100 * this.scaleFactor) {
+                
+                if (type === 'rover' && closest === 'mars') {
+                    this.activeSurfaceVehicle = 'rover';
+                    this.isDrivingRover = true;
+                    this.currentPlanetSurface = p;
+                    if(this.focusedPlanet) this.clearFocus();
+                    return;
+                }
+                
+                if (type === 'sev' && this.sevModel) {
+                    // Deploy SEV
+                    this.activeSurfaceVehicle = 'sev';
+                    this.currentPlanetSurface = p;
+                    this.isDrivingRover = true;
+                    
+                    this.sevModel.visible = true;
+                    p.mesh.add(this.sevModel);
+                    
+                    // Position at current location projected to surface
+                    const wPos = new THREE.Vector3();
+                    p.mesh.getWorldPosition(wPos);
+                    
+                    const pInv = p.mesh.quaternion.clone().invert();
+                    
+                    // Vector from planet center to ship
+                    const relativePos = targetObj.position.clone().sub(wPos);
+                    // Rotate into planet local space
+                    relativePos.applyQuaternion(pInv);
+                    
+                    // Normalize and scale to surface radius
+                    relativePos.normalize().multiplyScalar(p.size);
+                    
+                    this.sevModel.position.copy(relativePos);
+                    
+                    // Orient UP away from center
+                    const up = relativePos.clone().normalize();
+                    const dummyObj = new THREE.Object3D();
+                    dummyObj.position.copy(relativePos);
+                    dummyObj.lookAt(new THREE.Vector3(0,0,0)); // Look at center (down)
+                    this.sevModel.quaternion.copy(dummyObj.quaternion);
+                    this.sevModel.rotateX(-Math.PI/2); // Adjust so wheels are down
+
+                    this.roverPos = this.sevModel.position.clone(); // Reuse rover pos logic variable for SEV
+
+                    if(this.focusedPlanet) this.clearFocus();
+                    return;
+                }
+            }
+        }
+    }
+
+    returnToShip() {
+        this.isDrivingRover = false;
+        this.camera.up.set(0, 1, 0); 
+        
+        if (this.activeSurfaceVehicle === 'sev' && this.sevModel && this.currentPlanetSurface) {
+            this.sevModel.visible = false;
+            this.currentPlanetSurface.mesh.remove(this.sevModel);
+        }
+        
+        this.activeSurfaceVehicle = 'none';
+        this.currentPlanetSurface = null;
     }
 
     addEventListeners() {
@@ -1632,25 +2095,43 @@ class SolarSystemApp {
                 key = 'space';
                 e.preventDefault();
             }
+            if (e.key === '1') key = 'digit1';
+            if (e.key === '2') key = 'digit2';
             
-            if (key === 'y' && (this.activeShip === 'tie' || this.activeShip === 'rickmorty' || this.activeShip === 'xwing')) {
+            if (key === 'y' && (this.activeShip === 'tie' || this.activeShip === 'rickmorty' || this.activeShip === 'xwing' || this.activeShip === 'globalhawk')) {
                 this.shipView = this.shipView === '1st' ? '3rd' : '1st';
                 this.updateShipVisibility();
             }
 
+            // Surface Vehicle Logic
+            if (key === 'x') {
+                if (this.isDrivingRover) {
+                    this.returnToShip();
+                } else if (this.promptType === 'generic') {
+                    this.deployVehicle('sev');
+                }
+            }
+
+            // Mars Specific Options
+            if (key === 'digit1' && this.promptType === 'mars' && !this.isDrivingRover) {
+                this.deployVehicle('rover');
+            }
+            if (key === 'digit2' && this.promptType === 'mars' && !this.isDrivingRover) {
+                this.deployVehicle('sev');
+            }
+
             if (this.keys.hasOwnProperty(key)) {
                 this.keys[key] = true;
-                if(this.focusedPlanet) this.clearFocus(); 
+                if(this.focusedPlanet && !this.isDrivingRover) this.clearFocus(); 
             }
         });
 
         window.addEventListener('keyup', (e) => {
             if (!this.isActive) return;
             let key = e.key.toLowerCase();
-            
-            if (e.key === ' ') {
-                key = 'space';
-            }
+            if (e.key === ' ') key = 'space';
+            if (e.key === '1') key = 'digit1';
+            if (e.key === '2') key = 'digit2';
             
             if (this.keys.hasOwnProperty(key)) {
                 this.keys[key] = false;
@@ -1674,7 +2155,15 @@ class SolarSystemApp {
             const deltaX = e.clientX - this.mouse.x;
             const deltaY = e.clientY - this.mouse.y;
 
-            if (this.activeShip !== 'none' && this.shipView === '1st') {
+            if (this.isDrivingRover) {
+                // Free Look Mouse Controls for Rover Orbiting
+                this.roverCamYaw -= deltaX * 0.005;
+                this.roverCamPitch -= deltaY * 0.005;
+                
+                this.roverCamPitch = Math.max(-Math.PI / 2 + 0.1, Math.min(0.2, this.roverCamPitch));
+                this.lastRoverLookTime = performance.now();
+                
+            } else if (this.activeShip !== 'none' && this.shipView === '1st') {
                 this.cockpitYaw -= deltaX * 0.005;
                 this.cockpitPitch -= deltaY * 0.005;
                 
@@ -1693,9 +2182,14 @@ class SolarSystemApp {
         });
 
         window.addEventListener('wheel', (e) => {
-            if (!this.isActive || !this.focusedPlanet) return;
-            this.zoomLevel += e.deltaY * 0.002;
-            this.zoomLevel = Math.max(1.2, Math.min(this.zoomLevel, 20.0));
+            if (!this.isActive || !this.focusedPlanet || this.isDrivingRover) return;
+            if (this.isMapOpen) return; // Let map handle its own zoom
+            
+            let zoomSpeed = 0.002 * this.zoomLevel; 
+            if (zoomSpeed < 0.002) zoomSpeed = 0.002;
+            
+            this.zoomLevel += e.deltaY * zoomSpeed;
+            this.zoomLevel = Math.max(1.2, Math.min(this.zoomLevel, 2000.0));
         });
 
         window.addEventListener('resize', () => {
@@ -1706,7 +2200,7 @@ class SolarSystemApp {
     }
 
     pollGamepad() {
-        if (!this.isActive) return;
+        if (!this.isActive || this.isDrivingRover) return;
         const gamepads = navigator.getGamepads();
         
         for (let i = 0; i < gamepads.length; i++) {
@@ -1777,13 +2271,30 @@ class SolarSystemApp {
             if (gp.buttons[3] && gp.buttons[3].pressed) {
                 if (!this.gpYDown) {
                     this.gpYDown = true;
-                    if (this.activeShip === 'tie' || this.activeShip === 'rickmorty' || this.activeShip === 'xwing') {
+                    if (this.activeShip === 'tie' || this.activeShip === 'rickmorty' || this.activeShip === 'xwing' || this.activeShip === 'globalhawk') {
                         this.shipView = this.shipView === '1st' ? '3rd' : '1st';
                         this.updateShipVisibility();
                     }
                 }
             } else { this.gpYDown = false; }
+
+            // Xbox 'X' button mapping for Rover Deployment
+            if (gp.buttons[2] && gp.buttons[2].pressed) {
+                if (!this.gpXDown) {
+                    this.gpXDown = true;
+                    if(this.isDrivingRover) this.returnToShip();
+                    else if(this.promptType === 'generic') this.deployVehicle('sev');
+                }
+            } else { this.gpXDown = false; }
             
+            // Xbox 'Select' button mapping for Astrometrics Map
+            if (gp.buttons[8] && gp.buttons[8].pressed) {
+                if (!this.gpSelectDown) {
+                    this.gpSelectDown = true;
+                    this.toggleMap();
+                }
+            } else { this.gpSelectDown = false; }
+
             if (!this.focusedPlanet && this.activeShip === 'none') {
                 this.camera.up.set(0, 1, 0);
                 this.camera.lookAt(this.camera.position.clone().add(direction));
@@ -1815,6 +2326,8 @@ class SolarSystemApp {
     }
 
     resolveCollisions() {
+        if (this.isDrivingRover) return; // Skip collision resolution when glued to surface
+
         const targetObj = (this.activeShip !== 'none') ? this.shipGroup : this.camera;
 
         for (const key in this.planets) {
@@ -1860,6 +2373,7 @@ class SolarSystemApp {
             this.camera.getWorldDirection(dir);
             this.yaw = Math.atan2(dir.x, dir.z);
             this.pitch = Math.asin(dir.y);
+            this.lastRenderTime = performance.now(); // Prevents massive time skip on initial start
             this.animate();
         }, 50);
     }
@@ -1877,13 +2391,32 @@ class SolarSystemApp {
         requestAnimationFrame(() => this.animate());
 
         const now = performance.now();
+        let actualDeltaMs = 0;
+
         if (this.targetFPS > 0) {
             const fpsInterval = 1000 / this.targetFPS;
             const elapsed = now - this.lastRenderTime;
             if (elapsed < fpsInterval) return; 
+            
+            actualDeltaMs = elapsed;
             this.lastRenderTime = now - (elapsed % fpsInterval);
         } else {
+            actualDeltaMs = now - this.lastRenderTime;
             this.lastRenderTime = now;
+        }
+
+        // --- REAL TIME SIMULATION LOGIC ---
+        let simDeltaMs = actualDeltaMs * this.timeScale;
+        this.simDate = new Date(this.simDate.getTime() + simDeltaMs);
+
+        if (this.dateDisplay) {
+            const options = { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            if (this.timeScale !== 1) {
+                let speedText = this.timeScale === 0 ? "PAUSED" : (this.timeScale > 0 ? `+${this.timeScale.toLocaleString()}x` : `${this.timeScale.toLocaleString()}x`);
+                this.dateDisplay.innerHTML = `${this.simDate.toLocaleString('en-US', options)} <span style="color: ${this.timeScale === 0 ? '#ff4444' : '#ffff00'}">[${speedText}]</span>`;
+            } else {
+                this.dateDisplay.innerHTML = `${this.simDate.toLocaleString('en-US', options)} <span style="color: var(--ui-color)">[REAL TIME]</span>`;
+            }
         }
 
         this.framesThisSecond++;
@@ -1895,11 +2428,11 @@ class SolarSystemApp {
 
         this.isBoosting = false;
 
-        let wantsToBoost = this.keys['shift'];
+        let wantsToBoost = this.keys['shift'] && !this.isDrivingRover;
         const gamepadsArray = navigator.getGamepads();
         for (let i = 0; i < gamepadsArray.length; i++) {
             const gp = gamepadsArray[i];
-            if (gp && gp.buttons[6] && gp.buttons[6].value > 0.1) {
+            if (gp && gp.buttons[6] && gp.buttons[6].value > 0.1 && !this.isDrivingRover) {
                 wantsToBoost = true;
             }
         }
@@ -1962,46 +2495,121 @@ class SolarSystemApp {
             this.joltMultiplier = Math.pow((this.boostCharge - 0.8) / 0.2, 3);
         }
 
-        let minCameraDist = Infinity;
         const targetObj = (this.activeShip !== 'none') ? this.shipGroup : this.camera;
 
+        let absoluteMinDist = Infinity;
+        let maxSpeed = 12.0 * (this.scaleFactor / 5); 
+        let targetSpeed = maxSpeed;
+
         if (this.coordDisplay && this.hudContainer && this.hudContainer.style.display !== 'none') {
+            const trackingObj = this.isDrivingRover ? this.camera : targetObj;
             const sf = this.scaleFactor;
-            const niceX = Math.round(targetObj.position.x / sf).toLocaleString();
-            const niceY = Math.round(targetObj.position.y / sf).toLocaleString();
-            const niceZ = Math.round(targetObj.position.z / sf).toLocaleString();
+            const niceX = Math.round(trackingObj.position.x / sf).toLocaleString();
+            const niceY = Math.round(trackingObj.position.y / sf).toLocaleString();
+            const niceZ = Math.round(trackingObj.position.z / sf).toLocaleString();
             this.coordDisplay.textContent = `X: ${niceX} | Y: ${niceY} | Z: ${niceZ}`;
         }
 
         for (const key in this.planets) {
             const p = this.planets[key];
             if (!p.mesh) continue;
+            
             const wPos = new THREE.Vector3();
             p.mesh.updateMatrixWorld(true);
             p.mesh.getWorldPosition(wPos);
-            const surfaceDist = targetObj.position.distanceTo(wPos) - (p.collisionSize !== undefined ? p.collisionSize : p.size);
-            if (surfaceDist < minCameraDist) minCameraDist = surfaceDist;
+            
+            const baseSize = p.collisionSize !== undefined ? p.collisionSize : p.size;
+            const surfaceDist = targetObj.position.distanceTo(wPos) - baseSize;
+            
+            if (surfaceDist < absoluteMinDist) {
+                absoluteMinDist = surfaceDist;
+            }
+
+            const proximityThreshold = Math.max(baseSize * 50, 5 * this.scaleFactor);
+            
+            if (surfaceDist < proximityThreshold) {
+                let t = Math.max(0, surfaceDist / proximityThreshold);
+                
+                let minSpeed = baseSize * 0.015; 
+                minSpeed = Math.max(5.0, minSpeed); 
+                
+                let speedLimit = minSpeed + (maxSpeed - minSpeed) * (t * t); 
+                
+                if (speedLimit < targetSpeed) {
+                    targetSpeed = speedLimit;
+                }
+            }
         }
 
-        this.currentFlySpeed = 12.0 * (this.scaleFactor / 5); 
-        const proximityThreshold = 100 * this.scaleFactor;
-        
-        if (minCameraDist < proximityThreshold) {
-            let t = Math.max(0, minCameraDist / proximityThreshold);
-            this.currentFlySpeed = (0.05 * this.scaleFactor) + (11.95 * (this.scaleFactor / 5)) * (t * t); 
-        } 
+        this.currentFlySpeed = targetSpeed;
         
         const interstellarThreshold = 40000 * this.scaleFactor; 
-        if (minCameraDist > interstellarThreshold) {
-            let t = Math.min(1.0, (minCameraDist - interstellarThreshold) / (1000000 * this.scaleFactor));
+        if (absoluteMinDist > interstellarThreshold) {
+            let t = Math.min(1.0, (absoluteMinDist - interstellarThreshold) / (1000000 * this.scaleFactor));
             this.currentFlySpeed += (this.currentFlySpeed * 10000.0) * (t * t);
         }
 
+        // --- ROVER DEPLOYMENT PROMPT LOGIC ---
+        let showPrompt = false;
+        let pType = 'none';
+
+        if (!this.isDrivingRover) {
+            // Check closeness to Mars
+            if (this.planets['mars'] && this.planets['mars'].mesh) {
+                const marsPos = new THREE.Vector3();
+                this.planets['mars'].mesh.getWorldPosition(marsPos);
+                const distToMars = targetObj.position.distanceTo(marsPos);
+                if (distToMars < 1.06 * this.scaleFactor * 6.0) { 
+                    showPrompt = true;
+                    pType = 'mars';
+                }
+            }
+
+            // Check closeness to other surfaces for SEV
+            if (!showPrompt) {
+                for (const key in this.planets) {
+                    // EXCLUDE EARTH/JUPITER/SATURN from SEV deployment
+                    if (['sun', 'milkyway', 'blackhole', 'iss', 'gateway', 'rover', 'apollo', 'mars', 'earth', 'jupiter', 'saturn'].includes(key)) continue;
+                    const p = this.planets[key];
+                    if (!p.mesh) continue;
+                    
+                    const wPos = new THREE.Vector3();
+                    p.mesh.getWorldPosition(wPos);
+                    const dist = targetObj.position.distanceTo(wPos) - p.size;
+                    
+                    if (dist < p.size * 6.0 || dist < 100 * this.scaleFactor) {
+                        showPrompt = true;
+                        pType = 'generic';
+                        break;
+                    }
+                }
+            }
+        } else {
+            showPrompt = true; // Always show return prompt when driving
+        }
+        
+        this.showRoverPrompt = showPrompt;
+        this.promptType = pType;
+
+        if (this.showRoverPrompt) {
+            this.roverPrompt.style.display = 'block';
+            if (this.isDrivingRover) {
+                this.roverPrompt.textContent = "[X] RETURN TO SHIP";
+            } else if (this.promptType === 'mars') {
+                this.roverPrompt.textContent = "[1] DEPLOY PERSEVERANCE ROVER | [2] DEPLOY SEV";
+            } else {
+                this.roverPrompt.textContent = "[X] DEPLOY SEV";
+            }
+        } else {
+            this.roverPrompt.style.display = 'none';
+        }
+        // -------------------------------------
+
         if (this.sunMaterial && this.sunMaterial.userData.time) {
-            this.sunMaterial.userData.time.value += 0.01; 
+            this.sunMaterial.userData.time.value += actualDeltaMs * 0.0006; 
         }
         if (this.sunCoronaMat) {
-            this.sunCoronaMat.uniforms.time.value += 0.01; 
+            this.sunCoronaMat.uniforms.time.value += actualDeltaMs * 0.0006; 
         }
 
         if (this.milkyWayMat && this.planets['milkyway']) {
@@ -2021,13 +2629,31 @@ class SolarSystemApp {
 
         this.pollGamepad();
 
+        // Extra gamepad block for checking Rover return when driving 
+        // Handles "X" Button deployment checking properly per-frame
+        if (this.isDrivingRover) {
+            const gamepadsArray = navigator.getGamepads();
+            for (let i = 0; i < gamepadsArray.length; i++) {
+                const gp = gamepadsArray[i];
+                if (gp && gp.buttons[2] && gp.buttons[2].pressed) {
+                    if (!this.gpXDown) {
+                        this.gpXDown = true;
+                        this.returnToShip();
+                    }
+                } else if (gp && (!gp.buttons[2] || !gp.buttons[2].pressed)) {
+                    this.gpXDown = false;
+                }
+            }
+        }
+
         for (const key in this.planets) {
             const p = this.planets[key];
             if (!p.mesh) continue;
             const wPos = new THREE.Vector3();
             p.mesh.updateMatrixWorld(true);
             p.mesh.getWorldPosition(wPos);
-            const distToCam = targetObj.position.distanceTo(wPos);
+            const trackingObjDist = this.isDrivingRover ? this.camera : targetObj;
+            const distToCam = trackingObjDist.position.distanceTo(wPos);
             
             p.currentSpeedMult = 1.0;
             const slowZone = p.slowZone || p.visibilityRange || (p.size * 40); 
@@ -2047,16 +2673,17 @@ class SolarSystemApp {
             }
         }
 
+        // --- ORBIT & ROTATION UPDATED USING REAL TIME DELTAS ---
         for (const key in this.planets) {
             const p = this.planets[key];
             if (!p.mesh) continue;
             
-            if (p.orbitPivot) p.orbitPivot.rotation.y += p.orbitSpeed * p.currentSpeedMult;
-            if (p.mesh) p.mesh.rotation.y += p.rotationSpeed * p.currentSpeedMult;
+            if (p.orbitPivot) p.orbitPivot.rotation.y += p.orbitSpeed * p.currentSpeedMult * simDeltaMs;
+            if (p.mesh && key !== 'rover') p.mesh.rotation.y += p.rotationSpeed * p.currentSpeedMult * simDeltaMs;
         }
 
-        if (this.mainAsteroidBelt) this.mainAsteroidBelt.rotation.y -= this.baseOrb * 0.1;
-        if (this.kuiperBelt) this.kuiperBelt.rotation.y -= this.baseOrb * 0.05;
+        if (this.mainAsteroidBelt) this.mainAsteroidBelt.rotation.y -= this.baseOrb * 0.1 * simDeltaMs;
+        if (this.kuiperBelt) this.kuiperBelt.rotation.y -= this.baseOrb * 0.05 * simDeltaMs;
 
         const direction = new THREE.Vector3(
             Math.cos(this.pitch) * Math.sin(this.yaw),
@@ -2064,7 +2691,126 @@ class SolarSystemApp {
             Math.cos(this.pitch) * Math.cos(this.yaw)
         );
 
-        if (this.focusedPlanet) {
+        if (this.isDrivingRover) {
+            // --- SURFACE DRIVING LOGIC ---
+            // Determine active group (Mars Rover or SEV)
+            const drivingGroup = (this.activeSurfaceVehicle === 'sev') ? this.sevModel : this.roverGroup;
+            const currentPosRef = (this.activeSurfaceVehicle === 'sev') ? this.sevModel.position : this.roverPos;
+            const radius = (this.activeSurfaceVehicle === 'sev') ? this.currentPlanetSurface.size : (1.06 * this.scaleFactor);
+
+            // Scale movement speed based on planet size so vehicles don't feel "stuck" on massive planets
+            // Base scaling factor relative to Earth size (2.0 * S)
+            let speedScaler = 1.0;
+            if (this.activeSurfaceVehicle === 'sev' && this.currentPlanetSurface) {
+                speedScaler = Math.max(1.0, this.currentPlanetSurface.size / (2.0 * this.scaleFactor));
+            }
+
+            let yawInput = 0;
+            let accel = 0;
+            let isGamepadLooking = false;
+
+            if (this.keys['a']) yawInput -= 1;
+            if (this.keys['d']) yawInput += 1;
+            if (this.keys['w']) accel += 1;
+            if (this.keys['s']) accel -= 0.5; // Reverse is slower
+
+            // Apply gamepad inputs for driving
+            const gamepads = navigator.getGamepads();
+            for (let i = 0; i < gamepads.length; i++) {
+                const gp = gamepads[i];
+                if (!gp) continue;
+                
+                if (Math.abs(gp.axes[0]) > 0.1) yawInput += gp.axes[0]; // Left stick X
+                if (Math.abs(gp.axes[1]) > 0.1) accel -= gp.axes[1];    // Left stick Y
+                
+                // Triggers
+                if (gp.buttons[7] && gp.buttons[7].pressed) accel += gp.buttons[7].value;
+                if (gp.buttons[6] && gp.buttons[6].pressed) accel -= gp.buttons[6].value * 0.5;
+
+                // Right Stick: Free Look Input
+                if (Math.abs(gp.axes[2]) > 0.1) {
+                    this.roverCamYaw -= gp.axes[2] * 0.05;
+                    isGamepadLooking = true;
+                }
+                if (Math.abs(gp.axes[3]) > 0.1) {
+                    this.roverCamPitch -= gp.axes[3] * 0.05;
+                    isGamepadLooking = true;
+                }
+            }
+            
+            if (isGamepadLooking) {
+                this.lastRoverLookTime = performance.now(); // Register look action to delay auto-center
+            }
+            
+            // Constrain camera pitch
+            this.roverCamPitch = Math.max(-Math.PI / 2 + 0.1, Math.min(0.2, this.roverCamPitch));
+
+            // Auto-center the camera behind the rover ONLY if no user look input is detected for 3 full seconds
+            if (!this.isDragging && !isGamepadLooking && (performance.now() - this.lastRoverLookTime > 3000)) {
+                // Smoothly interpolate back to behind the rover and slightly angled down
+                this.roverCamYaw += (0 - this.roverCamYaw) * 0.05; 
+                this.roverCamPitch += (-0.2 - this.roverCamPitch) * 0.05;
+            }
+
+            yawInput = Math.max(-1, Math.min(1, yawInput));
+            accel = Math.max(-1, Math.min(1, accel));
+
+            // Local Yaw Rotation
+            drivingGroup.rotateY(-yawInput * actualDeltaMs * 0.002);
+
+            // Forward Translation
+            let speed = accel * actualDeltaMs * 0.01 * (this.scaleFactor / 100) * speedScaler;
+            const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(drivingGroup.quaternion).normalize();
+            
+            currentPosRef.add(forward.multiplyScalar(speed));
+            currentPosRef.setLength(radius); // Stick exactly to surface radius
+            drivingGroup.position.copy(currentPosRef);
+
+            // Align to Surface Normal
+            const normal = currentPosRef.clone().normalize();
+            const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(drivingGroup.quaternion).normalize();
+            const alignQuat = new THREE.Quaternion().setFromUnitVectors(currentUp, normal);
+            drivingGroup.quaternion.premultiply(alignQuat);
+
+            // Dynamic 3rd Person Free-Look Camera Follow
+            const worldPos = new THREE.Vector3();
+            drivingGroup.getWorldPosition(worldPos);
+
+            const wNormal = new THREE.Vector3(0, 1, 0).applyQuaternion(drivingGroup.quaternion).normalize();
+
+            // Desired offset base sizes (scale with planet size to keep camera relative?)
+            // Actually, keep camera relative to vehicle size usually, but for giants, maybe pull back slightly?
+            // For now, keep fixed relative to vehicle to maintain sense of scale.
+            const orbitDist = 0.05 * this.scaleFactor; 
+            const heightOffset = 0.015 * this.scaleFactor;
+
+            // Compute Local Look Direction based on user's pitch/yaw
+            const lookDirLocal = new THREE.Vector3(
+                Math.sin(this.roverCamYaw) * Math.cos(this.roverCamPitch),
+                Math.sin(this.roverCamPitch),
+                Math.cos(this.roverCamYaw) * Math.cos(this.roverCamPitch)
+            );
+            
+            // Transform local look direction into World Space based on the vehicle's 6DOF quaternion
+            const lookDirWorld = lookDirLocal.applyQuaternion(drivingGroup.quaternion).normalize();
+            
+            // Define focus/pivot point slightly above the rover
+            const focusPoint = worldPos.clone().add(wNormal.clone().multiplyScalar(heightOffset));
+            
+            // Project camera backward from the focus point based on the free-look direction
+            const camTargetPos = focusPoint.clone().sub(lookDirWorld.multiplyScalar(orbitDist));
+
+            // Smoothly move the camera
+            this.camera.position.lerp(camTargetPos, 0.2);
+            this.camera.up.lerp(wNormal, 0.2);
+            this.camera.lookAt(focusPoint);
+
+            // Keeps underlying free-flight pitch/yaw matching so returning to ship is seamless
+            const finalLookDir = new THREE.Vector3().subVectors(focusPoint, this.camera.position).normalize();
+            this.yaw = Math.atan2(finalLookDir.x, finalLookDir.z);
+            this.pitch = Math.asin(Math.max(-1, Math.min(1, finalLookDir.y)));
+
+        } else if (this.focusedPlanet) {
             const worldPos = new THREE.Vector3();
             this.focusedPlanet.mesh.updateMatrixWorld(true);
             this.focusedPlanet.mesh.getWorldPosition(worldPos);
@@ -2086,6 +2832,10 @@ class SolarSystemApp {
                     const moonPos = new THREE.Vector3();
                     this.planets['moon'].mesh.getWorldPosition(moonPos);
                     dirFromCenter = new THREE.Vector3().subVectors(worldPos, moonPos).normalize();
+                } else if (this.focusedPlanet === this.planets['rover']) {
+                    const marsPos = new THREE.Vector3();
+                    this.planets['mars'].mesh.getWorldPosition(marsPos);
+                    dirFromCenter = new THREE.Vector3().subVectors(worldPos, marsPos).normalize();
                 }
                 if (dirFromCenter.lengthSq() === 0) dirFromCenter.set(0, 0, 1); 
                 this.targetCamPos.copy(worldPos).add(dirFromCenter.multiplyScalar(viewDist));
@@ -2229,8 +2979,20 @@ class SolarSystemApp {
                 camDist = 150.0; heightOffset = 40.0;
                 if (this.enterpriseModel) this.enterpriseModel.scale.set(20.0, 20.0, 20.0);
             }
+            else if (this.activeShip === 'globalhawk') {
+                camDist = 120.0; heightOffset = 25.0;
+                if (this.globalHawkModel) this.globalHawkModel.scale.set(15.0, 15.0, 15.0);
+            }
+            else if (this.activeShip === 'saturnv') {
+                camDist = 80.0; heightOffset = 0.0; 
+                if (this.saturnVModel) this.saturnVModel.scale.set(0.9, 0.9, 0.9); 
+            }
+            else if (this.activeShip === 'jupiterc') {
+                camDist = 60.0; heightOffset = 0.0; 
+                if (this.jupiterCModel) this.jupiterCModel.scale.set(1.1, 1.1, 1.1); 
+            }
 
-            if (this.shipView === '1st') {
+            if (this.shipView === '1st' && this.activeShip !== 'saturnv' && this.activeShip !== 'jupiterc' && this.activeShip !== 'globalhawk') { // Limit FPS view on some models
                 let isGamepadLooking = false;
                 const gamepads = navigator.getGamepads();
                 for (let i = 0; i < gamepads.length; i++) {
@@ -2336,7 +3098,7 @@ class SolarSystemApp {
                         
                         if (this.tardisVortexMat && this.tardisVortexMat.uniforms) {
                             this.tardisVortexMat.uniforms.warpOpacity.value = this.warpAmount;
-                            this.tardisVortexMat.uniforms.time.value += 0.02;
+                            this.tardisVortexMat.uniforms.time.value += actualDeltaMs * 0.0012;
                         }
                         
                         this.tardisVortexGroup.rotateZ(0.05);
@@ -2395,6 +3157,47 @@ class SolarSystemApp {
 
         this.resolveCollisions();
 
+        // --- RENDER MAP IF OPEN ---
+        if (this.isMapOpen) {
+            this.drawMap();
+        }
+
+        // --- WAYPOINT GUIDANCE HUD LOGIC ---
+        if (this.activeWaypoint && this.planets[this.activeWaypoint] && this.planets[this.activeWaypoint].mesh) {
+            const p = this.planets[this.activeWaypoint];
+            const wPos = new THREE.Vector3();
+            p.mesh.updateMatrixWorld(true);
+            p.mesh.getWorldPosition(wPos);
+
+            const activeTargetObj = (this.activeShip !== 'none') ? this.shipGroup : this.camera;
+            const dist = activeTargetObj.position.distanceTo(wPos);
+            const niceDist = Math.round(dist / this.scaleFactor).toLocaleString();
+
+            this.waypointHud.style.display = 'block';
+
+            const vector = wPos.clone();
+            vector.project(this.camera);
+
+            if (vector.z < 1) { 
+                // Target is in front of camera
+                const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-(vector.y * 0.5) + 0.5) * window.innerHeight;
+                
+                this.waypointMarker.style.display = 'block';
+                this.waypointMarker.style.left = `${x}px`;
+                this.waypointMarker.style.top = `${y}px`;
+                
+                this.waypointHud.innerHTML = `NAV TARGET: ${this.activeWaypoint.toUpperCase()} <br> DISTANCE: ${niceDist} SU`;
+            } else {
+                // Target is behind camera
+                this.waypointMarker.style.display = 'none'; 
+                this.waypointHud.innerHTML = `NAV TARGET: ${this.activeWaypoint.toUpperCase()} | DIST: ${niceDist} SU <br><span style="color:#ff4444;font-size:0.9rem;">[ BEHIND YOU ]</span>`;
+            }
+        } else {
+            this.waypointHud.style.display = 'none';
+            this.waypointMarker.style.display = 'none';
+        }
+
         for (const key in this.planets) {
             const p = this.planets[key];
             if (!p.mesh) continue;
@@ -2404,10 +3207,10 @@ class SolarSystemApp {
             if (!this.statLabels[key]) {
                 const lbl = document.createElement('div');
                 lbl.style.cssText = `
-                    position: absolute; color: #00ff41; display: none;
-                    font-size: 0.75rem; pointer-events: none; text-shadow: 0 0 5px #00ff41;
-                    background: rgba(0,0,0,0.5); padding: 5px 10px; border: 1px solid rgba(0,255,65,0.3);
-                    box-shadow: 0 0 10px #00ff41; border-radius: 4px; line-height: 1.5; text-align: center;
+                    position: absolute; color: var(--ui-color); display: none;
+                    font-size: 0.75rem; pointer-events: none; text-shadow: 0 0 5px var(--ui-color);
+                    background: rgba(0,0,0,0.5); padding: 5px 10px; border: 1px solid rgba(var(--ui-rgb), 0.3);
+                    box-shadow: 0 0 10px var(--ui-color); border-radius: 4px; line-height: 1.5; text-align: center;
                     transition: opacity 0.2s;
                 `;
                 this.statsContainer.appendChild(lbl);
@@ -2440,7 +3243,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dockSpaceBtn) {
         dockSpaceBtn.addEventListener('click', () => {
             if (!solarSystemInstance) {
-                solarSystemInstance = new SolarSystemApp();
+                // Initialize using the newly named Engine class which extends Assets
+                solarSystemInstance = new SolarSystemEngine(); 
             }
             solarSystemInstance.open();
         });

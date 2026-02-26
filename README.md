@@ -42,11 +42,43 @@
 
 ![New Tab Interface](https://github.com/user-attachments/assets/027f7b9f-9457-45a4-ad87-2610b0f41c96)
 
-![Navigation Bars](https://github.com/user-attachments/assets/10aef200-38e7-481e-8f10-2032b73253cc)
+![Solar System Engine](https://github.com/user-attachments/assets/27c31544-a320-457f-9408-71d34c1a9bf2)
 
 ![Emulator Interface](https://github.com/user-attachments/assets/865c91b5-cf6a-4350-986b-c89193b3b916)
 
 ![System Apps](https://github.com/user-attachments/assets/6438235b-34dc-4fbc-8fb3-501501bc415c)
+
+---
+
+## 🌌 Solar System Engine: Feature Showcase
+
+A high-performance, 6DOF space flight simulator and celestial engine built with Three.js. This engine balances realistic astronomical scales with stylized, cinematic visual effects.
+
+### 🚀 Advanced TARDIS Flight Systems
+The TARDIS features a completely unique flight logic and visual suite that separates it from standard spacecraft:
+* **Procedural Time Vortex**: Unlike standard ships that use particle streaks, the TARDIS generates a mathematically bending wormhole tunnel using custom WebGL Vertex and Fragment shaders.
+* **Seamless 3D FBM Noise**: The vortex uses 3D Fractional Brownian Motion noise mapped to a perfect circle to eliminate visible seams and provide sharp, fractal detail.
+* **Forward-Rushing Plasma**: Shader math is calibrated to ensure plasma clouds aggressively rush past the camera, providing a true sense of forward momentum.
+* **Cinematic Dematerialization**: A unique "throbbing" transparency effect that pulses the model's alpha values during the 4.5-second build-up and rematerialization phases.
+* **Enclosed Navigation**: The wormhole is a fully enclosed, opaque environment that completely obscures the background starfield during transit.
+
+### 🪐 Celestial Engine Features
+* **Logarithmic Depth Rendering**: Utilizes a logarithmic depth buffer to render objects across extreme scales (from small space stations to 25 million unit skyboxes) without flickering or Z-fighting.
+* **NASA-Inspired Sun Shader**: A procedural thermal cell shader simulating boiling solar plasma and a dynamic chromosphere corona.
+* **Dynamic LOD Milky Way**: A galaxy system consisting of 150,000 particles with dynamic Level of Detail (LOD) that adjusts particle size based on the observer's distance from the galactic core.
+* **Orbital Proximity Logic**: Planets and moons calculate local speed multipliers based on your distance, ensuring smooth movement when up close and cinematic orbits when far away.
+
+### 🛠 Technical HUD & System Tools
+* **Live Telemetry HUD**: A real-time overlay in the top-left corner displaying current FPS and live spatial coordinates (X, Y, Z) normalized for readability.
+* **Engine Control Sidebar**: A multi-tab interface allows users to:
+    * **SYSTEM**: Toggle the HUD display and switch between locked **60 FPS** and high-refresh **120 FPS** modes.
+    * **SHIPS**: Hot-swap between various ships (Enterprise, Millennium Falcon, X-Wing, etc.) and toggle 1st/3rd person views.
+    * **PLANETS**: Adjust environmental settings like Saturn's ring opacity and Earth's cloud layers.
+* **Full Screen Support**: Integrated toggle for native browser fullscreen mode for an immersive piloting experience.
+
+### 🎮 Control Scheme
+* **Gamepad Optimized**: Full support for Analog Sticks (Pitch/Yaw), Triggers (Accelerate/Hyperspeed), and D-Pad (Planet Cycling).
+* **6DOF Manual Flight**: True six-degrees-of-freedom flight allows for rolling, pitching, and yawing simultaneously without gimbal lock.
 
 ---
 
@@ -66,6 +98,8 @@ The terminal features a dedicated **Sub-Processor for Retro Hardware** supportin
 | **Sega Genesis** | `[GearSystem]` | For 8-bit Sega titles. |
 | **Sega Genesis** | `[SIGNAL: G_PLUS]` | Blast Processing enabled for 16-bit Sega titles. |
 | **PlayStation 1** | `[SIGNAL: PSX REARMED]` | 32-bit disc-based simulation support. |
+
+---
 
 ### ⚡ SWF Support (Powered by Ruffle)
 Flash was a glitch in the Matrix they tried to patch out. I brought it back using the **Ruffle WASM engine**.
